@@ -446,9 +446,10 @@ class BeamSegment(Layout):
         shape.Placement = obj.Placement
         obj.Shape = shape
         # color and transparency based on wavelength and power
-        obj.ViewObject.ShapeColor = wavelength_to_rgb(self.wavelength)
-        if get_enable_beam_transparency():
-            obj.ViewObject.Transparency = int(100 * (1 - self.relative_power))
+        if obj.ViewObject is not None:
+            obj.ViewObject.ShapeColor = wavelength_to_rgb(self.wavelength)
+            if get_enable_beam_transparency():
+                obj.ViewObject.Transparency = int(100 * (1 - self.relative_power))
 
         # get gaussian beam parameters
         q_param = self.get_q_parameter()

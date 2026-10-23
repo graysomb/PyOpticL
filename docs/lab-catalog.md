@@ -66,3 +66,23 @@ For the current PBS, run `tools/verify_displacement_pbs.py` with `Data/Displacem
 For independent legacy HOM custom-holder regression, run `tools/extract_hom_references.py` with the original HOM STEP and an output directory, then pass that directory to `tools/verify_hom_profiles.py`. The extractor checks the lab source hash before using labels to identify parts. Reference solids are validation inputs only; generated geometry uses editable rational sketch curves and extrusions.
 
 See [the measurement report](reference-measurements.md) for precise evidence, comparison thresholds and remaining limitations. Do not treat this catalog as a manufacturing-tolerance or optical-performance certification.
+
+## Two-mirror fiber link example
+
+Run `examples/two_mirror_coupling.py` in FreeCAD (or with its bundled Python and
+library path configured) to generate `artifacts/two_mirror_coupling.FCStd`.
+It uses two catalog `coupling` assemblies and two catalog `mirror` assemblies.
+The input coupler faces +X; the first mirror turns +X to +Y and the second turns
++Y back to +X toward the receiving coupler. Segment lengths are 120, 100 and
+120 mm at a common optical height of 50.8 mm. Edit `placements` to change the
+layout, updating the expected-route checks accordingly.
+
+The example uses PyOpticL's `BeamPath` and the mirror reflection interfaces.
+An optical-only `Stop` at the receiving coupler's front datum terminates the
+trace; it adds no hardware to the BOM. The 1550 nm beam's 0.75 mm waist radius
+and 1 mW power are illustrative inputs, not measured collimator specifications.
+This demonstrates nominal alignment, not fiber coupling efficiency. Baseplates,
+posts and installation fasteners are not designed in this example. The saved
+native document includes the hardware, traced beam solids, contracts and BOM,
+and reopens without the vendor asset cache; the Python example rebuilds the
+live PyOpticL layout for editing.
