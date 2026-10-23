@@ -74,6 +74,54 @@ Inventor-only assets before depending on them in the generation pipeline.
 Generate custom parts from validated families. Automatic invention of arbitrary
 mounting hardware is outside the initial scope.
 
+## Requested component additions
+
+Backlog recorded 2026-10-23. Product selections and design notes below are the
+requested additions; CAD, mounting interfaces and optical settings still need
+verification during implementation.
+
+- [ ] **Monolithic grating mount and transmission grating:** CAD a monolithic
+  mount with the grating set for operation at 1550 nm; determine the mounting
+  angle during implementation. Selected grating:
+  [Coherent® LightSmyth™ 1525–1565 nm, 1000 grooves/mm, 31.8 × 12.3 mm transmission diffraction grating](https://www.edmundoptics.com/p/ii-vi-lightsmytht-1525---1565nm-1000-groovesmm-318-x-123mm-transmission-diffraction-grating/44712/).
+- [ ] **Fixed Polaris lens mounts:** add both
+  [POLARIS-L05G](https://www.thorlabs.com/item/POLARIS-L05G) and
+  [POLARIS-L1G](https://www.thorlabs.com/item/POLARIS-L1G).
+- [ ] **1-inch Polaris mirror mount:** add
+  [POLARIS-K1VS2](https://www.thorlabs.com/item/POLARIS-K1VS2).
+- [ ] **½-inch and 1-inch OptoSigma mirror mounts:** add both sizes from the
+  [top-adjust clear-edge mirror mount family](https://www.optosigma.com/us_en/opto-mechanical-components-2/mirror-mounts/top-adjust-mirror-mounts/top-adjust-clear-edge-mirror-mounts.html).
+  Exact part numbers remain to be selected.
+- [ ] **Waveplate mount:** add the Thorlabs
+  [FBR](https://www.thorlabs.com/item/FBR).
+- [ ] **Adjustable iris with a custom CAD mounting bracket:** add the Thorlabs
+  [VA100](https://www.thorlabs.com/item/VA100?aID=c4d16e7217368a3d6b2f57305109823a&aC=2)
+  and design its mounting bracket. Tentative reference: a bracket similar to
+  PyOpticL's existing waveplate brackets.
+- [ ] **HRS1015-P01 with a custom CAD mount:** add the Thorlabs
+  [HRS1015-P01](https://www.thorlabs.com/item/HRS1015-P01) and design a mount
+  that supports **both orientations**. Use
+  [HOM DelayModules.pdf](<../../../Data/HOM Mount/DelayModules.pdf>), Section 4,
+  pages 3–4, as the mounting reference: two integral side supports and a separate
+  removable locking piece. Adapt that concept for both orientations; verify
+  the selected optic's fit and mounting datums rather than assuming the
+  documented mount fits unchanged.
+  **Optical modeling requirement:** preserve the beam displacement as well as
+  its outgoing direction. Define distinct incoming and outgoing optical datums
+  from verified geometry, with the offset direction transformed with the optic
+  in each orientation. Keep this optical displacement separate from the mount's
+  mechanical placement offset. Assess whether the existing reflection interfaces
+  can represent the full path or an explicit displaced-output interface is
+  needed. Validate exit position, direction and optical path length in both
+  orientations before integrating the component into beam layouts.
+- [ ] **Custom output coupler — missing dowel pins in drill contract:** the
+  user's custom output coupler is missing its dowel-pin holes from the drilling
+  contract. Verify the custom component's actual pin pattern against its CAD,
+  add the matching dowel bores to the drill contract and applicable baseplate
+  machining workflow, and check that generated holes follow component placement
+  and rotation. Pin count, spacing, diameter and depth must follow the custom
+  coupler's geometry rather than being inferred from another coupler preset.
+
 ## Degrees of freedom
 
 Physical adjustment and design-time freedom are different properties. The layout
