@@ -103,6 +103,9 @@ class VendorPart:
         interfaces = {'F260FC-1550': (replace(pairs['F260FC-1550'], frame='thread_end', seating='Barrel front datum; M11 thread-end datum aligned with adapter opening, 2.9972 mm from barrel front; user-specified nominal convention.'), pairs['fiber']),
                       'AD1109F': (replace(pairs['AD1109F-in'], frame='collimator_opening', seating='M11 end faces the collimator; opposed to mount end.'), replace(pairs['AD1109F-out'], frame='mount_seat', engagement_mm=3.175, seating='Shoulder against KA05TA front; remove front SM05KRR.')),
                       'KA05TA': (replace(pairs['KA05TA'], frame='adapter_seat', seating='Front plate plane; adapter enters along local +X.'),)}.get(self.part, ())
+        if self.part == 'POLARIS-K05VS2':
+            interfaces += (MechanicalInterface('dowel_slot', 'dowel_slot', 'slot',
+                seating='2.00914 mm wide alignment slot at native X=+5 mm; mates to one round 2 mm pin. Round feature at X=-5 mm.'),)
         names = {'POLARIS-K05VS2': ('tip','tilt'), 'KA05TA': ('tip','tilt','axial'),
                  'ELL16': ('rotation',)}.get(self.part, ())
         if self.part == 'XR25C':

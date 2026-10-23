@@ -342,7 +342,7 @@ class Component(Layout):
         """Recursively recompute all children of this object"""
 
         super().recompute()
-        if not self.computed_shape:
+        if not self.computed_shape or getattr(self, "always_recompute_shape", False):
             self.compute_shape()
             self.computed_shape = True
 

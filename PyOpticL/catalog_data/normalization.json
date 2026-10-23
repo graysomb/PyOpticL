@@ -54,6 +54,22 @@
         "diameter": 2.00914,
         "depth": 1.91,
         "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          5,
+          -12.7,
+          8.96484065558
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null
       }
     ],
     "datum_rotations": {

@@ -43,7 +43,18 @@ class FreeCADTests(unittest.TestCase):
         self.assertAlmostEqual({f.name:f for f in xr.contract().frames}['payload'].position[2],23,places=5)
         mirror=self.parts['mirror'].get_object().Children[0].Proxy
         self.assertAlmostEqual({f.name:f for f in mirror.contract().frames}['optic_seat'].position[0],0,places=5)
-        self.assertEqual(len(mirror.contract().holes),2)
+        self.assertEqual(len(mirror.contract().holes),3)
+
+    def test_mirror_is_seated_in_mount(self):
+        optic = self.parts['mirror'].get_object()
+        mount = optic.Children[0]
+        seat = next(f for f in mount.Proxy.contract().frames if f.name == 'optic_seat')
+        seat_world = mount.Placement.multVec(App.Vector(*seat.position))
+        rear_world = optic.Placement.multVec(App.Vector(-3,0,0))
+        self.assertLess((seat_world-rear_world).Length, .01)
+        self.assertLess(optic.Shape.distToShape(mount.Shape)[0], 1e-7)
+        overlap = sum(optic.Shape.common(solid).Volume for solid in mount.Shape.Solids)
+        self.assertLess(overlap, 1e-6)
 
     def test_measured_vendor_hole_axes(self):
         reference=json.loads((catalog.DATA/'reference_measurements.json').read_text())

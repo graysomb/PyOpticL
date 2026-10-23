@@ -75,3 +75,27 @@ Generic M3 × 8 and 4-40 × 3/16-inch screws are explicit nominal fastening sele
 The automated suite passed 15 tests (7 standard-Python and 8 FreeCAD 1.1.4 integration tests). It checks FreeCAD construction, pinned solids, independently measured vendor hole axes, nominal frames, DOF transforms, read-only summaries, metadata inertness, repeat recomputation, instance isolation and an existing mirror/interfaces/drill workflow. Downloader tests cover malformed files, hash changes, identity errors, both vendor-domain handlers and dynamic-page fallback. Skills pass the skill validator; their known-chain and mismatch logic is exercised through the connection API.
 
 No physical motion, motor control, optical coupling-efficiency test, complete sweep of the historic example scripts, or physical assembly test is claimed. OptoSigma public-link handling is tested with fixtures; no OptoSigma part is needed by these five catalog entries. The SPDC fastening stack and manufacturer-specific external fasteners remain open procurement/installation qualification items. The coupling nominal placement follows the explicitly selected thread-end convention.
+
+
+## Direct baseplate attachment
+
+`baseplate_interfaces.json` pins the mounting profiles to the existing vendor
+STEP and drawing hashes. Both POLARIS-K05VS2 and KA05TA mounting faces lie
+12.7 mm below their optical axes. Native POLARIS attachment axes are
+(0,-12.7,8.96484065558) for the #8/M4 clearance hole and X=-5,+5 at the same
+Y/Z for alignment pins. The +5 feature is a slot: its cylindrical ends have
+X=4.50457 and 5.49543, radius 1.00457 mm. The mating plate uses its centerline,
+not two separate holes for those end arcs. The prior contract recorded only
+the round feature; the slot is now included.
+
+POLARIS drawing C specifies 2 × 5 mm DIN 7-m6 / ISO 2338 pins and mating holes
+Ø0.0790–0.0796 in, 0.175 +0.002/-0 in deep. Plate values are explicit mm
+conversions, distinct from the mount's 1.905 mm blind pin pockets. KA05TA's
+selected bottom clearance-hole axis is (9.09394,1.97817,18.68338). Its other
+mounting hole is on the orthogonal side face; no dowel pattern is documented.
+
+Stock-size and recess decisions use tight `optimalBoundingBox()` bounds rather
+than loose spline bounds. For example, the POLARIS imported compound's ordinary
+box extends below the actual mounting face; that alone is not evidence of a
+physical projection requiring a pocket. The native planar mounting faces and
+actual plate/mount solid intersection checks establish flush seating.

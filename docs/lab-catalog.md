@@ -74,15 +74,59 @@ library path configured) to generate `artifacts/two_mirror_coupling.FCStd`.
 It uses two catalog `coupling` assemblies and two catalog `mirror` assemblies.
 The input coupler faces +X; the first mirror turns +X to +Y and the second turns
 +Y back to +X toward the receiving coupler. Segment lengths are 120, 100 and
-120 mm at a common optical height of 50.8 mm. Edit `placements` to change the
+120 mm at a common optical height of 12.7 mm above the plate top. Edit `placements` to change the
 layout, updating the expected-route checks accordingly.
 
 The example uses PyOpticL's `BeamPath` and the mirror reflection interfaces.
 An optical-only `Stop` at the receiving coupler's front datum terminates the
 trace; it adds no hardware to the BOM. The 1550 nm beam's 0.75 mm waist radius
 and 1 mW power are illustrative inputs, not measured collimator specifications.
-This demonstrates nominal alignment, not fiber coupling efficiency. Baseplates,
-posts and installation fasteners are not designed in this example. The saved
+This demonstrates nominal alignment, not fiber coupling efficiency. The example now includes a machined baseplate with four M4 threaded mounting holes and four 2 mm pin holes. The saved
 native document includes the hardware, traced beam solids, contracts and BOM,
 and reopens without the vendor asset cache; the Python example rebuilds the
 live PyOpticL layout for editing.
+
+
+## Integral machined baseplates
+
+`PyOpticL.machined_baseplate.optical_height()` derives the 12.7 mm optical height
+from the POLARIS mounting-face datum. Use this height for the layout, then call
+`plate, machining = machined_baseplate.add(layout)` before recomputing. The plate
+top is layout Z=0; thickness defaults to 12.7 mm and margin to 15 mm. Stock bounds
+round outward to a 5 mm grid. The two-mirror example produces a 320 × 180 mm plate.
+
+The selected mounting face sits directly on the plate. If its datum lies below
+Z=0, a rectangular clearance pocket is machined down to that face; insufficient
+remaining stock fails explicitly. A face above Z=0 is rejected rather than given
+a spacer. Current POLARIS and KA05TA mounts both have a 12.7 mm optical height,
+so the example requires no pockets. Side-facing KA05TA mounting holes are an
+alternative mounting orientation and do not become holes in a horizontal plate.
+
+Mounting coordinates are transformed from the pinned vendor CAD datums.
+`baseplate_interfaces.json` records the independently checked attachment
+pattern and drawing hashes. The plate uses explicit M4 × 0.7 threads in the
+vendor's #8/M4 clearance holes: Ø3.3 mm tap drills, 10 mm straight drill depth,
+8 mm nominal usable thread depth, with 118° drill tips. Thread helices are not
+modeled; the thread designation is recorded in the read-only `MachiningPlan`.
+The plate holes are threaded, while the purchased mount holes remain clearance
+holes. Exact screw length/head selection is not yet included in the example BOM.
+
+Each POLARIS mount gets both pins: native X=-5 mm (round feature) and X=+5 mm
+(slotted feature). The mating plate has two round Ø2.01 mm holes, 4.445 mm deep,
+for 2 × 5 mm pins, following drawing revision C notes 1–2. Permitted diameter
+range is 2.0066–2.02184 mm; depth tolerance is +0.0508/-0 mm. A pin projects
+0.555 mm above the plate, within the mount's 1.905 mm blind depth. KA05TA has no
+documented mating dowel pattern, so no pin holes are invented for it.
+
+The displacement PBS support is fused into the plate as one solid. Its existing
+clamp bore is recut after fusion so that the plate stock does not fill it. No
+holder-attachment holes are added. `machining.integrated_names` identifies the
+source support features for omission when exporting an assembly or BOM; the live
+features are hidden where a GUI is present. `examples/integral_pbs_plate.py` writes a separate fused PBS demonstration,
+exporting just the plate/support solid and the optic. The two-mirror example contains no PBS. Rotation and translation baseplate attachments are rejected
+until their installation profiles are independently verified.
+
+`artifacts/two_mirror_coupling.machining.json` lists all drilling operations,
+source hashes and selected threads. No optical-table attachment pattern is added.
+Run `tests/catalog/freecad_baseplate_acceptance.py` in FreeCAD's bundled Python
+for source-axis, seating, physical bore, recess, recompute and PBS-fusion checks.
