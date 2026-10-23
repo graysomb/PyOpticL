@@ -1,0 +1,23 @@
+{
+  "pbs-clamp": {
+    "samples": 560,
+    "max_surface_deviation_mm": 1.0181174929547225e-13,
+    "reference_volume_mm3": 1293.664159874576,
+    "generated_volume_mm3": 1293.6558799262423,
+    "passes_0_01_mm": true
+  },
+  "pbs-holder": {
+    "samples": 635,
+    "max_surface_deviation_mm": 4.226215502001196e-06,
+    "reference_volume_mm3": 25807.83001775809,
+    "generated_volume_mm3": 25807.829981878665,
+    "passes_0_01_mm": true
+  },
+  "rotation-holder": {
+    "samples": 512,
+    "max_surface_deviation_mm": 1.7904327470426814e-08,
+    "reference_volume_mm3": 10431.408062438646,
+    "generated_volume_mm3": 10428.444569650379,
+    "passes_0_01_mm": true
+  }
+}

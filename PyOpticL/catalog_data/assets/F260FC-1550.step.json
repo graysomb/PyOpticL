@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "F260FC-1550",
+  "product_url": "https://www.thorlabs.com/item/F260FC-1550",
+  "asset_url": null,
+  "vendor_filename": "F260FC-1550-Step.step",
+  "document_id": "7524-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-23T20:17:03.255871+00:00",
+  "sha256": "7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda",
+  "kind": "step",
+  "cache_path": "objects/7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

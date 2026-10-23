@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "AD1109F",
+  "product_url": "https://www.thorlabs.com/item/AD1109F",
+  "asset_url": null,
+  "vendor_filename": "AD1109F-Step.step",
+  "document_id": "13080-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-23T20:17:03.294745+00:00",
+  "sha256": "f9c5c07505b4e9ddc113cc313e78da788c7d5e609b7e0ea0305d2786dbd11b0f",
+  "kind": "step",
+  "cache_path": "objects/f9c5c07505b4e9ddc113cc313e78da788c7d5e609b7e0ea0305d2786dbd11b0f/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

@@ -1,0 +1,16 @@
+{
+  "coupling": {
+    "collimator/adapter": {
+      "overlap_mm3": 0.0,
+      "unresolved_booleans": []
+    },
+    "collimator/mount": {
+      "overlap_mm3": 0.0,
+      "unresolved_booleans": []
+    },
+    "adapter/mount": {
+      "overlap_mm3": 0.0,
+      "unresolved_booleans": []
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "XR25C",
+  "product_url": "https://www.thorlabs.com/item/XR25C",
+  "asset_url": null,
+  "vendor_filename": "XR25C-Step.step",
+  "document_id": "XR25C-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-23T20:18:21.324893+00:00",
+  "sha256": "d50c9c59e33138ecd2ea6dc5b76552760ef3684b7ee063603d502f7237b91259",
+  "kind": "step",
+  "cache_path": "objects/d50c9c59e33138ecd2ea6dc5b76552760ef3684b7ee063603d502f7237b91259/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

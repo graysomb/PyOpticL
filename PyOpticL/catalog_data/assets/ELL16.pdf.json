@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "ELL16",
+  "product_url": "https://www.thorlabs.com/item/ELL16",
+  "asset_url": null,
+  "vendor_filename": "ELL16-CAD-PDF.pdf",
+  "document_id": "ELL16-E0W",
+  "revision": "A",
+  "retrieved_at": "2026-10-23T20:17:03.298735+00:00",
+  "sha256": "98978829e81f1eaa25dee18fbb92675f628bd5048cf81b733c8c3d05f4e5b454",
+  "kind": "pdf",
+  "cache_path": "objects/98978829e81f1eaa25dee18fbb92675f628bd5048cf81b733c8c3d05f4e5b454/source.pdf",
+  "units": "mm and inches",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

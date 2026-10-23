@@ -42,7 +42,8 @@ class Layout:
         obj.setEditorMode("Label", 1)  # make label read-only
         self.document_id = document.Name
         self.object_id = obj.Name
-        ViewProvider(obj.ViewObject, icon=self.object_icon)
+        if obj.ViewObject is not None:
+            ViewProvider(obj.ViewObject, icon=self.object_icon)
 
         # setup placement properties
         self.make_property("Placement", "App::PropertyPlacement")
@@ -231,8 +232,18 @@ class Component(Layout):
 
         # set object color
         obj = self.get_object()
-        obj.ViewObject.ShapeColor = self.object_color
-        obj.ViewObject.Transparency = self.object_transparency
+        if obj.ViewObject is not None:
+            obj.ViewObject.ShapeColor = self.object_color
+            obj.ViewObject.Transparency = self.object_transparency
+
+        # Optional descriptive metadata. Never participates in placement or tracing.
+        if hasattr(definition, "contract"):
+            import json
+            contract = definition.contract()
+            self.make_property("AvailableDOFs", "App::PropertyString", visible=True)
+            self.make_property("ComponentContract", "App::PropertyString", visible=True)
+            obj.AvailableDOFs = contract.summary()
+            obj.ComponentContract = json.dumps(contract.to_dict(), sort_keys=True)
 
         # add any sub-components defined in the template
         if hasattr(definition, "subcomponents"):
@@ -262,7 +273,8 @@ class Component(Layout):
                 shape = combined
 
             # don't apply drilling to some groups
-            if obj.Proxy.object_group not in ["hardware", "optics", "beam_path"]:
+            if (getattr(self, "apply_drilling", True) and
+                    obj.Proxy.object_group not in ["hardware", "optics", "beam_path"]):
                 # gather peer objects
                 drill_objs = []
                 if obj.Parent != None:
@@ -314,12 +326,13 @@ class Component(Layout):
                         shape = shape.cut(drill_shape)
 
             # apply placement and set final shape
-            shape = shape.removeSplitter()
+            if not getattr(self, "preserve_topology", False):
+                shape = shape.removeSplitter()
             shape.Placement = obj.Placement
             obj.Shape = shape
 
         elif self.object_type == "Mesh" and hasattr(self, "mesh"):
-            mesh = self.mesh
+            mesh = self.mesh.copy()
             mesh.Placement = obj.Placement
             obj.Mesh = mesh
 

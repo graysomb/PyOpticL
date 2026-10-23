@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "ELL16",
+  "product_url": "https://www.thorlabs.com/item/ELL16",
+  "asset_url": null,
+  "vendor_filename": "ELL16-Step.step",
+  "document_id": "ELL16-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-23T20:17:03.488227+00:00",
+  "sha256": "6943f8afc88081751275eb216dc62acb0e5805320eb7064bda564cb96fe92da3",
+  "kind": "step",
+  "cache_path": "objects/6943f8afc88081751275eb216dc62acb0e5805320eb7064bda564cb96fe92da3/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}
