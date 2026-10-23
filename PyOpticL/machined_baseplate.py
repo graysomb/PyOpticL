@@ -57,6 +57,8 @@ class MachinedBaseplate:
                 fused.append(obj)
             elif contract.part_number in PROFILES:
                 hardware.append(obj)
+            elif contract.catalog_id == 'iris' and hasattr(obj.Proxy, 'baseplate_profile'):
+                hardware.append(obj)
             elif contract.catalog_id in ('rotation','translation'):
                 raise ValueError('No verified baseplate attachment profile yet for '+contract.catalog_id)
         if not hardware and not fused:
@@ -79,11 +81,15 @@ class MachinedBaseplate:
         plate = Part.makeBox(width,depth,self.thickness,App.Vector(x0,y0,-self.thickness))
         operations, pockets = [], []
         for obj in hardware:
-            part = obj.Proxy.contract().part_number
-            profile = PROFILES[part]
-            if lab_catalog.asset_record(part)['sha256'] != profile['step_sha256']:
-                raise ValueError('Mounting profile must be reverified for revised CAD: '+part)
-            frames = {f.name:f for f in obj.Proxy.contract().frames}
+            contract = obj.Proxy.contract()
+            part = contract.part_number or contract.catalog_id
+            if contract.catalog_id == 'iris':
+                profile = obj.Proxy.baseplate_profile()
+            else:
+                profile = PROFILES[part]
+                if lab_catalog.asset_record(part)['sha256'] != profile['step_sha256']:
+                    raise ValueError('Mounting profile must be reverified for revised CAD: '+part)
+            frames = {f.name:f for f in contract.frames}
             placement = self._relative(obj)
             seat = placement.multVec(App.Vector(*frames[profile['seat_frame']].position))
             local_up = placement.Rotation.multVec(App.Vector(0,0,1))

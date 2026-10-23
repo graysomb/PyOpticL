@@ -5,6 +5,7 @@ No DOF is a placement input. Cached vendor files are verified before import.
 from functools import lru_cache
 from dataclasses import replace
 import json
+import math
 from pathlib import Path
 import FreeCAD as App
 import Part
@@ -12,9 +13,10 @@ from PyOpticL.component_contract import ComponentContract, DOF, Frame, Hole, Mec
 from PyOpticL.layout import Component, Subcomponent
 from PyOpticL.vendor_cad import resolve
 from PyOpticL.library import optics
+from PyOpticL.beam_path import Stop
 
 DATA = Path(__file__).with_name('catalog_data')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris')
 
 
 def asset_record(part):
@@ -117,6 +119,84 @@ class VendorPart:
             provenance=(Provenance(record['product_url'], 'documented', record['sha256'],
                 'Vendor nominal compound; see normalization and independent reference measurements.'),))
 
+
+
+class AlignmentIris:
+    """Fixed aperture plate, with its optical center at the component origin.
+
+    Dimensions are in mm. The mounting surface is 12.7 mm below the origin;
+    drill() describes the two mating plate bores, not the holes in the iris.
+    """
+    object_group = 'mounts'
+    object_color = (.25, .25, .25)
+    apply_drilling = False
+    drill_groups = ('baseplate',)
+    part_numbers = []
+    optical_height = 12.7
+    width = 20.
+    thickness = 4.
+    pin_positions = ((0., -5., -12.7), (0., 5., -12.7))
+
+    def __init__(self, aperture_diameter=0.5):
+        if not math.isfinite(aperture_diameter) or not 0 < aperture_diameter < self.width:
+            raise ValueError('Aperture diameter must be finite and strictly between 0 and 20 mm')
+        self.aperture_diameter = float(aperture_diameter)
+
+    def baseplate_profile(self):
+        """Fresh mounting profile; the STEP hash identifies the design reference."""
+        return json.loads((DATA / 'alignment_iris_reference.json').read_text())['mounting_profile']
+
+    def contract(self):
+        profile = self.baseplate_profile()
+        frames = [Frame('origin'), Frame('optical'),
+                  Frame('mounting_face', (0, 0, -self.optical_height), (180, 0, 0))]
+        holes = []
+        for name, position in zip(profile['dowels'], self.pin_positions):
+            # Local +Z enters the iris from its bottom face.
+            frames.append(Frame(name, position))
+            holes.append(Hole(name, name, profile['dowel']['mount_diameter_mm'],
+                              profile['dowel']['mount_depth_mm'], source=profile['source']))
+        return ComponentContract('iris', '1', 'Lab', '', 'fabricated',
+            frames=tuple(frames), holes=tuple(holes), optical_reference='optical',
+            provenance=(Provenance(profile['source'], 'documented', profile['step_sha256'],
+                'Adapted design: one centered aperture, shortened rounded body, two round dowel holes. '
+                'STEP hash identifies the original reference, not an exact geometry match.'),))
+
+    def shape(self):
+        # A semicircular cap above straight sides, extruded along the beam axis.
+        x, r, bottom = -self.thickness / 2, self.width / 2, -self.optical_height
+        a, b = App.Vector(x, -r, bottom), App.Vector(x, r, bottom)
+        c, d = App.Vector(x, r, 0), App.Vector(x, -r, 0)
+        outline = Part.Wire([Part.makeLine(a, b), Part.makeLine(b, c),
+            Part.Arc(c, App.Vector(x, 0, r), d).toShape(), Part.makeLine(d, a)])
+        shape = Part.Face(outline).extrude(App.Vector(self.thickness, 0, 0))
+        shape = shape.cut(Part.makeCylinder(self.aperture_diameter / 2,
+            self.thickness + .02, App.Vector(x - .01, 0, 0), App.Vector(1, 0, 0)))
+        profile = self.baseplate_profile()
+        for position in self.pin_positions:
+            shape = shape.cut(_blind_bore(position, profile['dowel']['mount_diameter_mm'],
+                                         profile['dowel']['mount_depth_mm'], (0, 0, 1)))
+        return shape.removeSplitter()
+
+    def drill(self):
+        profile = self.baseplate_profile()
+        return Part.makeCompound([_blind_bore(position, profile['dowel']['plate_diameter_mm'],
+            profile['dowel']['plate_depth_mm'], (0, 0, -1)) for position in self.pin_positions])
+
+    def interfaces(self):
+        # Same ideal aperture-stop behavior as the existing Thorlabs iris.
+        return [Stop(position=(0, 0, 0), rotation=(0, 0, 0), diameter=self.width,
+                     pinhole_diameter=self.aperture_diameter)]
+
+
+def _blind_bore(position, diameter, depth, axis):
+    """Straight-depth blind bore with a 118-degree tip and entry overrun."""
+    center, direction = App.Vector(*position), App.Vector(*axis)
+    radius = diameter / 2
+    bore = Part.makeCylinder(radius, depth + .01, center - direction * .01, direction)
+    tip = Part.makeCone(radius, 0, radius / math.tan(math.radians(59)),
+                        center + direction * depth, direction)
+    return bore.fuse(tip)
 
 
 class HOMHolder:
@@ -308,16 +388,19 @@ def connection_interfaces():
 def create(catalog_id, label, **parameters):
     """Construct an ordinary Component. Recompute it using the existing API.
 
-    Supported parameters: mirror thickness (mm), waveplate thickness (mm), and
-    waveplate retardance. Unknown options fail rather than silently changing fit.
+    Supported parameters: mirror/waveplate thickness (mm), waveplate retardance,
+    and iris aperture_diameter (mm). Unknown options fail explicitly.
     """
     if catalog_id not in CATALOG_IDS:
         raise KeyError('Unknown lab catalog ID: ' + catalog_id)
-    allowed = {'mirror': {'thickness'}, 'rotation': {'thickness', 'retardance'}}.get(catalog_id, set())
+    allowed = {'mirror': {'thickness'}, 'rotation': {'thickness', 'retardance'},
+               'iris': {'aperture_diameter'}}.get(catalog_id, set())
     if set(parameters) - allowed:
         raise TypeError('Unsupported parameters: ' + ', '.join(sorted(set(parameters) - allowed)))
     if 'thickness' in parameters and parameters['thickness'] <= 0:
         raise ValueError('Thickness must be positive')
+    if catalog_id == 'iris':
+        return Component(label, AlignmentIris(**parameters))
     if catalog_id == 'mirror':
         thickness = parameters.get('thickness', 3.)
         mount = VendorPart('POLARIS-K05VS2')

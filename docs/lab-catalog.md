@@ -13,7 +13,7 @@ print(lab_catalog.report_dofs(coupler))  # world axes
 print(lab_catalog.bom(coupler))
 ```
 
-Supported IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`. Rotation accepts `thickness` (default 1 mm) and `retardance` (default half-wave); these describe a generic half-inch waveplate, not a selected vendor optic. Mirror diameter is 12.7 mm and default thickness is 3 mm. Other unknown parameters fail explicitly. Changing optic thickness changes the nominal assembly configuration and may require fit revalidation.
+Supported IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`, `iris`. Rotation accepts `thickness` (default 1 mm) and `retardance` (default half-wave); these describe a generic half-inch waveplate, not a selected vendor optic. Mirror diameter is 12.7 mm and default thickness is 3 mm. Iris accepts `aperture_diameter` (default 0.5 mm). Other unknown parameters fail explicitly. Changing optic thickness changes the nominal assembly configuration and may require fit revalidation.
 
 Contracts are immutable dataclasses with versioned JSON serialization. Frames are directly component-local, in millimeters and fixed XYZ degrees. Optical frames use local +X along the beam; seating/interface frames use local +Z for the outward normal, and hole frames use local +Z for the hole axis. DOF axes are unit vectors in their named frame. `limits=None` means unknown; it never means zero travel. DOFs describe capabilities and affected parts, not exact pivots. `report_dofs(component, relative_to=layout)` expresses axes in the requested layout without changing any placements. FreeCAD shows read-only `AvailableDOFs` and `ComponentContract` properties.
 
@@ -28,8 +28,9 @@ Commercial thread designations are explicit and independent of the global metric
 | pbs | Generic 12.7 mm PBS; displacement center-piece support patch with register relief trenches | Fixed |
 | rotation | Generic Ø12.7 mm waveplate; ELL16; HOM holder; four generic cage screws | Optical-axis rotation |
 | translation | XR25C, nominal payload attachment frame | Stage-axis translation |
+| iris | Fabricated fixed aperture plate; two round dowel mounting holes | Fixed |
 
-The PBS support is an explicitly bounded patch of the displacement mount’s main center piece, not a newly qualified stand-alone bolt-on holder. External baseplates, fibers, cables, controllers, payloads, and their installation hardware are outside the five presets. No optical coupling-efficiency model is inferred from the mechanical collimator model.
+The PBS support is an explicitly bounded patch of the displacement mount’s main center piece, not a newly qualified stand-alone bolt-on holder. External baseplates, fibers, cables, controllers, payloads, and their installation hardware are outside the component presets. No optical coupling-efficiency model is inferred from the mechanical collimator model.
 
 The coupling uses the user-selected thread-end datum: the F260FC-1550 M11 thread-end plane aligns with the AD1109F opening, 2.9972 mm behind the collimator front. This is a measured nominal placement convention, not a claim of bottoming against the internal shoulder.
 
@@ -130,3 +131,69 @@ until their installation profiles are independently verified.
 source hashes and selected threads. No optical-table attachment pattern is added.
 Run `tests/catalog/freecad_baseplate_acceptance.py` in FreeCAD's bundled Python
 for source-axis, seating, physical bore, recess, recompute and PBS-fusion checks.
+
+## Fixed alignment iris
+
+```python
+from PyOpticL import lab_catalog, machined_baseplate
+from PyOpticL.layout import Layout
+
+layout = Layout('Iris layout')
+iris = layout.add(lab_catalog.create('iris', 'Alignment iris', aperture_diameter=0.5),
+                  (0, 0, 12.7), 0)
+plate, machining = machined_baseplate.add(layout)
+layout.recompute()
+```
+
+`lab_catalog.AlignmentIris(aperture_diameter=0.5)` also works as a normal
+`Component` definition. Dimensions remain in mm in either unit preference.
+The aperture diameter must be finite and strictly between 0 and 20 mm. It is
+chosen when constructing the fixed plate; no adjustable blades are modeled.
+
+The parametric body is 20 mm wide, 4 mm thick and 22.7 mm tall, with a flat
+bottom and a radius-10 mm semicircular top. Local +X follows the beam, the
+aperture center is the component origin, and the bottom is at local Z=-12.7 mm.
+In a machined layout with plate top Z=0, place the component at Z=12.7 mm as
+above. With an ordinary `library.Baseplate` using its default optical height,
+place the iris at beam-plane Z=0; that plate's top is Z=-12.7 mm.
+
+The bottom contains two round Ø2.05 mm holes at local `(0, ±5, -12.7)` mm,
+each with 2 mm straight depth followed by a 118° drill tip. The descriptive
+`ComponentContract.holes` records exactly these two holes in the iris.
+The optical aperture is represented separately by `optical_reference` and a
+`Stop` interface. This uses the existing ideal ray-center transmission rule
+inside a 20 mm circular stop field; it does not calculate diffraction or
+Gaussian power clipping, nor trace the body's full noncircular silhouette.
+
+`drill()` instead returns exactly the **two mating baseplate bores**:
+Ø2.01 mm, 4.445 mm straight depth, followed by 118° drill tips. It only drills
+objects in the `baseplate` group. The iris itself ignores automatic drilling
+from neighbors, including the beam's clearance envelope, to preserve its
+aperture and blind holes. No mounting screw or clearance pocket is part of the
+iris drilling footprint. `baseplate_profile()` returns a fresh profile using
+the existing catalog structure, and both drilling workflows use those dimensions.
+`MachinedBaseplate` also supports an iris-only layout and records exactly two
+dowel operations for each iris. It retains the existing upright/seating checks.
+
+Use Ø2 × 5 mm DIN 7-m6 / ISO 2338 pins: nominal projection is 0.555 mm above
+the plate, within the iris's 2 mm straight blind depth. Plate-hole diameter
+limits are 2.0066–2.02184 mm and depth tolerance is +0.0508/-0 mm, following the
+existing catalog convention. The bore dimensions do not vary with aperture size.
+
+The design is adapted from `Data/SPDC Mach Zhender V2/IRIS.step`.
+`catalog_data/alignment_iris_reference.json` retains its SHA-256 and measured
+dimensions. The source has four apertures and a round/slot mounting pattern;
+this version has one centered aperture, a shorter body and two round holes.
+The hash identifies that reference, not an exact match or a drawing approval
+of the modified part. Runtime construction needs neither the STEP nor vendor CAD.
+
+Run `examples/iris_on_baseplate.py` to generate `artifacts/iris_on_baseplate.FCStd`,
+an assembly STEP, `alignment_iris.step`, and a machining JSON sidecar. The native
+document contains static iris, baseplate and two pin features, plus the mounting
+contract and machining plan. It reopens without Python proxies or a CAD cache.
+The Python example rebuilds the parametric source layout for editing.
+
+```bash
+PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python tests/catalog/freecad_iris_acceptance.py
+PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python examples/iris_on_baseplate.py
+```
