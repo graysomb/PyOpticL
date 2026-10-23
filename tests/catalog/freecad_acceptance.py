@@ -72,6 +72,32 @@ class FreeCADTests(unittest.TestCase):
         planes=[f for f in catalog.vendor_shape('F260FC-1550').Faces if isinstance(f.Surface,Part.Plane)]
         self.assertTrue(any(abs(f.CenterOfMass.z-6.5532)<.01 and abs(f.normalAt(0,0).z)>.99999 for f in planes))
 
+    def test_displacement_pbs_seat_and_reliefs(self):
+        holder = catalog.DisplacementPBSHolder()
+        shape = holder.shape()
+        self.assertTrue(shape.isValid())
+        self.assertEqual(holder.contract().catalog_id, 'displacement-pbs-holder')
+        def inside_source(x,y,z):
+            return shape.isInside(App.Vector(x,y,z)-App.Vector(*holder.optical_origin), 1e-7, False)
+        # Measured straight and joined-corner trench floors, and registers.
+        for x,y in [(-5.87,1.58056105),(6.68,-10.96943895),(4,1.58056105)]:
+            self.assertFalse(inside_source(x,y,44))
+            self.assertTrue(inside_source(x,y,43.4))
+        # The support patch must include the blind plastic-clamp attachment.
+        self.assertFalse(inside_source(-12.942,-13.04143895,40))
+        self.assertFalse(inside_source(-12.942,-13.04143895,35))
+        self.assertTrue(inside_source(-12.942,-13.04143895,34.6))
+        self.assertTrue(inside_source(-14.3,-13.04143895,40))
+        hole = holder.contract().holes[0]
+        self.assertEqual((hole.diameter_mm, hole.depth_mm), (2.5,9))
+        self.assertTrue(inside_source(8,-10,48))
+        self.assertTrue(inside_source(-5,3,48))
+        optic = optics.Beamsplitter_Cube(side_length=12.7).shape()
+        self.assertLess(shape.common(optic).Volume, 1e-6)
+        self.assertAlmostEqual(shape.BoundBox.ZMax, -1.3, places=5)
+        rows = catalog.bom(self.parts['pbs'])
+        self.assertEqual(len(rows), 2)  # Optic and integral support; no HOM clamp.
+
     def test_connections_and_bom(self):
         pairs=catalog.connection_interfaces()
         for a,b in [('F260FC-1550','AD1109F-in'),('AD1109F-out','KA05TA')]:

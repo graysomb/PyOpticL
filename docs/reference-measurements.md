@@ -33,7 +33,18 @@ At the delivered thread-end placement, individual-solid boolean checks report **
 
 FC/APC is rejected as an equivalent FC/PC connector. Nominal geometry and mechanical interface standards are checked separately from optical suitability, coupling efficiency, tightening torque and physical installation access.
 
-## HOM custom parts
+## Displacement PBS support (current catalog revision 2)
+
+The source is `Data/Displacement setup/Displacement Mount Assembly.step`, center object `Body`. Its SHA-256 and independent datums are pinned in `displacement_pbs_reference.json`. The upper seat provides the local pattern; equivalent seats occur elsewhere on that center piece.
+
+- Seating plane Z=44.45 mm, register tops Z=49.5 mm (5.05 mm high).
+- Register contact planes X=7.08 and Y=1.98056105 mm. A 12.7 mm cube seated against them has center (0.73, -4.36943895, 50.8). This is the nominal assembled optical reference, derived from those contact planes.
+- Three relief trenches immediately ahead of the registers: two straight, one joined corner. Width 0.8 mm; depth 1 mm; 0.2 mm edge rounds. Straight trench length 9.5 mm.
+- Comparison patch: origin (-16,-17,25.4), size (28.5,24.5,24.6) mm. These are extraction boundaries within the integral center piece, not a new bolt-on support design. The patch preserves the plastic-clamp attachment bore at (-12.942,-13.04143895): Ø2.5 mm, 9 mm straight blind depth from Z=44.45, drill tip Z=34.69892423. The STEP does not establish a thread designation. No standalone base fastening or replacement plastic clamp geometry is inferred.
+- Geometry uses boxes, a polygonal corner pocket, extrusions and 0.2 mm fillets. `tools/verify_displacement_pbs.py` checks the original source hash and independently imports and trims its Body before comparing surfaces. Results are in `displacement_pbs_verification.json`; threshold 0.01 mm.
+- The existing generic cube optical interfaces and fixed DOF description are unchanged. Legacy HOM support/clamp definitions remain available but are no longer selected by `create("pbs", ...)`.
+
+## HOM custom parts (legacy PBS; current rotation holder)
 
 The source assembly labels are `PBSClipBottom`, `Body`, and `Part 1` (ELL16 holder). The reconstruction stores rational sketch curves rather than opaque reference solids. Thicknesses, extrusions, holes and rounded upright edges are constructed parametrically.
 

@@ -1,0 +1,8 @@
+{
+  "samples": 608,
+  "max_surface_deviation_mm": 3.690203719547244e-11,
+  "reference_volume_mm3": 13764.817678509075,
+  "generated_volume_mm3": 13764.817623612758,
+  "passes_0_01_mm": true,
+  "method": "Bidirectional sampled surface distances; not exact Hausdorff distance"
+}

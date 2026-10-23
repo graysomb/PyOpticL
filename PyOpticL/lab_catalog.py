@@ -180,6 +180,72 @@ class HOMHolder:
 
 
 
+class DisplacementPBSHolder:
+    """Local integral-base patch from the displacement assembly's center Body.
+
+    Four registers and three relief trenches, including their 0.2 mm rounds,
+    are rebuilt from measured dimensions. No standalone fastening is inferred.
+    """
+    object_group = 'mounts'
+    apply_drilling = False
+    object_color = (0.72, 0.72, 0.75)
+    part_numbers = []
+    optical_origin = (0.73, -4.36943894996313, 50.8)
+
+    def shape(self):
+        support = Part.makeBox(28.5, 24.5, 19.05, App.Vector(-16, -17, 25.4))
+        # Front contact planes: X=7.08 and Y=1.98056105 in source coordinates.
+        registers = [
+            (-9.62, 1.98056105003687, 8, 5, 'y'),
+            (3.08, 1.98056105003687, 2.5, 5, 'y'),
+            (7.08, -14.7194389499631, 5, 8, 'x'),
+            (7.08, -2.01943894996312, 5, 2.5, 'x'),
+        ]
+        for x, y, width, depth, axis in registers:
+            register = Part.makeBox(width, depth, 5.05, App.Vector(x, y, 44.45))
+            front = x if axis == 'x' else y
+            edges = [edge for edge in register.Edges
+                     if all(abs(getattr(v.Point, axis) - front) < 1e-6 for v in edge.Vertexes)
+                     and not all(abs(v.Point.z - 44.45) < 1e-6 for v in edge.Vertexes)]
+            support = support.fuse(register.makeFillet(.2, edges))
+        # Two straight reliefs and the joined corner relief. Round the vertical
+        # and bottom edges, retaining the open mouth at the seating plane.
+        trenches = [
+            [(-10.62, 1.18056105), (-1.12, 1.18056105),
+             (-1.12, 1.98056105), (-10.62, 1.98056105)],
+            [(6.28, -15.71943895), (7.08, -15.71943895),
+             (7.08, -6.21943895), (6.28, -6.21943895)],
+            [(2.58, 1.18056105), (6.28, 1.18056105), (6.28, -2.51943895),
+             (7.08, -2.51943895), (7.08, 1.98056105), (2.58, 1.98056105)],
+        ]
+        for points in trenches:
+            vertices = [App.Vector(x, y, 43.45) for x, y in points]
+            pocket = Part.Face(Part.makePolygon(vertices + [vertices[0]])).extrude(App.Vector(0, 0, 1))
+            edges = [edge for edge in pocket.Edges
+                     if not all(abs(v.Point.z - 44.45) < 1e-6 for v in edge.Vertexes)]
+            support = support.cut(pocket.makeFillet(.2, edges))
+        # Blind clamp attachment hole measured in the center-piece CAD.
+        support = support.cut(Part.makeCylinder(1.25, 9,
+            App.Vector(-12.942, -13.0414389499631, 35.45)))
+        support = support.cut(Part.makeCone(0, 1.25, .7510757737844,
+            App.Vector(-12.942, -13.0414389499631, 34.6989242262156)))
+        return transform(support, self.optical_origin)
+
+    def contract(self):
+        return ComponentContract('displacement-pbs-holder', '2', 'Lab', '', 'fabricated',
+            frames=(Frame('optical'), Frame('optic_seat', (0,0,-6.35)),
+                    Frame('base_patch', (0,0,-25.4)),
+                    Frame('clamp_hole', (-13.672,-8.672,-6.35)),
+                    Frame('register_x', (6.35,0,-3.825), (0,-90,0)),
+                    Frame('register_y', (0,6.35,-3.825), (90,0,0))),
+            holes=(Hole('clamp_hole', 'clamp_hole', 2.5, 9,
+                        source='Displacement center Body; thread designation not encoded in STEP'),),
+            interfaces=(MechanicalInterface('cube_seat', 'optic_seat', 'seating',
+                seating='12.7 mm cube against +X/+Y registers; 1 mm-deep relief trenches, 0.2 mm rounds.'),),
+            provenance=(Provenance('Data/Displacement setup/Displacement Mount Assembly.step',
+                'cad_verified', note='Center Body, upper PBS seat; measured integral-base patch. See displacement_pbs_verification.json. Clamp attachment hole preserved; plastic clamp solid absent from this STEP.'),))
+
+
 class NominalScrew:
     """Static clearance envelope; threads specified explicitly, not tessellated."""
     object_group = 'fasteners'
@@ -265,11 +331,9 @@ def create(catalog_id, label, **parameters):
         contract = replace(_contract('coupling', 'KA05TA', ('tip', 'tilt', 'axial')), provenance=(Provenance('https://www.thorlabs.com/item/AD1109F', 'cad_verified', note='User-specified nominal placement: M11 thread-end plane aligned with AD1109F opening, 2.9972 mm from barrel front. SM05 shoulder seated against KA05TA. This is a static datum convention, not a thread torque or bottoming model.'),))
     elif catalog_id == 'pbs':
         definition = optics.Beamsplitter_Cube(side_length=12.7, ref_polarization=0,
-            mount_definition=HOMHolder('pbs-holder'), mount_offset=(0, 0, 0))
-        children = [('optic', definition, (0, 0, 0), (0, 0, 0)),
-                    ('clamp', HOMHolder('pbs-clamp'), (0, 0, 0), (0, 0, 0)),
-                    ('clamp screw', NominalScrew('M3 x 0.5 x 8',3,.5,8,5.5,3), (-14.5215728752538,9.5215728752538,-1.35),(0,0,0))]
-        contract = ComponentContract('pbs', '1', 'Lab', '', 'assembly', frames=(Frame('optical'),), optical_reference='optical', provenance=(Provenance('Data/HOM Mount/HOM setup.step', 'documented'),))
+            mount_definition=DisplacementPBSHolder(), mount_offset=(0, 0, 0))
+        children = [('optic', definition, (0, 0, 0), (0, 0, 0))]
+        contract = ComponentContract('pbs', '2', 'Lab', '', 'assembly', frames=(Frame('optical'),), optical_reference='optical', provenance=(Provenance('Data/Displacement setup/Displacement Mount Assembly.step', 'cad_verified', note='Center-piece PBS seat with relief trenches; fixed nominal placement.'),))
     elif catalog_id == 'rotation':
         mount = VendorPart('ELL16')
         definition = optics.Circular_Waveplate(diameter=12.7, thickness=parameters.get('thickness', 1.),

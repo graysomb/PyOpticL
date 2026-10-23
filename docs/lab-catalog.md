@@ -25,11 +25,11 @@ Commercial thread designations are explicit and independent of the global metric
 |---|---|---|
 | mirror | Generic Ø12.7 × 3 mm mirror; POLARIS-K05VS2 | Tip, tilt |
 | coupling | F260FC-1550; AD1109F; KA05TA; supplied rings accounted for | Tip, tilt, axial translation |
-| pbs | Generic 12.7 mm PBS; HOM integral support patch; removable clamp; generic M3 screw | Fixed |
+| pbs | Generic 12.7 mm PBS; displacement center-piece support patch with register relief trenches | Fixed |
 | rotation | Generic Ø12.7 mm waveplate; ELL16; HOM holder; four generic cage screws | Optical-axis rotation |
 | translation | XR25C, nominal payload attachment frame | Stage-axis translation |
 
-The PBS support is an explicitly bounded patch of the original integral base, not a newly qualified stand-alone bolt-on holder. External baseplates, fibers, cables, controllers, payloads, and their installation hardware are outside the five presets. No optical coupling-efficiency model is inferred from the mechanical collimator model.
+The PBS support is an explicitly bounded patch of the displacement mount’s main center piece, not a newly qualified stand-alone bolt-on holder. External baseplates, fibers, cables, controllers, payloads, and their installation hardware are outside the five presets. No optical coupling-efficiency model is inferred from the mechanical collimator model.
 
 The coupling uses the user-selected thread-end datum: the F260FC-1550 M11 thread-end plane aligns with the AD1109F opening, 2.9972 mm behind the collimator front. This is a measured nominal placement convention, not a claim of bottoming against the internal shoulder.
 
@@ -61,6 +61,8 @@ PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/Free
 PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python examples/lab_catalog_demo.py
 ```
 
-For independent custom-holder regression, run `tools/extract_hom_references.py` with the original HOM STEP and an output directory, then pass that directory to `tools/verify_hom_profiles.py`. The extractor checks the lab source hash before using labels to identify parts. Reference solids are validation inputs only; generated geometry uses editable rational sketch curves and extrusions.
+For the current PBS, run `tools/verify_displacement_pbs.py` with `Data/Displacement setup/Displacement Mount Assembly.step`. The preset has four raised registers and three relief trenches; the blind Ø2.5 mm clamp attachment hole is retained. The plastic clamp and screw solids remain omitted because the displacement reference does not include them. The legacy HOM definitions remain available.
+
+For independent legacy HOM custom-holder regression, run `tools/extract_hom_references.py` with the original HOM STEP and an output directory, then pass that directory to `tools/verify_hom_profiles.py`. The extractor checks the lab source hash before using labels to identify parts. Reference solids are validation inputs only; generated geometry uses editable rational sketch curves and extrusions.
 
 See [the measurement report](reference-measurements.md) for precise evidence, comparison thresholds and remaining limitations. Do not treat this catalog as a manufacturing-tolerance or optical-performance certification.

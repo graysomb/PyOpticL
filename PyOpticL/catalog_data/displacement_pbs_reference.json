@@ -1,0 +1,42 @@
+{
+  "source": "../Data/Displacement setup/Displacement Mount Assembly.step",
+  "sha256": "565658bf89e4f28e3bd7385c9cb8ddb2e33328fa77acf33537fbc908bc581b8e",
+  "source_body": "Body",
+  "patch": {
+    "origin": [
+      -16,
+      -17,
+      25.4
+    ],
+    "size": [
+      28.5,
+      24.5,
+      24.6
+    ]
+  },
+  "optical_origin": [
+    0.73,
+    -4.36943894996313,
+    50.8
+  ],
+  "seat_z": 44.45,
+  "register_top_z": 49.5,
+  "register_contact_x": 7.08,
+  "register_contact_y": 1.98056105003687,
+  "trench_bottom_z": 43.45,
+  "trench_width": 0.8,
+  "edge_round_radius": 0.2,
+  "straight_trench_length": 9.5,
+  "note": "Optical center derived by seating a 12.7 mm cube against measured +X/+Y register faces. Patch includes the blind plastic-clamp attachment hole. Boundary is an extraction boundary, not a standalone part outline. Thread designation and plastic clamp solid are not supplied by this STEP.",
+  "clamp_hole": {
+    "center": [
+      -12.942,
+      -13.0414389499631,
+      44.45
+    ],
+    "diameter": 2.5,
+    "straight_depth": 9,
+    "tip_z": 34.6989242262156,
+    "thread": null
+  }
+}
