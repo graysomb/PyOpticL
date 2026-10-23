@@ -63,6 +63,71 @@ beam.add(waveplate())
 beam.add(beamsplitter_cube())
 ```
 
+### Optical schematic editor
+
+The PyOpticL workbench includes **New Optical Schematic** and **Open Optical
+Schematic** commands. Draw a planar optical system in a dedicated 2D workspace,
+then use **Export Python…** to generate an ordinary PyOpticL macro. Export does
+not execute the macro or modify an existing CAD layout.
+
+- Drag symbols from the palette, or double-click a palette entry to place one.
+  Click an orange output port, optionally click to add bends, then click a blue
+  input port to connect. Press **Esc** to cancel. Crossing paths stay separate.
+- Move parts on the drawing grid, rotate with **R**, and use the grid/angle snap
+  controls for 45° or 90° drawing. Double-click a connection to add an editable
+  bend. Select a part, connection, or bend and press **Delete** to remove it.
+- Select a part to edit its optical parameters, compatible part preset, physical
+  distance, and mirror/splitter turn. Drawing positions and lengths have no
+  physical scale. **Apply Drawing Directions** explicitly copies drawing
+  tangents into physical routing hints; later drawing edits leave them alone.
+- Save editable drawings as `.pyopticl-schematic.json`. Undo/redo includes parts,
+  connections, settings, and properties. Incomplete drawings can be saved.
+- **Validate** checks topology and physical origin overlaps. Every branch must
+  end in a fiber output, beam stop, or explicit open output. Export is blocked
+  until errors are resolved; click a message to locate the affected part.
+
+Open [the branched example](Designs/schematics/branched.pyopticl-schematic.json)
+to try a mirror, lens, beamsplitter, fiber output, and beam stop. Its
+[exported Python](Designs/schematics/branched.py) demonstrates the generated code.
+Run exported `.py` files using the same FreeCAD macro workflow as existing
+designs. The script builds a `Layout`, places parts, computes a `BeamPath`, and
+checks the resulting optical connections. Refine its `PLACEMENTS` (mm/degrees),
+`PARAMETERS`, and `SOURCE` dictionaries as needed. Changes to those dictionaries
+are explicit: moving the source does not automatically relocate the other parts.
+Regeneration replaces exported Python; Python edits do not update the schematic.
+
+The first version supports one source and acyclic chains/splitter branches in a
+single optical plane, with curated half-inch mounted optics and bare alternatives.
+Mounted presets require a 12.7 mm optic. Bare spherical lenses support positive
+or negative focal lengths. Splitter ratios must be strictly between zero and one.
+Double passes, beam merging, multiple sources, PBS/AOM routing, module links,
+automatic mechanical packing, and fabrication constraints are not yet supported.
+Default spacing produces a draft; a trace mismatch identifies connections whose
+physical placements need adjustment. A separate FreeCAD document is convenient
+for trying generated drafts alongside existing designs.
+
+The document model and compiler can also be used without FreeCAD:
+
+```python
+from PyOpticL.schematic import load_schematic, compile_schematic
+
+schematic = load_schematic("branched.pyopticl-schematic.json")
+result = compile_schematic(schematic)
+if result.ok:
+    with open("branched.py", "w", encoding="utf-8") as stream:
+        stream.write(result.source)
+else:
+    for diagnostic in result.diagnostics:
+        print(diagnostic.message)
+```
+
+Run core tests with `python -m unittest discover -s tests -p 'test_schematic*.py'`.
+Editor tests run when a Qt binding is available and otherwise skip. They can run
+with `QT_QPA_PLATFORM=offscreen`; FreeCAD supplies Qt for normal workbench use.
+For actual CAD/beam integration tests, execute
+`tests/schematic_freecad.py` inside FreeCAD. That test suite creates and closes
+its own documents and preserves existing designs.
+
 ### Used by researchers at:
 
 MIT • Stanford • [UC Berkeley](https://github.com/hybrid-lab/PyOpticL_Rubidium_System) • [UMass Amherst](https://websites.umass.edu/rniffenegger/pyopticl-code-to-cad-optical-layout/) • [UW Madison](https://github.com/hybrid-lab/PyOpticL_Rubidium_System) • UConn • NUS • Quera • [Harvard](https://github.com/hybrid-lab/PyOpticL_Rubidium_System) • [CalvinQ](https://github.com/hybrid-lab/PyOpticL_Rubidium_System)

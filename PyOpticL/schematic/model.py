@@ -1,0 +1,214 @@
+"""Portable schematic documents and lossless undo/redo history."""
+
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field
+import json
+import math
+import os
+from pathlib import Path
+import tempfile
+from uuid import uuid4
+
+from .registry import SYMBOLS
+
+VERSION = 1
+
+
+def new_id():
+    return str(uuid4())
+
+
+@dataclass
+class Node:
+    id: str
+    reference: str
+    kind: str
+    preset: str
+    parameters: dict = field(default_factory=dict)
+    position: tuple[float, float] = (0, 0)
+    rotation: float = 0
+    physical: dict = field(default_factory=dict)
+
+
+@dataclass
+class Connection:
+    id: str
+    source: str
+    source_port: str
+    target: str
+    target_port: str = "in"
+    bends: list = field(default_factory=list)
+
+
+@dataclass
+class Schematic:
+    title: str = "Optical schematic"
+    nodes: list[Node] = field(default_factory=list)
+    connections: list[Connection] = field(default_factory=list)
+    settings: dict = field(default_factory=lambda: {
+        "grid": 20, "angle": 45, "snap_grid": True, "snap_angle": True,
+        "spacing": 50, "open_length": 50,
+    })
+    version: int = VERSION
+
+    def node(self, node_id):
+        return next(node for node in self.nodes if node.id == node_id)
+
+    def add_node(self, kind, position=(0, 0)):
+        symbol = SYMBOLS[kind]
+        used = {node.reference for node in self.nodes}
+        number = 1
+        while f"{symbol.prefix}{number}" in used:
+            number += 1
+        node = Node(new_id(), f"{symbol.prefix}{number}", kind, symbol.presets[0],
+                    position=tuple(position))
+        self.nodes.append(node)
+        return node
+
+    def remove_nodes(self, ids):
+        ids = set(ids)
+        self.nodes[:] = [node for node in self.nodes if node.id not in ids]
+        self.connections[:] = [edge for edge in self.connections
+                               if edge.source not in ids and edge.target not in ids]
+
+    def duplicate_nodes(self, ids):
+        copies = []
+        for original in list(self.nodes):
+            if original.id in ids:
+                node = self.add_node(original.kind,
+                                     (original.position[0] + 40, original.position[1] + 40))
+                node.preset = original.preset
+                node.parameters = deepcopy(original.parameters)
+                node.physical = deepcopy(original.physical)
+                node.rotation = original.rotation
+                copies.append(node)
+        return copies
+
+    def to_dict(self):
+        return asdict(self)
+
+
+def _finite(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _point(value):
+    return isinstance(value, (list, tuple)) and len(value) == 2 and all(map(_finite, value))
+
+
+def document_from_dict(data):
+    """Reject malformed files before they can reach Qt or the compiler."""
+    try:
+        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] != VERSION:
+            raise ValueError("Unsupported schematic version (expected version 1)")
+        if not isinstance(data.get("title"), str):
+            raise ValueError("Schematic title must be text")
+        if not isinstance(data.get("nodes"), list) or not isinstance(data.get("connections"), list):
+            raise ValueError("Schematic nodes and connections must be lists")
+        settings = Schematic().settings
+        if not isinstance(data.get("settings", {}), dict):
+            raise ValueError("Invalid schematic settings")
+        settings.update(data.get("settings", {}))
+        for key in ("grid", "spacing", "open_length"):
+            if not _finite(settings[key]) or settings[key] <= 0:
+                raise ValueError(f"{key} must be positive")
+        if settings["angle"] not in (45, 90):
+            raise ValueError("Angle snap must be 45 or 90 degrees")
+        for key in ("snap_grid", "snap_angle"):
+            if not isinstance(settings[key], bool):
+                raise ValueError(f"{key} must be true or false")
+        document = Schematic(data["title"], settings=settings)
+        ids, references = set(), set()
+        for value in data["nodes"]:
+            node = Node(**value)
+            if not all(isinstance(x, str) and x for x in (node.id, node.reference, node.kind, node.preset)):
+                raise ValueError("Component identifiers must be nonempty text")
+            if node.id in ids or node.reference in references:
+                raise ValueError("Duplicate component identity or reference")
+            ids.add(node.id)
+            references.add(node.reference)
+            if node.kind not in SYMBOLS or node.preset not in SYMBOLS[node.kind].presets:
+                raise ValueError(f"Unknown symbol or preset for {node.reference}")
+            if not _point(node.position) or not _finite(node.rotation):
+                raise ValueError(f"Invalid drawing position for {node.reference}")
+            if not isinstance(node.parameters, dict) or not isinstance(node.physical, dict):
+                raise ValueError(f"Invalid component properties for {node.reference}")
+            if not all(isinstance(key, str) and _finite(v) for key, v in
+                       list(node.parameters.items()) + list(node.physical.items())):
+                raise ValueError(f"Properties must be finite numbers for {node.reference}")
+            node.position = tuple(node.position)
+            document.nodes.append(node)
+        edge_ids = set()
+        for value in data["connections"]:
+            edge = Connection(**value)
+            if not all(isinstance(x, str) and x for x in
+                       (edge.id, edge.source, edge.source_port, edge.target, edge.target_port)):
+                raise ValueError("Connection identifiers must be nonempty text")
+            if edge.id in edge_ids:
+                raise ValueError("Duplicate connection identity")
+            edge_ids.add(edge.id)
+            if edge.source not in ids or edge.target not in ids:
+                raise ValueError("Connection refers to a missing component")
+            if (edge.source_port not in SYMBOLS[document.node(edge.source).kind].outputs or
+                    edge.target_port not in SYMBOLS[document.node(edge.target).kind].inputs):
+                raise ValueError("Connection refers to an invalid port")
+            if not isinstance(edge.bends, list) or not all(_point(p) for p in edge.bends):
+                raise ValueError("Connection bends must be finite coordinate pairs")
+            edge.bends = [tuple(p) for p in edge.bends]
+            document.connections.append(edge)
+        return document
+    except (TypeError, KeyError, AttributeError) as error:
+        raise ValueError(f"Malformed schematic: {error}") from error
+
+
+def load_schematic(path):
+    with open(path, encoding="utf-8") as stream:
+        return document_from_dict(json.load(stream))
+
+
+def save_schematic(document, path):
+    # Validate structure, but allow unfinished/disconnected drawings to be saved.
+    document_from_dict(document.to_dict())
+    path = Path(path)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=f".{path.name}.", delete=False) as stream:
+            temporary = stream.name
+            json.dump(document.to_dict(), stream, indent=2, allow_nan=False)
+            stream.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+class History:
+    """Document snapshots keep compound edits atomic and restore stable identities."""
+
+    def __init__(self, document):
+        self.states = [deepcopy(document.to_dict())]
+        self.index = 0
+        self.saved = deepcopy(self.states[0])
+
+    @property
+    def dirty(self):
+        return self.states[self.index] != self.saved
+
+    def commit(self, document):
+        state = document.to_dict()
+        if state != self.states[self.index]:
+            del self.states[self.index + 1:]
+            self.states.append(deepcopy(state))
+            self.index += 1
+
+    def undo(self):
+        self.index = max(0, self.index - 1)
+        return document_from_dict(deepcopy(self.states[self.index]))
+
+    def redo(self):
+        self.index = min(len(self.states) - 1, self.index + 1)
+        return document_from_dict(deepcopy(self.states[self.index]))
+
+    def mark_saved(self):
+        self.saved = deepcopy(self.states[self.index])

@@ -1,11 +1,30 @@
 import numpy as np
 
-from PyOpticL.beam_path import Lens, Reflection, Waveplate
+from PyOpticL.beam_path import Lens, Reflection, Stop, Waveplate
 from PyOpticL.icons import optic_icon
 from PyOpticL.layout import Component, Subcomponent
 from PyOpticL.library.adapters import Surface_Adapter
 from PyOpticL.utils import Dimension as dim
 from PyOpticL.utils import bounding_box_shape, box_shape, cylinder_shape
+
+
+class Beam_Stop:
+    """A simple absorbing disk with its optical face at the local origin."""
+
+    object_group = "optics"
+    object_icon = optic_icon
+    object_color = (0.1, 0.1, 0.1)
+
+    def __init__(self, diameter: dim = dim(12.7, "mm")):
+        self.diameter = diameter
+
+    def interfaces(self):
+        return [Stop(position=(0, 0, 0), rotation=(0, 0, 0),
+                     diameter=self.diameter, single_sided=True)]
+
+    def shape(self):
+        return cylinder_shape(diameter=self.diameter, height=dim(3, "mm"),
+                              position=(dim(-3, "mm"), 0, 0), rotation=(0, 90, 0))
 
 
 class Circular_Reflector:

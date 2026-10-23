@@ -43,6 +43,8 @@ class OpticsWorkbench(Workbench):
         import guiCommands
 
         self.toolbar = [
+            "NewOpticalSchematic",
+            "OpenOpticalSchematic",
             "RerunMacro",
             "ToggleDrawStyle",
             "ExportSTLs",

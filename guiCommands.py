@@ -586,6 +586,25 @@ class Generate_Drawings:
         drawings.generate_drawings()
 
 
+class Optical_Schematic:
+    def __init__(self, open_existing=False):
+        self.open_existing = open_existing
+
+    def GetResources(self):
+        return {
+            "Pixmap": ":/icons/document-open.svg" if self.open_existing else ":/icons/document-new.svg",
+            "MenuText": "Open Optical Schematic…" if self.open_existing else "New Optical Schematic",
+            "ToolTip": "Draw optical topology and export PyOpticL Python",
+        }
+
+    def Activated(self):
+        from PyOpticL.schematic.editor import open_editor
+
+        open_editor(path=True if self.open_existing else None)
+
+
+Gui.addCommand("NewOpticalSchematic", Optical_Schematic())
+Gui.addCommand("OpenOpticalSchematic", Optical_Schematic(open_existing=True))
 Gui.addCommand("RerunMacro", Rerun_Macro())
 Gui.addCommand("ToggleDrawStyle", Toggle_Draw_Style())
 Gui.addCommand("ExportSTLs", Export_STLs())
