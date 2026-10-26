@@ -85,11 +85,17 @@ class SymbolItem(QtWidgets.QGraphicsObject):
         painter.setBrush(QtGui.QColor("#eff7fc"))
         if self.isSelected():
             painter.fillRect(self.boundingRect(), QtGui.QColor(110, 170, 220, 65))
+        # Draw leads behind the opaque symbol so they meet its actual outline.
+        for port in self.ports.values():
+            painter.drawLine(QtCore.QPointF(0, 0), port.pos())
         kind = self.node.kind
         if kind == "mirror":
-            painter.drawLine(-16, 20, 16, -20)
-            for offset in (-12, 0, 12):
-                painter.drawLine(offset - 6, -offset + 4, offset - 13, -offset - 3)
+            painter.save()
+            painter.rotate(45)
+            painter.drawRect(QtCore.QRectF(-6, -25, 8, 50))
+            for offset in (-16, 0, 16):
+                painter.drawLine(-6, offset - 4, 2, offset + 4)
+            painter.restore()
         elif kind == "lens":
             painter.drawEllipse(QtCore.QRectF(-9, -24, 18, 48))
         elif kind in ("hwp", "qwp"):
@@ -113,9 +119,6 @@ class SymbolItem(QtWidgets.QGraphicsObject):
             painter.drawLine(-10, 0, 12, 0)
             painter.drawLine(5, -7, 12, 0)
             painter.drawLine(5, 7, 12, 0)
-        for name, port in self.ports.items():
-            p = port.pos()
-            painter.drawLine(point((p.x() * 0.65, p.y() * 0.65)), p)
 
     def itemChange(self, change, value):
         if change == QtWidgets.QGraphicsItem.ItemPositionChange and self.scene() is not None:
