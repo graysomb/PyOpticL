@@ -14,7 +14,7 @@ print(lab_catalog.bom(coupler))
 ```
 
 Supported preset IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`,
-`iris`, `slit`. Purchased mounts are also available directly through
+`iris`, `slit`, `roof`. Purchased mounts are also available directly through
 `create(part_number, label)` for every part in the native-height table below.
 These return ordinary reusable `Component` objects with `VendorPart` definitions.
 Unknown parameters fail explicitly. Dimensions use mm.
@@ -53,6 +53,19 @@ Commercial thread designations are explicit and independent of the global metric
 | translation | XR25C, nominal payload attachment frame | Stage-axis translation |
 | iris | Fabricated fixed aperture plate; two round dowel mounting holes | Fixed |
 | slit | VA100 variable slit; fabricated 10 mm support; three nominal screws | Slit width (optical parameter) |
+| roof | HRS1015-P01; integral baseplate supports and removable M2 clamp | Fixed; horizontal/vertical construction orientation |
+
+The [roof mirror](roof-mirror.md) supports both horizontal and upward vertical
+returns, with configurable nominal `beam_separation` (default 12.7 mm).
+`create('HRS1015-P01', label, ...)` returns the purchased optic alone;
+`create('roof', label, ...)` includes its integral support design, removable clamp and M2 screw. Both use explicit
+finite reflections and separate input/output datums. Native input
+heights above the source plate reference are 12.7 mm horizontally and 6.35 mm
+vertically at default spacing. The supplied support bodies are unioned into
+the baseplate, with one M2 x 0.4 clamp tap each.
+`BeamPath.measure_component_pass()` reports the actual front-to-front path and
+OPL; its nominal air path is 25.4 mm. Rebuild both integral orientations with
+`examples/roof_mirror.py`.
 
 The PBS support is an explicitly bounded patch of the displacement mount’s main center piece, not a newly qualified stand-alone bolt-on holder. Baseplates, fibers, cables, controllers and stage payloads remain separate. BOM mounting-hardware requirements identify plate screws and pins; VA100 also includes nominal screw geometry. No optical coupling-efficiency model is inferred from the mechanical collimator model.
 

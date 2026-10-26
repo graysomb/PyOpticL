@@ -1,8 +1,9 @@
 # Vendor component batch verification
 
 Verified 2026-10-26 with FreeCAD's bundled Python on this Mac. Backlog items
-2–6 and 8 are implemented at their native heights. Grating and HRS1015 work
-remains deferred.
+2–6 and 8 are implemented at their native heights. Grating work remains
+deferred. HRS1015-P01 was delivered separately with its
+[two-orientation integral supports and explicit optical path](roof-mirror.md).
 
 ## Delivered behavior
 

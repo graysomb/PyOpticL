@@ -20,7 +20,7 @@ from PyOpticL import attachments
 DATA = Path(__file__).with_name('catalog_data')
 VENDOR_IDS = ('POLARIS-L05G', 'POLARIS-L1G', 'POLARIS-K1VS2',
               'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof')
 
 
 def asset_record(part):
@@ -533,8 +533,16 @@ def create(catalog_id, label, **parameters):
     """Construct an ordinary Component. Recompute it using the existing API.
 
     Parameters select mounts, optic thickness (mm), waveplate retardance/axis,
-    iris aperture_diameter (mm) or slit_width (mm). Unknown options fail explicitly.
+    iris aperture_diameter (mm), slit_width (mm), or roof orientation and
+    beam_separation (mm). Unknown options fail explicitly.
     """
+    if catalog_id in ('roof', 'HRS1015-P01'):
+        from PyOpticL.roof_mirror import RoofGeometry, RoofOptic, MountedRoof
+        unknown = set(parameters) - {'orientation', 'beam_separation'}
+        if unknown:
+            raise TypeError('Unsupported parameters: ' + ', '.join(sorted(unknown)))
+        geometry = RoofGeometry(**parameters)
+        return Component(label, MountedRoof(geometry) if catalog_id == 'roof' else RoofOptic(geometry))
     if catalog_id in VENDOR_IDS:
         if parameters:
             raise TypeError('Bare vendor mounts do not accept assembly parameters')
@@ -635,6 +643,8 @@ def bom(component):
             if c.procurement != 'assembly':
                 row = dict(path=path, catalog_id=c.catalog_id, part_number=c.part_number,
                            manufacturer=c.manufacturer, procurement=c.procurement, quantity=1)
+                if attachments.integration_profile(proxy):
+                    row.update(integrated_into='baseplate', separate_part=False)
                 if c.part_number in VENDOR_IDS:
                     row['excluded_vendor_solids'] = list(getattr(proxy, 'exclude_solids', ()))
                     mounting = attachments.profile(proxy)

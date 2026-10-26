@@ -170,6 +170,12 @@ class BeamSegment(Layout):
         self.make_property("StartObject", "App::PropertyLinkHidden")
         self.make_property("EndObject", "App::PropertyLinkHidden")
         self.make_property("BoundParent", "App::PropertyLinkHidden")
+        # Interfaces with an internal optical path mark their intermediate rays.
+        # Ordinary interfaces keep the historical completed-output behavior.
+        self.make_property("InternalToComponent", "App::PropertyBool")
+        for name in ("StartInterfaceName", "EndInterfaceName",
+                     "StartInterfaceRole", "EndInterfaceRole"):
+            self.make_property(name, "App::PropertyString")
 
     def set_polarization_state(self, polarization: JonesState):
         """Store Jones polarization state and derived angle readout."""
@@ -674,10 +680,13 @@ class BeamPath(Layout):
             rotation: The beam's rotation (relative to the beam path object)
         """
         self.recompute()
-        for beam in self.get_object().BeamSegments:
-            if beam.StartObject == after_object.get_object():
+        obj = self.get_object()
+        for beam in obj.BeamSegments:
+            if (beam.StartObject == after_object.get_object()
+                    and not getattr(beam, 'InternalToComponent', False)):
                 if beam_index is None or beam_index == beam.Proxy.index:
-                    direction = App.Vector(beam.Proxy.direction)
+                    direction = obj.Placement.Rotation.inverted().multVec(
+                        App.Vector(*beam.Proxy.get_global_direction()))
                     rotation = App.Rotation(App.Vector(1, 0, 0), direction)
                     return SimpleNamespace(
                         beam_obj=beam.Proxy,
@@ -690,7 +699,7 @@ class BeamPath(Layout):
                         initial_radius=beam.InitialRadius.Value,
                         final_radius=beam.FinalRadius.Value,
                         segment_length=beam.Distance.Value,
-                        position=beam.BasePlacement.Base,
+                        position=obj.Placement.inverse().multVec(beam.Placement.Base),
                         rotation=rotation.getYawPitchRoll()[::-1],
                     )
                 
@@ -707,9 +716,64 @@ class BeamPath(Layout):
         self.recompute()
         beam_indices = []
         for beam in self.get_object().BeamSegments:
-            if beam.StartObject == after_object.get_object():
+            if (beam.StartObject == after_object.get_object()
+                    and not getattr(beam, 'InternalToComponent', False)):
                 beam_indices.append(beam.Proxy.index)
         return beam_indices
+
+    def measure_component_pass(self, component, beam_index=None, pass_index=0,
+                               refractive_index=1.0):
+        """Measure a completed entry-to-exit pass in world coordinates (mm).
+
+        Lengths come from the traced air segments, including internal bounces.
+        The supplied homogeneous index affects the reported OPL only; this is
+        not a coating-phase, dispersion or material propagation model.
+        """
+        if not np.isfinite(refractive_index) or refractive_index <= 0:
+            raise ValueError('refractive_index must be finite and positive')
+        if not isinstance(pass_index, int) or pass_index < 0:
+            raise ValueError('pass_index must be a nonnegative integer')
+        self.recompute()
+        target = component.get_object()
+        completed = []
+        for incident in self.get_object().BeamSegments:
+            if (incident.EndObject != target
+                    or getattr(incident, 'EndInterfaceRole', '') != 'entry'
+                    or (beam_index is not None and incident.Proxy.index != beam_index)):
+                continue
+            children = list(incident.Children)
+            points, lengths, reflections = [], [], []
+            while len(children) == 1:
+                segment = children[0]
+                if segment.StartObject != target:
+                    break
+                start = segment.Proxy.get_global_position()
+                if not points:
+                    points.append(start.tolist())
+                end = start + segment.Proxy.distance * segment.Proxy.get_global_direction()
+                if segment.EndObject != target:
+                    break
+                lengths.append(float(segment.Proxy.distance))
+                points.append(end.tolist())
+                role = getattr(segment, 'EndInterfaceRole', '')
+                if role == 'reflection':
+                    reflections.append(end.tolist())
+                if role == 'exit':
+                    outputs = list(segment.Children)
+                    if len(outputs) == 1 and not outputs[0].InternalToComponent:
+                        length = sum(lengths)
+                        completed.append(dict(beam_index=incident.Proxy.index,
+                            entry_mm=points[0], exit_mm=points[-1],
+                            reflection_points_mm=reflections, points_mm=points,
+                            outgoing_direction=outputs[0].Proxy.get_global_direction().tolist(),
+                            segment_lengths_mm=lengths, geometric_length_mm=length,
+                            refractive_index=float(refractive_index),
+                            optical_path_length_mm=length * float(refractive_index)))
+                    break
+                children = list(segment.Children)
+        if pass_index >= len(completed):
+            raise ValueError('No completed component pass at requested index')
+        return completed[pass_index]
     
 
     def compute_path(self):
@@ -821,6 +885,11 @@ class BeamPath(Layout):
 
         obj = self.get_object()
         input_beam_obj = input_beam.get_object()
+
+        # A following beam-driven component belongs after the complete optical
+        # passage, not between the roof's entrance and its second reflection.
+        if getattr(input_beam_obj, 'InternalToComponent', False):
+            return None, None, np.inf
 
         next_object = None
         next_interface = None
@@ -984,10 +1053,15 @@ class BeamPath(Layout):
         input_beam.distance = next_distance
         output_beams = next_interface.get_output_beams(input_beam)
         beam_obj.EndObject = next_object
+        beam_obj.EndInterfaceName = getattr(next_interface, 'name', '')
+        beam_obj.EndInterfaceRole = getattr(next_interface, 'role', '')
         input_beam.recompute()
         for beam in output_beams:
             new_beam_obj = beam.get_object()
             new_beam_obj.StartObject = next_object
+            new_beam_obj.StartInterfaceName = getattr(next_interface, 'name', '')
+            new_beam_obj.StartInterfaceRole = getattr(next_interface, 'role', '')
+            new_beam_obj.InternalToComponent = not getattr(next_interface, 'output_boundary', True)
             obj.BeamSegments += [new_beam_obj]
             beam.compute_placement()
             self.step(beam)
@@ -1006,6 +1080,12 @@ class Interface:
         max_angle (float): Maximum angle between incident beam and interface normal in degrees
         single_sided (bool): Whether the interface only interacts with beams from one side
     """
+
+    # Optional metadata for multi-interface passages. Defaults preserve existing
+    # single-interface placement and measurement semantics.
+    name = ''
+    role = ''
+    output_boundary = True
 
     def __init__(
         self,

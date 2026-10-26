@@ -279,6 +279,7 @@ class Component(Layout):
                     from PyOpticL import attachments
                     # Profile-bearing mounts may be nested below optics/assemblies.
                     # Traverse the enclosing layout once, not only direct peers.
+                    shape, _, _ = attachments.fuse_integrated(shape, obj.Parent, obj)
                     for mount, operation in attachments.plate_attachments(obj.Parent, obj):
                         shape = shape.cut(attachments.bore(operation))
                 # gather peer objects
@@ -296,7 +297,8 @@ class Component(Layout):
                 for drill_obj in drill_objs:
                     if self.object_group == 'baseplate':
                         from PyOpticL import attachments
-                        if attachments.profile(drill_obj.Proxy):
+                        if (attachments.profile(drill_obj.Proxy)
+                                or attachments.integration_profile(drill_obj.Proxy)):
                             continue  # Already cut from the shared profile above.
                     if hasattr(drill_obj.Proxy, "drill"):
                         if (

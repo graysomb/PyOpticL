@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "HRS1015-P01",
+  "product_url": "https://www.thorlabs.com/item/HRS1015-P01",
+  "asset_url": null,
+  "vendor_filename": "HRS1015-P01-Step.step",
+  "document_id": "TTN048987-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-26T20:31:45.375049+00:00",
+  "sha256": "1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7",
+  "kind": "step",
+  "cache_path": "objects/1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

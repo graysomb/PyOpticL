@@ -1,0 +1,175 @@
+{
+  "revision": "2",
+  "orientations": {
+    "horizontal": {
+      "source": "HRS1015-AG-Step Copy 1.step",
+      "sha256": "0c1584d459c9fc6dc2d9ef1aec2550c3fc2b889c6f79bfa6218b8b360d2048a9",
+      "clamp_profile": "roof_horizontal_clamp",
+      "stop_profiles": [
+        "roof_horizontal_stop_1",
+        "roof_horizontal_stop_2"
+      ],
+      "stop_height_mm": 2.54,
+      "clamp": {
+        "volume_mm3": 981.2003696941191,
+        "bounds_mm": [
+          -10.16,
+          10.16,
+          -10.16,
+          0.0,
+          -12.7,
+          -7.62
+        ]
+      },
+      "integral_body": {
+        "volume_mm3": 18542.604570155192,
+        "bounds_mm": [
+          -19.05,
+          19.05,
+          -13.299999999999999,
+          24.8,
+          -25.4,
+          -10.16
+        ]
+      },
+      "reference_optic": {
+        "volume_mm3": 7951.628426953839,
+        "bounds_mm": [
+          -12.700000000000015,
+          12.700000000000014,
+          0.0,
+          18.523223304703382,
+          -12.700000000000014,
+          12.700000000000012
+        ]
+      },
+      "source_solid_roles": {
+        "clamp": 0,
+        "optic": 1,
+        "integral_body": 2
+      },
+      "slot_end_centers_mm": [
+        [
+          0,
+          -2.54,
+          -12.7
+        ],
+        [
+          0,
+          -7.62,
+          -12.7
+        ]
+      ],
+      "source_slot_width_mm": 2.00000108,
+      "clamp_slot_width_mm": 2.2,
+      "hole_center_mm": [
+        0,
+        -5.08,
+        -12.7
+      ],
+      "source_hole_diameter_mm": 2.00000108,
+      "hole_depth_mm": 7.62,
+      "tap_drill_mm": 1.6,
+      "thread": "M2 x 0.4",
+      "usable_thread_mm": 6.62,
+      "screw_length_mm": 10,
+      "clamp_thickness_mm": 5.08,
+      "plate_top_z_mm": -12.7,
+      "stock_bottom_z_mm": -25.4
+    },
+    "vertical": {
+      "source": "HRS1015-AG-Step (1).step",
+      "sha256": "d5457df62fbdfa8590457bb0986a864b16ab2b761cac6360f095e2d272ca5265",
+      "clamp_profile": "roof_vertical_clamp",
+      "stop_profiles": [
+        "roof_vertical_stop_1",
+        "roof_vertical_stop_2"
+      ],
+      "stop_height_mm": 12.7,
+      "clamp": {
+        "volume_mm3": 553.3804530583626,
+        "bounds_mm": [
+          -19.05,
+          -6.35,
+          -6.35,
+          6.35,
+          -12.7,
+          -7.62
+        ]
+      },
+      "integral_body": {
+        "volume_mm3": 20058.17587402704,
+        "bounds_mm": [
+          -19.05,
+          19.0543351531029,
+          -13.299999999999999,
+          24.8,
+          -25.4,
+          1.7347234759768e-15
+        ]
+      },
+      "reference_optic": {
+        "volume_mm3": 7951.628426953839,
+        "bounds_mm": [
+          -12.700000000000012,
+          12.700000000000014,
+          0.0,
+          18.523223304703382,
+          -12.700000000000015,
+          12.700000000000014
+        ]
+      },
+      "source_solid_roles": {
+        "clamp": 0,
+        "optic": 1,
+        "integral_body": 2
+      },
+      "slot_end_centers_mm": [
+        [
+          -14.9769743878931,
+          -2.27697438789309,
+          -12.7
+        ],
+        [
+          -16.7730256121069,
+          -4.07302561210691,
+          -12.7
+        ]
+      ],
+      "source_slot_width_mm": 2.00000108,
+      "clamp_slot_width_mm": 2.2,
+      "hole_center_mm": [
+        -15.875,
+        -3.175,
+        -12.7
+      ],
+      "source_hole_diameter_mm": 2.00000108,
+      "hole_depth_mm": 5.08,
+      "tap_drill_mm": 1.6,
+      "thread": "M2 x 0.4",
+      "usable_thread_mm": 4.08,
+      "screw_length_mm": 8,
+      "clamp_thickness_mm": 5.08,
+      "plate_top_z_mm": -12.7,
+      "stock_bottom_z_mm": -25.4
+    }
+  },
+  "normalization": {
+    "origin": [
+      0,
+      18.7,
+      0
+    ],
+    "rotation": [
+      0,
+      0,
+      90
+    ]
+  },
+  "notes": [
+    "User-corrected integral support designs replace the previous carrier, dowels, M4 attachments and bridge lock.",
+    "AG-labelled reference optics are geometric references only. Purchased P01 optic and optical model remain unchanged.",
+    "Source blind holes adapted to M2 x 0.4 tap drills (1.6 mm) with 118 degree tips; clamp slots widened to 2.2 mm for M2 clearance.",
+    "Vertical support outer-wall source deviation below 0.003 mm retained within 0.01 mm CAD comparison tolerance by nominal profile extrusion."
+  ]
+}

@@ -1,6 +1,7 @@
 """CAD-datum-driven plate machining for the lab catalog.
 
-Plate top is Z=0 in the supplied layout. No supports/spacers are introduced.
+Plate top is Z=0. Declared integral supports are fused from component geometry;
+no automatic spacers are introduced.
 Tapped holes are represented by tap-drill bores and explicit thread metadata.
 """
 import json
@@ -47,7 +48,7 @@ class MachinedBaseplate:
         return self.layout.get_object().Placement.inverse() * obj.Placement
 
     def shape(self):
-        hardware, fused = [], []
+        hardware, fused, integrated = [], [], []
         for obj in descendants(self.layout.get_object()):
             if obj.Proxy is self or getattr(obj.Proxy,'object_group',None) == 'baseplate':
                 continue
@@ -56,13 +57,15 @@ class MachinedBaseplate:
             contract = obj.Proxy.contract()
             if contract.catalog_id == 'displacement-pbs-holder':
                 fused.append(obj)
+            elif attachments.integration_profile(obj.Proxy):
+                integrated.append(obj)
             elif attachments.profile(obj.Proxy):
                 hardware.append(obj)
             elif contract.catalog_id in ('rotation','translation'):
                 if not any(attachments.profile(child.Proxy) for child in descendants(obj)):
                     raise ValueError('No verified baseplate attachment profile yet for '+contract.catalog_id)
-        if not hardware and not fused:
-            raise ValueError('No supported catalog mounts or integral PBS supports in layout')
+        if not hardware and not fused and not integrated:
+            raise ValueError('No supported catalog mounts or integral supports in layout')
         shapes = []
         for obj in descendants(self.layout.get_object()):
             if getattr(obj.Proxy,'object_group',None) in ('beam_path','baseplate'):
@@ -135,6 +138,21 @@ class MachinedBaseplate:
             self.integrated_names.append(obj.Name)
             if obj.ViewObject:
                 obj.ViewObject.Visibility = False
+        plate, integral_operations, integral_objects = attachments.fuse_integrated(
+            plate, self.layout.get_object(), getattr(self, '_object', self.layout.get_object()))
+        operations.extend(integral_operations)
+        if integral_objects:
+            # Stock union must not refill a neighboring mount's earlier bores.
+            for operation in operations:
+                operation = dict(operation)
+                operation.setdefault('axis', [0,0,-1])
+                plate = plate.cut(attachments.bore(operation))
+        self.integrated_names.extend(obj.Name for obj in integral_objects)
+        for obj in integral_objects:
+            frames = {f.name:f for f in obj.Proxy.contract().frames}
+            seat = frames[attachments.integration_profile(obj.Proxy)['seat_frame']]
+            heights[obj.Name] = self._relative(obj).multVec(App.Vector(*frames['optical'].position)).z
+            native_heights[obj.Name] = frames['optical'].position[2] - seat.position[2]
         plate = plate.removeSplitter()
         if not plate.isValid() or len(plate.Solids) != 1:
             raise ValueError('Machined plate and integrated holders must form one valid solid')
@@ -143,6 +161,12 @@ class MachinedBaseplate:
             optical_heights_mm=heights,native_optical_heights_mm=native_heights,stock_bounds=[x0,y0,width,depth],
             holes=operations,pockets=pockets,integrated_holders=self.integrated_names,
             note='Nominal machining model. Tap-drill cylinders carry thread annotations; threads are not helically modeled. No table attachment pattern has been added.')
+        if integral_objects:
+            bounds = plate.optimalBoundingBox()
+            self.plan['stock_z_bounds_mm'] = [bounds.ZMin, bounds.ZMax]
+            self.plan['stock_envelope_mm'] = [bounds.XLength, bounds.YLength, bounds.ZLength]
+            self.plan['note'] += (' thickness_mm is the slab below Z=0; integral features rise above it. '
+                                  'stock_envelope_mm gives the minimum bounding billet dimensions.')
         if hasattr(self, '_object'):
             self._object.MachiningPlan = json.dumps(self.plan,indent=2)
         return plate

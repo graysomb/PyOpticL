@@ -100,7 +100,7 @@ source evidence and remaining physical-fit qualifications.
   with a 10 mm surface-adapter bracket, two M4 plate attachments and its 8-32
   slit attachment. Optical width is configurable; mechanical CAD retains the
   supplier reference pose. Native height 17.78 mm; assembly height 27.78 mm.
-- [ ] **HRS1015-P01 with a custom CAD mount:** add the Thorlabs
+- [x] **HRS1015-P01 with a custom CAD mount:** add the Thorlabs
   [HRS1015-P01](https://www.thorlabs.com/item/HRS1015-P01) and design a mount
   that supports **both orientations**. Use
   [HOM DelayModules.pdf](<../../../Data/HOM Mount/DelayModules.pdf>), Section 4,
@@ -108,14 +108,16 @@ source evidence and remaining physical-fit qualifications.
   removable locking piece. Adapt that concept for both orientations; verify
   the selected optic's fit and mounting datums rather than assuming the
   documented mount fits unchanged.
-  **Optical modeling requirement:** preserve the beam displacement as well as
-  its outgoing direction. Define distinct incoming and outgoing optical datums
-  from verified geometry, with the offset direction transformed with the optic
-  in each orientation. Keep this optical displacement separate from the mount's
-  mechanical placement offset. Assess whether the existing reflection interfaces
-  can represent the full path or an explicit displaced-output interface is
-  needed. Validate exit position, direction and optical path length in both
-  orientations before integrating the component into beam layouts.
+  Delivered as `create('HRS1015-P01', ...)` and `create('roof', ...)`, with one
+  integral baseplate support per user-corrected CAD, a removable slotted clamp
+  and one M2 x 0.4 screw. Horizontal and
+  upward vertical returns retain native input/output heights. Separate optical
+  datums and two finite reflections preserve actual displacement, direction,
+  Gaussian propagation and air OPL, including oblique and repeated passes.
+  [Verification, API and rebuild instructions](../roof-mirror.md) cover both
+  plate workflows and the exported two-orientation demo. Supports are unioned
+  into stock; no roof carrier, M4 plate attachments or dowels remain. Physical clamp force
+  and manufactured fits remain qualifications, not CAD certification.
 - [x] **Corrected output coupler and dowel drilling:** default to
   [POLARIS-K05T6](https://www.thorlabs.com/item/POLARIS-K05T6), retaining F260FC-1550,
   AD1109F and the selected insertion convention. Its own measured mounting profile
