@@ -109,6 +109,15 @@ class TurnConstraint:
 
 
 @dataclass(frozen=True)
+class DirectionConstraint:
+    a: int
+    b: int
+    angle: float
+    node_id: str
+    connection_id: str
+
+
+@dataclass(frozen=True)
 class PathProjection:
     id: str
     edges: tuple[int, ...]
@@ -144,6 +153,7 @@ class OptimizationProblem:
     source_json: str = ""
     source_radii: tuple[tuple[str, float], ...] = ()
     folding_radius: float | None = None
+    output_directions: tuple[DirectionConstraint, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -417,6 +427,18 @@ def _numeric_problem(
         if edge.length is not None and edge.id not in edge_indices
     )
     source = derived.node(topology.source_id)
+    output_directions = tuple(
+        DirectionConstraint(
+            indices[edge.source.node_id],
+            indices[edge.target.node_id],
+            derived.node(edge.target.node_id).physical["angle"],
+            edge.target.node_id,
+            edge.id,
+        )
+        for edge in topology.edges.values()
+        if derived.node(edge.target.node_id).kind in ("output", "fiber_output", "stop")
+        and "angle" in derived.node(edge.target.node_id).physical
+    )
     initial = physical_layout(derived, topology)
     return OptimizationProblem(
         tuple(nodes),
@@ -435,6 +457,7 @@ def _numeric_problem(
         source_json,
         tuple(sorted(radii.items())),
         folding_radius,
+        output_directions,
     )
 
 
@@ -592,6 +615,18 @@ def project_constraints(problem, positions, collision_strength=1, mobility=None)
                 ((dy / squared, -dx / squared), (-dy / squared, dx / squared)),
                 radians(wrap_angle(value - problem.source_direction)),
             )
+    for constraint in problem.output_directions:
+        a, b = positions[constraint.a], positions[constraint.b]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        squared = max(dx * dx + dy * dy, 1e-18)
+        value = degrees(atan2(dy, dx))
+        _correct(
+            positions,
+            mobility,
+            (constraint.a, constraint.b),
+            ((dy / squared, -dx / squared), (-dy / squared, dx / squared)),
+            radians(wrap_angle(value - constraint.angle)),
+        )
     clearance = problem.options.clearance_mm
     physical = [i for i, n in enumerate(problem.nodes) if n.radius is not None]
     for offset, i in enumerate(physical):
@@ -735,6 +770,17 @@ def layout_violations(problem, positions):
         if edge.a == problem.source_index and problem.source_direction is not None:
             error = abs(wrap_angle(degrees(atan2(b[1] - a[1], b[0] - a[0])) - problem.source_direction))
             add("source_direction", "Source direction", error, (edge.a,), (edge.id,), "°")
+    for constraint in problem.output_directions:
+        a, b = positions[constraint.a], positions[constraint.b]
+        value = degrees(atan2(b[1] - a[1], b[0] - a[0]))
+        add(
+            "output_direction",
+            f"{problem.nodes[constraint.b].reference}: output direction",
+            abs(wrap_angle(value - constraint.angle)),
+            (constraint.b,),
+            (constraint.connection_id,),
+            "°",
+        )
     for constraint in problem.separations:
         a, b = positions[constraint.a], positions[constraint.b]
         add(

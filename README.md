@@ -170,6 +170,14 @@ signed turns remain hard constraints. Lenses, waveplates, irises, and splitter
 transmission stay straight. Free mirror/reflected turns, lengths, and source pose
 may change. The source inspector's **Constrain source direction** checkbox pins
 its travel direction; existing explicit source angles remain constrained.
+Outputs, fiber receivers, and beam stops have **Constrain output direction** in
+their inspectors. It pins the arriving beam's absolute XY travel direction
+(0° right, +90° up), independently of the drawn symbol rotation and position
+constraint. It is off by default. Ordinary generation reports a conflict when
+the upstream optical angles disagree; optimization can change free angles to
+meet the target, including after inserting folding mirrors. Changing or clearing
+this constraint makes an applied optimization stale. Export also checks the
+actual traced output direction at runtime.
 Beam crossings are allowed; unrelated assemblies must clear each beam capsule.
 The packing model uses conservative full-assembly circles and a constant beam
 width; it does not propagate Gaussian beam envelopes or perform a CAD collision
@@ -241,7 +249,7 @@ exported coordinates. The adaptive examples also independently measure their
 total paths from exported coordinates and check constrained endpoint separations.
 These examples use analytical bounds of the bare primitive models. The separate
 [native FreeCAD report](Designs/schematics/optimization/native-verification.json)
-records 25 passing integration tests, including real assembly bounds and CAD
+records 27 passing integration tests, including real assembly bounds and CAD
 traces of all five saved examples. Those checks measure actual segment lengths
 and interaction coordinates, including the two added mirrors and constrained
 splitter branch. Reproduce the solver and actual Qt Run/Apply/undo/redo checks

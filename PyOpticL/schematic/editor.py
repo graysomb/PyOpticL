@@ -845,6 +845,8 @@ class SchematicEditor(QtWidgets.QWidget):
         self.show_position_property(node)
         if node.kind in ("source", "fiber_source"):
             self.show_source_direction_property(node)
+        elif symbol.role == "terminal":
+            self.show_endpoint_direction_property(node, source=False)
         if node.kind in ("mirror", "splitter"):
             self.show_angle_property(node)
         if "distance" in node.physical:
@@ -917,28 +919,48 @@ class SchematicEditor(QtWidgets.QWidget):
         return geometry.turns[node.id] if geometry is not None else interface_turn(self.document, node, self.scene.topology)
 
     def show_source_direction_property(self, node):
-        constrained = QtWidgets.QCheckBox("Constrain source direction")
-        constrained.setObjectName("sourceDirectionConstrained")
+        self.show_endpoint_direction_property(node, source=True)
+
+    def effective_endpoint_direction(self, node):
+        from .physical import physical_layout, wrap_angle
+        geometry = compile_schematic(self.document).geometry
+        if geometry is None and self.scene.topology.ok:
+            geometry = physical_layout(self.document, self.scene.topology)
+        if geometry is None:
+            return 0
+        if SYMBOLS[node.kind].role == "source":
+            return wrap_angle(geometry.source_direction)
+        # A receiving part faces against the arriving beam. The constraint
+        # always describes travel direction, including virtual open outputs.
+        return wrap_angle(geometry.orientations[node.id] - (180 if node.kind in ("fiber_output", "stop") else 0))
+
+    def show_endpoint_direction_property(self, node, source):
+        label = "source" if source else "output"
+        constrained = QtWidgets.QCheckBox(f"Constrain {label} direction")
+        constrained.setObjectName(label + "DirectionConstrained")
         constrained.setChecked("angle" in node.physical)
         self.form.addRow(constrained)
-        geometry = compile_schematic(self.document).geometry
-        value = node.physical.get("angle", geometry.source_direction if geometry else 0)
-        angle = self.number_field("Source direction (deg)", value,
-                                  lambda value: self.set_source_direction(node.id, value)
+        value = node.physical.get("angle", self.effective_endpoint_direction(node))
+        angle = self.number_field(f"{label.title()} direction (deg)", value,
+                                  lambda value: self.set_endpoint_direction(node.id, value)
                                   if constrained.isChecked() else None)
-        angle.setObjectName("sourceDirectionDeg")
+        angle.setObjectName(label + "DirectionDeg")
         angle.setEnabled(constrained.isChecked())
 
         def toggle(checked):
             angle.setEnabled(checked)
-            self.set_source_direction(node.id, angle.value() if checked else None)
+            self.set_endpoint_direction(node.id, angle.value() if checked else None)
             if not checked:
-                geometry = compile_schematic(self.document).geometry
-                angle.setValue(geometry.source_direction if geometry else 0)
+                angle.setValue(self.effective_endpoint_direction(node))
 
         constrained.toggled.connect(toggle)
+        if not source:
+            self.note("Absolute XY direction of the beam arriving at this output: 0° is right, +90° is up. This is independent of the drawn symbol rotation. Optimization can adjust free upstream optics to satisfy it.")
 
     def set_source_direction(self, node_id, value):
+        self.set_endpoint_direction(node_id, value)
+
+    def set_endpoint_direction(self, node_id, value):
         node = self.document.node(node_id)
         if value is None:
             node.physical.pop("angle", None)

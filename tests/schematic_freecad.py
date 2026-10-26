@@ -262,11 +262,11 @@ class FreeCADSchematicTests(unittest.TestCase):
         cube.physical.update(x=50, y=0, turn=90)
         document.connections[0].length = 50
         straight = document.add_node("output")
-        straight.physical.update(x=150, y=0)
+        straight.physical.update(x=150, y=0, angle=0)
         connect(document, cube, straight, "right")
         document.connections[-1].length = 100
         reflected = document.add_node("output")
-        reflected.physical.update(x=130, y=80)
+        reflected.physical.update(x=130, y=80, angle=0)
         connect(document, cube, reflected, "top")
         document.connections[-1].allow_folding = True
         document.path_constraints.append(PathLengthConstraint("reflected", cube.id, reflected.id, 160))
@@ -290,6 +290,40 @@ class FreeCADSchematicTests(unittest.TestCase):
         a, b = incoming.Proxy.get_global_direction(), folded.Proxy.get_global_direction()
         turn = math.degrees(math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]))
         self.assertAlmostEqual(turn, 90, delta=1e-6)
+
+    def test_output_direction_constraints_follow_actual_optimized_rays(self):
+        from PyOpticL.schematic.optimization import PackingBox
+        for kind in ("output", "fiber_output", "stop"):
+            with self.subTest(kind=kind):
+                temporary = App.newDocument("OutputDirectionTrace")
+                try:
+                    document = chain("source", "mirror", kind)
+                    source, mirror, output = document.nodes
+                    source.physical.update(x=0, y=0, angle=0)
+                    mirror.preset = "bare"
+                    output.physical["angle"] = -45
+                    document.connections[0].length = 50
+                    self.assertFalse(compile_schematic(document).ok)
+                    self.optimize_with_real_bounds(document, PackingBox(-100,-150,350,350))
+                    layout = self.build(document)
+                    beam = next(child for child in layout.get_object().Children if hasattr(child,"BeamSegments"))
+                    segment = next(segment for segment in beam.BeamSegments
+                                   if (segment.EndObject is None if kind == "output" else
+                                       segment.EndObject is not None and segment.EndObject.Label == output.reference))
+                    direction = segment.Proxy.get_global_direction()
+                    self.assertAlmostEqual(math.degrees(math.atan2(direction[1],direction[0])),-45,delta=1e-6)
+                    self.assertNotIn("turn",mirror.physical)
+                finally:
+                    App.closeDocument(temporary.Name)
+                    App.setActiveDocument(self.cad.Name)
+
+    def test_exported_runtime_rejects_an_incorrect_open_output_direction(self):
+        document = chain("source", "output")
+        document.nodes[-1].physical["angle"] = 0
+        def change(namespace):
+            namespace["OUTPUT_DIRECTIONS"][("S1", "out", None)] = 90
+        with self.assertRaisesRegex(RuntimeError,"Output direction"):
+            self.build(document, change)
 
     def test_bypassed_folding_mirror_is_absent_from_exported_cad(self):
         from PyOpticL.schematic.optimization import PackingBox

@@ -10,7 +10,7 @@
     "(HEAD detached at 4fd3bf320)",
     "4fd3bf320d9566a27e60069fc8387448aaa3a094"
   ],
-  "tests_run": 25,
+  "tests_run": 27,
   "successful": true,
   "failures": [],
   "errors": [],
@@ -28,7 +28,9 @@
     "Actual total path lengths, including cross-branch routes and multiple added mirrors",
     "Constrained +90 degree splitter reflection and straight transmission",
     "Omission of eligible Folding mirrors and preservation of Turning mirrors",
-    "Temporary-document cleanup and unchanged shared geometry"
+    "Temporary-document cleanup and unchanged shared geometry",
+    "Output direction constraints for open outputs, fiber receivers and beam stops",
+    "Direction-constrained folded splitter branches and runtime rejection of incorrect output headings"
   ],
   "export_input_sha256": {
     "adaptive-multiple-folds-after.pyopticl-schematic.json": "55553279b8c16518c1a3186e3f6171ae49f8cfa01c72942836074b351ea04a41",

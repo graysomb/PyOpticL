@@ -7,7 +7,7 @@ from pprint import pformat
 from .constraints import POSITION_TOLERANCE, resolve_position_lengths
 from .model import connection_length, document_from_dict, _finite
 from .parts import part_spec
-from .physical import PhysicalLayout, physical_layout
+from .physical import PhysicalLayout, physical_layout, wrap_angle
 from .paths import component_path, path_length
 from .registry import MIN_BEAM_TURN, SYMBOLS, parameter_values, supports_beam_turn
 from .topology import Diagnostic, resolve_topology
@@ -56,7 +56,7 @@ def validate_schematic(document):
                 diagnostics.append(Diagnostic(f"{node.reference}: invalid {spec.label}", node.id))
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
-        allowed = {"x", "y", "angle"} if symbol.role == "source" else {"x", "y"}
+        allowed = {"x", "y", "angle"} if symbol.role in ("source", "terminal") else {"x", "y"}
         if node.kind in ("mirror", "splitter"):
             allowed.add("turn")
         for name, value in node.physical.items():
@@ -141,10 +141,18 @@ def compile_schematic(document):
         geometry = physical_layout(document, topology, lengths)
     placements = {node.reference: tuple(map(_number, (*geometry.positions[node.id], geometry.orientations[node.id])))
                   for node in order}
+    incoming = {edge.target.node_id: edge for edge in topology.edges.values()}
     for node in order:
         for axis, key in enumerate(("x", "y")):
             if key in node.physical and abs(geometry.positions[node.id][axis] - node.physical[key]) > POSITION_TOLERANCE:
                 diagnostics.append(Diagnostic(f"{node.reference}: position constraint could not be satisfied within {POSITION_TOLERANCE:g} mm", node.id))
+        if SYMBOLS[node.kind].role == "terminal" and "angle" in node.physical:
+            edge = incoming[node.id]
+            actual = geometry.headings[edge.id]
+            if abs(wrap_angle(actual - node.physical["angle"])) > 1e-6:
+                diagnostics.append(Diagnostic(
+                    f"{node.reference}: output direction {node.physical['angle']:g}° conflicts with the current beam direction ({wrap_angle(actual):g}°); adjust upstream optic angles or run Optimize physical layout",
+                    node.id, connection_id=edge.id))
     physical_nodes = [node for node in order if node.kind not in ("source", "output")]
     for index, node in enumerate(physical_nodes):
         x, y, _ = placements[node.reference]
@@ -162,6 +170,12 @@ def compile_schematic(document):
     open_lengths = {(nodes[edge.source.node_id].reference, edge.interaction):
                     lengths[edge.id]
                     for edge in topology.edges.values() if nodes[edge.target.node_id].kind == "output"}
+    output_directions = {(nodes[edge.source.node_id].reference, edge.interaction,
+                          None if nodes[edge.target.node_id].kind == "output" else nodes[edge.target.node_id].reference):
+                         nodes[edge.target.node_id].physical["angle"]
+                         for edge in topology.edges.values()
+                         if SYMBOLS[nodes[edge.target.node_id].kind].role == "terminal"
+                         and "angle" in nodes[edge.target.node_id].physical}
     parameters = {node.reference: parameter_values(node) for node in physical_nodes
                   if node.kind != "fiber_source"}
     sx, sy = geometry.positions[source.id]
@@ -186,6 +200,9 @@ def compile_schematic(document):
         "", "", "def build_layout():",
         f"    layout = Layout({document.title!r})", "    objects = {}",
     ]
+    if output_directions:
+        index = lines.index("def build_layout():")
+        lines[index:index] = [f"OUTPUT_DIRECTIONS = {pformat(output_directions, sort_dicts=True)}", "", ""]
     if geometry.graph is not None and geometry.graph.edits:
         added = sorted(nodes[item.id].reference for item in geometry.graph.generated)
         omitted = sorted(original.node(node_id).reference for node_id in geometry.graph.bypassed)
@@ -212,7 +229,8 @@ def compile_schematic(document):
         "        position=(SOURCE['x'], SOURCE['y'], 0), rotation=SOURCE['angle'],",
         "    )",
         "    layout.recompute()",
-        f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r}, open_lengths=OPEN_LENGTHS)",
+        f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r}, open_lengths=OPEN_LENGTHS" +
+        (", output_directions=OUTPUT_DIRECTIONS)" if output_directions else ")"),
         "    return layout", "", "", "if __name__ == '__main__':", "    build_layout()", "",
     ])
     measured_paths = {item.id: path_length(document, item.component_a, item.component_b, geometry.lengths)

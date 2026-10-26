@@ -1,7 +1,7 @@
 """Check a computed CAD trace against schematic intent, without GUI dependencies."""
 
 from collections import Counter
-from math import isfinite
+from math import atan2, degrees, isfinite
 
 
 def _same_direction(first, second):
@@ -15,7 +15,8 @@ def _same_direction(first, second):
     return sum((a / first_norm - b / second_norm) ** 2 for a, b in zip(first, second)) < 1e-18
 
 
-def check_trace(beam, objects, expected, source_reference, splitters=(), open_lengths=None):
+def check_trace(beam, objects, expected, source_reference, splitters=(), open_lengths=None,
+                output_directions=None):
     """Check resolved interactions (out/transmitted/reflected), not symbol port IDs."""
     object_refs = {proxy.get_object().Name: reference for reference, proxy in objects.items()}
     segments = list(beam.get_object().BeamSegments)
@@ -23,7 +24,7 @@ def check_trace(beam, objects, expected, source_reference, splitters=(), open_le
     for segment in segments:
         if segment.EndObject is not None:
             incoming[segment.EndObject.Name] = segment.Proxy.get_global_direction()
-    actual, open_segments = [], {}
+    actual, open_segments, directed_segments = [], {}, {}
     for segment in segments:
         start = segment.StartObject
         reference = source_reference if start is None else object_refs.get(start.Name, f"unknown:{start.Label}")
@@ -36,6 +37,7 @@ def check_trace(beam, objects, expected, source_reference, splitters=(), open_le
         end = segment.EndObject
         target = None if end is None else object_refs.get(end.Name, f"unknown:{end.Label}")
         actual.append((reference, port, target))
+        directed_segments[(reference, port, target)] = segment.Proxy
         if end is None:
             open_segments[(reference, port)] = segment.Proxy
     expected, actual = Counter(map(tuple, expected)), Counter(actual)
@@ -57,4 +59,13 @@ def check_trace(beam, objects, expected, source_reference, splitters=(), open_le
         if segment.distance != length:
             segment.distance = length
             segment.recompute()
+    for key, angle in (output_directions or {}).items():
+        if not isinstance(angle, (int, float)) or isinstance(angle, bool) or not isfinite(angle):
+            raise ValueError(f"Output direction {key}: angle must be finite degrees")
+        if key not in directed_segments:
+            raise ValueError(f"No output beam found for {key}")
+        direction = directed_segments[key].get_global_direction()
+        actual_angle = degrees(atan2(direction[1], direction[0]))
+        if not isfinite(actual_angle) or abs((actual_angle-angle+180) % 360-180) > 1e-6:
+            raise RuntimeError(f"Output direction {key}: expected {angle:g}°, traced {actual_angle:g}°")
     return True
