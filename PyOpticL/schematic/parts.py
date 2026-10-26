@@ -38,7 +38,7 @@ class PartSpec:
         return getattr(module, self.factory)(**arguments)
 
 
-def part_spec(document, node, topology):
+def part_spec(document, node, topology, turns=None):
     """Return a hashable specification, or None for a virtual symbol."""
     parameters = tuple(parameter_values(node).items())
     mount = {
@@ -55,7 +55,7 @@ def part_spec(document, node, topology):
                         (("retardance", 0.5 if node.kind == "hwp" else 0.25),), after)
     if node.kind == "splitter":
         canonical = default_turn(node.kind, topology.incident_ports.get(node.id))
-        turn = interface_turn(document, node, topology)
+        turn = turns[node.id] if turns is not None else interface_turn(document, node, topology)
         factory = "Beamsplitter_Cube_on_Surface_Adapter" if node.preset == "surface_adapter" else "Beamsplitter_Cube"
         return PartSpec("optics", factory, parameters, (("rotate_cube", (turn > 0) != (canonical > 0)),))
     if node.kind == "iris":

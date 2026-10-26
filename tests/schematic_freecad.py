@@ -171,6 +171,39 @@ class FreeCADSchematicTests(unittest.TestCase):
                     connect(document, cube, document.add_node("stop"), port)
                 self.build(document)
 
+    def test_optimized_layouts_export_and_trace_with_real_assembly_bounds(self):
+        from PyOpticL.schematic.bounds import resolve_layout_bounds
+        from PyOpticL.schematic.optimization import (
+            OptimizationOptions, PackingBox, apply_optimization, build_problem, optimize_layout,
+        )
+
+        documents = [chain("source", "mirror", "mirror", "stop"), branched(),
+                     chain("fiber_source", "hwp", "iris", "fiber_output")]
+        folded = chain("source", "mirror", "stop")
+        folded.nodes[0].physical.update(x=0, y=0, angle=0)
+        folded.nodes[1].preset = "bare"
+        folded.connections[0].length = 150
+        folded.nodes[-1].physical.update(x=240, y=120)
+        self.assertFalse(compile_schematic(folded).ok)
+        documents.append(folded)
+        for document in documents:
+            with self.subTest(kinds=[n.kind for n in document.nodes]):
+                document.settings.update(spacing=150, open_length=120)
+                before = document.to_dict()
+                cad_documents = set(App.listDocuments())
+                radii, errors = resolve_layout_bounds(document, BoundsProvider())
+                self.assertFalse(errors, errors)
+                self.assertEqual(set(App.listDocuments()), cad_documents)
+                self.assertEqual(App.ActiveDocument.Name, self.cad.Name)
+                problem = build_problem(document, radii, PackingBox(-150, -150, 900, 700),
+                                        OptimizationOptions(starts=3, iterations=1500))
+                result = optimize_layout(problem)
+                self.assertEqual(result.status, "feasible", result.violations)
+                apply_optimization(document, problem, result)
+                self.assertEqual(document.to_dict()["nodes"], before["nodes"])
+                self.assertEqual(document.to_dict()["connections"], before["connections"])
+                self.build(document)  # generated check_trace must verify every intended interaction
+
     def test_xy_circle_uses_local_bare_mirror_and_full_mounted_assembly(self):
         from PyOpticL.library import optics, thorlabs
 

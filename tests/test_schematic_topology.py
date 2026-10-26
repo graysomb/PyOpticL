@@ -223,7 +223,7 @@ class MigrationTests(unittest.TestCase):
         old = json.loads(original_bytes)
         document = load_schematic(self.fixture)
         self.assertEqual(self.fixture.read_bytes(), original_bytes)
-        self.assertEqual(document.version, 3)
+        self.assertEqual(document.version, 4)
         for before, after in zip(old["nodes"], document.nodes):
             self.assertEqual(before["id"], after.id)
             self.assertEqual(before["reference"], after.reference)
@@ -263,7 +263,7 @@ class MigrationTests(unittest.TestCase):
             path = Path(directory) / "migrated.json"
             save_schematic(document, path)
             saved = json.loads(path.read_text())
-            self.assertEqual(saved["version"], 3)
+            self.assertEqual(saved["version"], 4)
             self.assertNotIn("source", saved["connections"][0])
             reopened = load_schematic(path)
             self.assertEqual(document.to_dict(), reopened.to_dict())

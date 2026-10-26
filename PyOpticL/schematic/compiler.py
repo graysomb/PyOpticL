@@ -1,14 +1,14 @@
 """Compile source-resolved optical topology into ordinary PyOpticL Python."""
 
-from collections import deque
 from dataclasses import dataclass, field
-from math import atan2, cos, degrees, hypot, radians, sin
+from math import hypot
 from pprint import pformat
 
 from .constraints import POSITION_TOLERANCE, resolve_position_lengths
-from .model import connection_length, document_from_dict, interface_turn, _finite
+from .model import connection_length, document_from_dict, _finite
 from .parts import part_spec
-from .registry import MIN_BEAM_TURN, SYMBOLS, incident_heading, parameter_values, supports_beam_turn
+from .physical import PhysicalLayout, physical_layout
+from .registry import MIN_BEAM_TURN, SYMBOLS, parameter_values, supports_beam_turn
 from .topology import Diagnostic, resolve_topology
 
 
@@ -19,6 +19,7 @@ class Compilation:
     object_map: dict[str, str] = field(default_factory=dict)
     placements: dict = field(default_factory=dict)
     lengths: dict[str, float] = field(default_factory=dict)
+    geometry: PhysicalLayout | None = None
 
     @property
     def ok(self):
@@ -85,46 +86,16 @@ def _number(value):
 
 
 def _placements(document, topology, lengths=None):
-    nodes = {node.id: node for node in document.nodes}
-    source = nodes[topology.source_id]
-    connections = {edge.id: edge for edge in document.connections}
-    positions, order, headings = {}, [], {}
-    queue = deque([(source.id, source.physical.get("x", 0), source.physical.get("y", 0), source.physical.get("angle", 0))])
-    while queue:
-        node_id, x, y, incoming = queue.popleft()
-        node = nodes[node_id]
-        angle = incoming
-        incident_port = topology.incident_ports.get(node_id)
-        turn = interface_turn(document, node, topology)
-        if SYMBOLS[node.kind].role == "passive" and node.kind != "mirror":
-            angle -= incident_heading(node.kind, incident_port)
-        if node.kind == "mirror":
-            leaving = incoming + turn
-            angle = degrees(atan2(sin(radians(leaving)) - sin(radians(incoming)),
-                                  cos(radians(leaving)) - cos(radians(incoming))))
-        if node.kind == "splitter":
-            # Rotating the splitting plane by delta rotates its reflection by
-            # 2*delta. Keep the existing cube preset/face mapping for the sign.
-            angle += (turn - (90 if turn > 0 else -90)) / 2
-        if node.kind in ("fiber_source", "fiber_output", "stop"):
-            angle = incoming + 180
-        positions[node.reference] = tuple(map(_number, (x, y, angle)))
-        order.append(node)
-        for edge in topology.outgoing[node_id]:
-            heading = incoming
-            if node.kind == "mirror" or edge.interaction == "reflected":
-                heading += turn
-            target = nodes[edge.target.node_id]
-            headings[edge.id] = heading
-            distance = lengths[edge.id] if lengths is not None else connection_length(document, connections[edge.id])
-            queue.append((target.id, x + distance * cos(radians(heading)),
-                          y + distance * sin(radians(heading)), heading))
-    return source, order, positions, headings
+    geometry = physical_layout(document, topology, lengths)
+    order = [document.node(node_id) for node_id in topology.order]
+    placements = {node.reference: tuple(map(_number, (*geometry.positions[node.id], geometry.orientations[node.id])))
+                  for node in order}
+    return document.node(topology.source_id), order, placements, geometry.headings
 
 
-def _definition(document, node, topology):
+def _definition(document, node, topology, turns=None):
     """Render the same registry-controlled specification used for CAD bounds."""
-    return part_spec(document, node, topology).render(f"PARAMETERS[{node.reference!r}]")
+    return part_spec(document, node, topology, turns).render(f"PARAMETERS[{node.reference!r}]")
 
 
 def compile_schematic(document):
@@ -138,16 +109,27 @@ def compile_schematic(document):
     topology = resolve_topology(document)
     source, order, placements, headings = _placements(document, topology)
     lengths = {edge.id: connection_length(document, edge) for edge in document.connections}
-    if any(node.id != source.id and ("x" in node.physical or "y" in node.physical)
-           for node in document.nodes):
-        lengths, position_errors = resolve_position_lengths(document, topology, headings)
-        if position_errors:
-            return Compilation("", position_errors, placements=placements)
-        source, order, placements, _ = _placements(document, topology, lengths)
-        for node in order:
-            for axis, key in enumerate(("x", "y")):
-                if key in node.physical and abs(placements[node.reference][axis] - node.physical[key]) > POSITION_TOLERANCE:
-                    diagnostics.append(Diagnostic(f"{node.reference}: position constraint could not be satisfied within {POSITION_TOLERANCE:g} mm", node.id))
+    geometry = None
+    if document.optimized_layout is not None:
+        from .optimization import optimized_physical_layout
+        try:
+            geometry = optimized_physical_layout(document, topology)
+        except ValueError as error:
+            return Compilation("", [Diagnostic(str(error))])
+        lengths = geometry.lengths
+    else:
+        if any(node.id != source.id and ("x" in node.physical or "y" in node.physical)
+               for node in document.nodes):
+            lengths, position_errors = resolve_position_lengths(document, topology, headings)
+            if position_errors:
+                return Compilation("", position_errors, placements=placements)
+        geometry = physical_layout(document, topology, lengths)
+    placements = {node.reference: tuple(map(_number, (*geometry.positions[node.id], geometry.orientations[node.id])))
+                  for node in order}
+    for node in order:
+        for axis, key in enumerate(("x", "y")):
+            if key in node.physical and abs(geometry.positions[node.id][axis] - node.physical[key]) > POSITION_TOLERANCE:
+                diagnostics.append(Diagnostic(f"{node.reference}: position constraint could not be satisfied within {POSITION_TOLERANCE:g} mm", node.id))
     physical_nodes = [node for node in order if node.kind not in ("source", "output")]
     for index, node in enumerate(physical_nodes):
         x, y, _ = placements[node.reference]
@@ -167,10 +149,9 @@ def compile_schematic(document):
                     for edge in topology.edges.values() if nodes[edge.target.node_id].kind == "output"}
     parameters = {node.reference: parameter_values(node) for node in physical_nodes
                   if node.kind != "fiber_source"}
-    sx = source.physical.get("x", 0)
-    sy = source.physical.get("y", 0)
+    sx, sy = geometry.positions[source.id]
     source_settings = {**parameter_values(source), "x": _number(sx), "y": _number(sy),
-                       "angle": _number(source.physical.get("angle", 0)),
+                       "angle": _number(geometry.source_direction),
                        "open_length": document.settings["open_length"]}
     part_placements = {node.reference: placements[node.reference] for node in physical_nodes
                        if node.kind != "fiber_source"}
@@ -194,7 +175,7 @@ def compile_schematic(document):
         variable = f"part_{index + 1}"
         lines.extend([
             f"    # {node.reference!r}: {SYMBOLS[node.kind].title} ({node.preset})",
-            f"    {variable} = Component(label={node.reference!r}, definition={_definition(document, node, topology)})",
+            f"    {variable} = Component(label={node.reference!r}, definition={_definition(document, node, topology, geometry.turns)})",
             "    x, y, angle = SOURCE['x'], SOURCE['y'], SOURCE['angle'] + 180" if node.kind == "fiber_source" else
             f"    x, y, angle = PLACEMENTS[{node.reference!r}]",
             f"    objects[{node.reference!r}] = layout.add({variable}, position=(x, y, 0), rotation=angle)",
@@ -211,4 +192,4 @@ def compile_schematic(document):
         f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r}, open_lengths=OPEN_LENGTHS)",
         "    return layout", "", "", "if __name__ == '__main__':", "    build_layout()", "",
     ])
-    return Compilation("\n".join(lines), [], object_map, placements, lengths)
+    return Compilation("\n".join(lines), [], object_map, placements, lengths, geometry)

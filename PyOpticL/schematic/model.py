@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from .registry import SYMBOLS, default_turn, legacy_port
 
-VERSION = 3
+VERSION = 4
 
 
 def new_id():
@@ -59,6 +59,8 @@ class Schematic:
         "show_bounds": False, "bounds_scale": 4.0,
     })
     version: int = VERSION
+    optimization: dict | None = None
+    optimized_layout: dict | None = None
 
     def node(self, node_id):
         return next(node for node in self.nodes if node.id == node_id)
@@ -111,8 +113,8 @@ def _point(value):
 def document_from_dict(data, *, migrate_lengths=True):
     """Reject malformed files before they can reach Qt or the compiler."""
     try:
-        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] not in (1, 2, VERSION):
-            raise ValueError("Unsupported schematic version (expected version 1, 2, or 3)")
+        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] not in (1, 2, 3, VERSION):
+            raise ValueError("Unsupported schematic version (expected version 1, 2, 3, or 4)")
         if not isinstance(data.get("title"), str):
             raise ValueError("Schematic title must be text")
         if not isinstance(data.get("nodes"), list) or not isinstance(data.get("connections"), list):
@@ -184,6 +186,12 @@ def document_from_dict(data, *, migrate_lengths=True):
             document.connections.append(edge)
         if migrate_lengths:
             migrate_legacy_lengths(document)
+        if data["version"] >= 4:
+            from .optimization import validate_saved_optimization
+
+            document.optimization = deepcopy(data.get("optimization"))
+            document.optimized_layout = deepcopy(data.get("optimized_layout"))
+            validate_saved_optimization(document.optimization, document.optimized_layout)
         return document
     except (TypeError, KeyError, AttributeError, StopIteration) as error:
         raise ValueError(f"Malformed schematic: {error}") from error

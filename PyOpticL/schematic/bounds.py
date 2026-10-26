@@ -56,3 +56,26 @@ class BoundsProvider:
 
     def clear(self):
         self.cache.clear()
+
+
+def resolve_layout_bounds(document, provider):
+    """GUI-thread preflight. Free splitters reserve either splitting-plane sign."""
+    from .parts import part_spec
+    from .topology import resolve_topology
+
+    topology = resolve_topology(document)
+    radii, errors = {}, []
+    for node in document.nodes:
+        spec = part_spec(document, node, topology)
+        if spec is None:
+            continue
+        specs = [spec]
+        if node.kind == "splitter" and "turn" not in node.physical and not any(node.id in e.turns for e in document.connections):
+            specs = [part_spec(document, node, topology, {node.id: turn}) for turn in (-90, 90)]
+        results = [provider.get(item) for item in specs]
+        failures = [item.error for item in results if item.circle is None]
+        if failures:
+            errors.append(f"{node.reference}: complete physical bounds unavailable: {'; '.join(failures)}. Refresh bounds or choose a modeled preset.")
+        else:
+            radii[node.id] = max(item.circle.radius_mm for item in results)
+    return radii, errors

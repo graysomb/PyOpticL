@@ -118,7 +118,7 @@ not execute the macro or modify an existing CAD layout.
   +90° is a right-angle bend, rather than a 90° incidence angle. Fractional
   angles are supported (absolute value at least 0.001° and less than 180°).
   The angle belongs to the optical element and stays with it when connections
-  change. Uncheck the constraint to restore the resolved port's default turn.
+  change. Uncheck the constraint to permit optimization; without an applied solution, the resolved port's default turn is used.
   Transmission stays straight, and single-ended fiber couplers
   have no direction change to constrain. This controls routing geometry;
   the current cube model does not simulate refraction through its outer faces.
@@ -133,14 +133,49 @@ not execute the macro or modify an existing CAD layout.
   physical turn overrides remain unchanged when connections are edited.
 - Save editable drawings as `.pyopticl-schematic.json`. Undo/redo includes parts,
   connections, settings, and properties. Incomplete drawings can be saved.
-  Version 1/2 drawings load through an in-memory migration that preserves existing
+  Version 1–3 drawings load through an in-memory migration that preserves existing
   port locations, bends, references, and physical settings. Files are written in
-  version 3 format only when saved; opening a drawing does not rewrite it.
+  version 4 format only when saved; opening a drawing does not rewrite it.
   Old component distances transfer to their incoming beams. An unfinished
   drawing retains unresolved old distances until source direction is known.
 - **Validate** checks topology and physical origin overlaps. Every branch must
   end in a fiber output, beam stop, or explicit open output. Export is blocked
   until errors are resolved; click a message to locate the affected part.
+
+Use **Optimize physical layout…** to fit the physical system into a rectangular
+region in millimetres. Adjust X/Y, width/height, the assembly clearance (default
+1 mm), and the constant beam keep-out diameter (default 1 mm). The live preview
+shows full assembly disks and beam capsules independently of the schematic scale
+and **Part bounds** display. Physical bounds must be available for every physical
+part; **Refresh bounds** retries failed geometry resolution. The initial region
+uses the current physical extents plus 10 mm, or the previous applied rectangle.
+
+**Run** searches up to eight deterministic starts with force-directed motion and
+constraint projection. Pins (including partial X/Y pins), explicit lengths and
+signed turns remain hard constraints. Lenses, waveplates, irises, and splitter
+transmission stay straight. Free mirror/reflected turns, lengths, and source pose
+may change. The source inspector's **Constrain source direction** checkbox pins
+its travel direction; existing explicit source angles remain constrained.
+Beam crossings are allowed; unrelated assemblies must clear each beam capsule.
+The packing model uses conservative full-assembly circles and a constant beam
+width; it does not propagate Gaussian beam envelopes or perform a CAD collision
+test.
+
+**Apply** is enabled only after reconstructing exact optical geometry and checking
+all constraints and clearances to 1e-6 mm / 1e-6 degrees. It is one undoable edit,
+preserves the topological drawing, and stores free values separately from hard
+constraints. The inspectors show these effective values with their constraint
+checkboxes still unchecked. Export uses the applied source pose, lengths, turns,
+and part orientations and retains the generated script's runtime trace check.
+**Cancel** closes without changing the schematic. **Clear optimized layout**
+restores deterministic generation without removing constraints.
+
+Part, topology, constraint, default-length, packing, or geometry-setting changes
+make an applied solution stale and block export until it is rerun or cleared.
+Stale results survive save/load and undo/redo. Drawing edits, reference renames,
+and display settings preserve a solution. If the search budget expires, the dialog
+reports **No feasible layout found** and its largest remaining violations; this is
+not a proof that the requested packing is impossible.
 
 Open [the branched example](Designs/schematics/branched.pyopticl-schematic.json)
 to try a mirror, lens, beamsplitter, fiber output, and beam stop. Its
@@ -157,7 +192,7 @@ single optical plane, with curated half-inch mounted optics and bare alternative
 Mounted presets require a 12.7 mm optic. Bare spherical lenses support positive
 or negative focal lengths. Splitter ratios must be strictly between zero and one.
 Double passes, beam merging, multiple sources, PBS/AOM routing, module links,
-automatic mechanical packing, and fabrication constraints are not yet supported.
+nonrectangular packing regions, and fabrication constraints are not yet supported.
 Default spacing produces a draft; a trace mismatch identifies connections whose
 physical placements need adjustment. A separate FreeCAD document is convenient
 for trying generated drafts alongside existing designs.

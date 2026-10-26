@@ -459,6 +459,8 @@ class SchematicEditor(QtWidgets.QWidget):
             ("fit", "Fit", self.fit, "F"),
             ("refresh_bounds", "Refresh bounds", self.refresh_part_bounds, ""),
             ("directions", "Apply Drawing Directions", self.apply_directions, ""),
+            ("optimize", "Optimize physical layout…", self.optimize_physical_layout, ""),
+            ("clear_optimized", "Clear optimized layout", self.clear_optimized_layout, ""),
             ("validate", "Validate", self.validate, ""),
             ("export", "Export Python…", self.export_python, ""),
         ):
@@ -533,7 +535,8 @@ class SchematicEditor(QtWidgets.QWidget):
             parent.setWindowTitle(self.windowTitle())
         self.actions["undo"].setEnabled(self.history.index > 0)
         self.actions["redo"].setEnabled(self.history.index < len(self.history.states) - 1)
-        self.actions["refresh_bounds"].setEnabled(self.document.settings["show_bounds"])
+        self.actions["refresh_bounds"].setEnabled(self.document.settings["show_bounds"] or self.document.optimized_layout is not None)
+        self.actions["clear_optimized"].setEnabled(self.document.optimized_layout is not None)
 
     def add_symbol(self, kind, position=None):
         if position is None:
@@ -678,6 +681,33 @@ class SchematicEditor(QtWidgets.QWidget):
         else:
             self.bounds_info.setText("Enable Part bounds to calculate the physical assembly circle.")
 
+    def optimize_physical_layout(self):
+        from .optimize_dialog import OptimizeLayoutDialog
+
+        dialog = OptimizeLayoutDialog(self.document, self.bounds_provider, self)
+        method = getattr(dialog, "exec", None) or dialog.exec_
+        if method() == QtWidgets.QDialog.Accepted:
+            self.apply_optimized_result(dialog.problem, dialog.solution)
+        dialog.deleteLater()
+
+    def apply_optimized_result(self, problem, result):
+        from .optimization import apply_optimization
+
+        try:
+            apply_optimization(self.document, problem, result)
+        except ValueError as error:
+            self.status.setText(str(error))
+            return False
+        self.commit()
+        self.status.setText("Optimized physical layout applied for export. Drawing positions and explicit constraints are preserved.")
+        return True
+
+    def clear_optimized_layout(self):
+        if self.document.optimized_layout is not None:
+            self.document.optimized_layout = None
+            self.commit()
+            self.status.setText("Optimized layout cleared. Export uses deterministic default geometry again.")
+
     def apply_directions(self):
         diagnostics = apply_drawing_directions(self.document)
         self.commit()
@@ -711,6 +741,13 @@ class SchematicEditor(QtWidgets.QWidget):
 
     def show_properties(self):
         self.clear_form()
+        if self.document.optimized_layout is not None:
+            from .optimization import input_fingerprint
+
+            saved = self.document.optimized_layout
+            current = input_fingerprint(self.document, self.document.optimization, saved["radii"]) == saved["fingerprint"]
+            self.note("Optimized physical values are shown below; free values remain unconstrained." if current else
+                      "Optimized layout is stale. Rerun Optimize physical layout or Clear optimized layout before export.")
         selected = self.scene.selectedItems()
         if len(selected) == 1 and isinstance(selected[0], ConnectionItem):
             self.show_beam_properties(selected[0].connection)
@@ -749,8 +786,7 @@ class SchematicEditor(QtWidgets.QWidget):
         self.form.addRow(QtWidgets.QLabel("Physical layout (independent of canvas)"))
         self.show_position_property(node)
         if node.kind in ("source", "fiber_source"):
-            self.number_field("Source direction (deg)", node.physical.get("angle", 0),
-                              lambda value: self.set_node_dict(node.id, "physical", "angle", value))
+            self.show_source_direction_property(node)
         if node.kind in ("mirror", "splitter"):
             self.show_angle_property(node)
         if "distance" in node.physical:
@@ -778,11 +814,45 @@ class SchematicEditor(QtWidgets.QWidget):
                 length.setValue(self.effective_beam_length(edge))
 
         constrained.toggled.connect(toggle)
-        self.note("Physical separation between the connected optical interaction points. Unconstrained lengths use the document default and adjust to satisfy pinned positions. Drawn bends and spacing have no physical scale.")
+        self.note("Physical separation between the connected optical interaction points. Free lengths use the applied optimization when available; otherwise they use defaults and adjust to pinned positions. Drawn bends and spacing have no physical scale.")
         self.note("Select a mirror or beamsplitter to enable or edit its angle constraint.")
 
     def effective_beam_length(self, edge):
         return compile_schematic(self.document).lengths.get(edge.id, connection_length(self.document, edge))
+
+    def effective_turn(self, node):
+        geometry = compile_schematic(self.document).geometry
+        return geometry.turns[node.id] if geometry is not None else interface_turn(self.document, node, self.scene.topology)
+
+    def show_source_direction_property(self, node):
+        constrained = QtWidgets.QCheckBox("Constrain source direction")
+        constrained.setObjectName("sourceDirectionConstrained")
+        constrained.setChecked("angle" in node.physical)
+        self.form.addRow(constrained)
+        geometry = compile_schematic(self.document).geometry
+        value = node.physical.get("angle", geometry.source_direction if geometry else 0)
+        angle = self.number_field("Source direction (deg)", value,
+                                  lambda value: self.set_source_direction(node.id, value)
+                                  if constrained.isChecked() else None)
+        angle.setObjectName("sourceDirectionDeg")
+        angle.setEnabled(constrained.isChecked())
+
+        def toggle(checked):
+            angle.setEnabled(checked)
+            self.set_source_direction(node.id, angle.value() if checked else None)
+            if not checked:
+                geometry = compile_schematic(self.document).geometry
+                angle.setValue(geometry.source_direction if geometry else 0)
+
+        constrained.toggled.connect(toggle)
+
+    def set_source_direction(self, node_id, value):
+        node = self.document.node(node_id)
+        if value is None:
+            node.physical.pop("angle", None)
+        else:
+            node.physical["angle"] = value
+        self.commit(rebuild=False)
 
     def show_position_property(self, node):
         def current_position():
@@ -834,7 +904,7 @@ class SchematicEditor(QtWidgets.QWidget):
         constrained.setChecked("turn" in node.physical or bool(legacy))
         self.form.addRow(constrained)
         label = "Reflected turn (deg)" if node.kind == "splitter" else "Turn (deg)"
-        angle = self.number_field(label, interface_turn(self.document, node, self.scene.topology),
+        angle = self.number_field(label, self.effective_turn(node),
                                   lambda value: self.set_optic_turn(node.id, value)
                                   if constrained.isChecked() else None,
                                   minimum=-179.999999, maximum=179.999999)
@@ -846,7 +916,7 @@ class SchematicEditor(QtWidgets.QWidget):
             angle.setEnabled(checked)
             self.set_optic_turn(node.id, angle.value() if checked else None)
             if not checked:
-                angle.setValue(interface_turn(self.document, node, self.scene.topology))
+                angle.setValue(self.effective_turn(node))
 
         constrained.toggled.connect(toggle)
         if legacy:
@@ -854,7 +924,7 @@ class SchematicEditor(QtWidgets.QWidget):
                                           if constrained.isChecked() else None)
         if legacy and max(legacy) - min(legacy) > 1e-6:
             self.note("This optic has conflicting angles from an older drawing. Enter the desired angle here, or turn the constraint off, to resolve them.")
-        self.note("Turn is the change in beam direction at this optic. Positive is counterclockwise; negative is clockwise. 90° is a right-angle bend. Leave unconstrained to use the resolved port's default turn. Drawn bends do not set this angle.")
+        self.note("Turn is the change in beam direction at this optic. Positive is counterclockwise; negative is clockwise. 90° is a right-angle bend. Free turns may change during optimization; otherwise they use the resolved port's default turn. Drawn bends do not set this angle.")
         if node.kind == "splitter":
             self.note("The angle controls the reflected branch; transmission continues straight.")
 
