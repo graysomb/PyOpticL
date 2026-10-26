@@ -1,20 +1,13 @@
-"""Validate directed optical topology and export ordinary PyOpticL Python."""
+"""Compile source-resolved optical topology into ordinary PyOpticL Python."""
 
-from collections import Counter, deque
+from collections import deque
 from dataclasses import dataclass, field
 from math import atan2, cos, degrees, hypot, radians, sin
 from pprint import pformat
 
 from .model import document_from_dict, _finite
-from .registry import SYMBOLS, parameter_values
-
-
-@dataclass(frozen=True)
-class Diagnostic:
-    message: str
-    node_id: str | None = None
-    connection_id: str | None = None
-    severity: str = "error"
+from .registry import SYMBOLS, default_turn, incident_heading, parameter_values
+from .topology import Diagnostic, resolve_topology
 
 
 @dataclass
@@ -35,24 +28,10 @@ def validate_schematic(document):
         document_from_dict(document.to_dict())
     except ValueError as error:
         return [Diagnostic(str(error))]
-    nodes = {node.id: node for node in document.nodes}
-    sources = [node for node in document.nodes if node.kind in ("source", "fiber_source")]
-    if len(sources) != 1:
-        diagnostics.append(Diagnostic("Exactly one beam source or fiber input is required"))
-    inputs, outputs = Counter(), Counter()
-    for edge in document.connections:
-        inputs[(edge.target, edge.target_port)] += 1
-        outputs[(edge.source, edge.source_port)] += 1
+    topology = resolve_topology(document)
+    diagnostics.extend(topology.diagnostics)
     for node in document.nodes:
         symbol = SYMBOLS[node.kind]
-        for port in symbol.inputs:
-            count = inputs[(node.id, port)]
-            if count != 1:
-                diagnostics.append(Diagnostic(f"{node.reference}.{port}: expected one incoming connection, found {count}", node.id))
-        for port in symbol.outputs:
-            count = outputs[(node.id, port)]
-            if count != 1:
-                diagnostics.append(Diagnostic(f"{node.reference}.{port}: expected one outgoing connection, found {count}. Use an output or stop terminal.", node.id))
         for name in node.parameters:
             if name not in symbol.parameters:
                 diagnostics.append(Diagnostic(f"{node.reference}: unsupported parameter {name}", node.id))
@@ -64,7 +43,7 @@ def validate_schematic(document):
                 diagnostics.append(Diagnostic(f"{node.reference}: invalid {spec.label}", node.id))
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
-        allowed = {"x", "y", "angle"} if not symbol.inputs else {"distance"}
+        allowed = {"x", "y", "angle"} if symbol.role == "source" else {"distance"}
         if node.kind in ("mirror", "splitter"):
             allowed.add("turn")
         for name, value in node.physical.items():
@@ -78,32 +57,6 @@ def validate_schematic(document):
         if node.kind == "splitter" and turn not in (-90, 90):
             diagnostics.append(Diagnostic(f"{node.reference}: cube reflected branch must turn ±90 degrees", node.id))
 
-    # Kahn's algorithm catches cycles even in disconnected or invalid graphs.
-    degree = Counter(edge.target for edge in document.connections)
-    adjacency = {key: [] for key in nodes}
-    for edge in document.connections:
-        adjacency[edge.source].append(edge.target)
-    queue = deque(key for key in nodes if not degree[key])
-    visited = set()
-    while queue:
-        current = queue.popleft()
-        visited.add(current)
-        for target in adjacency[current]:
-            degree[target] -= 1
-            if degree[target] == 0:
-                queue.append(target)
-    if len(visited) != len(nodes):
-        for key in sorted(set(nodes) - visited):
-            diagnostics.append(Diagnostic(f"{nodes[key].reference}: cycle or repeated-pass topology is unsupported", key))
-    if len(sources) == 1:
-        reachable, queue = set(), [sources[0].id]
-        while queue:
-            current = queue.pop()
-            if current not in reachable:
-                reachable.add(current)
-                queue.extend(adjacency[current])
-        for key in set(nodes) - reachable:
-            diagnostics.append(Diagnostic(f"{nodes[key].reference}: disconnected from source", key))
     return diagnostics
 
 
@@ -112,30 +65,32 @@ def _number(value):
     return 0.0 if abs(result) < 1e-9 else result
 
 
-def _placements(document):
+def _placements(document, topology):
     nodes = {node.id: node for node in document.nodes}
-    source = next(node for node in document.nodes if node.kind in ("source", "fiber_source"))
-    outgoing = {(edge.source, edge.source_port): edge for edge in document.connections}
+    source = nodes[topology.source_id]
     positions, order = {}, []
     queue = deque([(source.id, source.physical.get("x", 0), source.physical.get("y", 0), source.physical.get("angle", 0))])
     while queue:
         node_id, x, y, incoming = queue.popleft()
         node = nodes[node_id]
         angle = incoming
+        incident_port = topology.incident_ports.get(node_id)
+        turn = node.physical.get("turn", default_turn(node.kind, incident_port))
+        if SYMBOLS[node.kind].role == "passive" and node.kind != "mirror":
+            angle -= incident_heading(node.kind, incident_port)
         if node.kind == "mirror":
-            leaving = incoming + node.physical.get("turn", 90)
+            leaving = incoming + turn
             angle = degrees(atan2(sin(radians(leaving)) - sin(radians(incoming)),
                                   cos(radians(leaving)) - cos(radians(incoming))))
         if node.kind in ("fiber_source", "fiber_output", "stop"):
             angle = incoming + 180
         positions[node.reference] = tuple(map(_number, (x, y, angle)))
         order.append(node)
-        for port in SYMBOLS[node.kind].outputs:
+        for edge in topology.outgoing[node_id]:
             heading = incoming
-            if node.kind == "mirror" or port == "reflected":
-                heading += node.physical.get("turn", 90)
-            edge = outgoing[(node_id, port)]
-            target = nodes[edge.target]
+            if node.kind == "mirror" or edge.interaction == "reflected":
+                heading += turn
+            target = nodes[edge.target.node_id]
             distance = (document.settings["open_length"] if target.kind == "output" else
                         target.physical.get("distance", document.settings["spacing"]))
             queue.append((target.id, x + distance * cos(radians(heading)),
@@ -143,7 +98,7 @@ def _placements(document):
     return source, order, positions
 
 
-def _definition(node):
+def _definition(node, topology):
     """Only registry-controlled identifiers become executable source."""
     p = f"PARAMETERS[{node.reference!r}]"
     mounted = node.preset == "mounted"
@@ -159,7 +114,9 @@ def _definition(node):
         return f"optics.Circular_Waveplate(retardance={retardance}, **{p}{mount})"
     if node.kind == "splitter":
         factory = "Beamsplitter_Cube_on_Surface_Adapter" if node.preset == "surface_adapter" else "Beamsplitter_Cube"
-        return f"optics.{factory}(rotate_cube={node.physical.get('turn', 90) < 0!r}, **{p})"
+        canonical_turn = default_turn(node.kind, topology.incident_ports.get(node.id))
+        turn = node.physical.get("turn", canonical_turn)
+        return f"optics.{factory}(rotate_cube={turn != canonical_turn!r}, **{p})"
     if node.kind == "iris":
         return f"thorlabs.Iris_IDA12(**{p})"
     if node.kind in ("fiber_source", "fiber_output"):
@@ -173,7 +130,8 @@ def compile_schematic(document):
     diagnostics = validate_schematic(document)
     if diagnostics:
         return Compilation("", diagnostics)
-    source, order, placements = _placements(document)
+    topology = resolve_topology(document)
+    source, order, placements = _placements(document, topology)
     physical_nodes = [node for node in order if node.kind not in ("source", "output")]
     for index, node in enumerate(physical_nodes):
         x, y, _ = placements[node.reference]
@@ -185,9 +143,9 @@ def compile_schematic(document):
         return Compilation("", diagnostics, placements=placements)
     object_map = {node.id: node.reference for node in order}
     nodes = {node.id: node for node in order}
-    expected = [(nodes[edge.source].reference, edge.source_port,
-                 None if nodes[edge.target].kind == "output" else nodes[edge.target].reference)
-                for edge in sorted(document.connections, key=lambda e: (nodes[e.source].reference, e.source_port))]
+    expected = [(nodes[edge.source.node_id].reference, edge.interaction,
+                 None if nodes[edge.target.node_id].kind == "output" else nodes[edge.target.node_id].reference)
+                for edge in sorted(topology.edges.values(), key=lambda e: (nodes[e.source.node_id].reference, e.interaction))]
     parameters = {node.reference: parameter_values(node) for node in physical_nodes
                   if node.kind != "fiber_source"}
     sx = source.physical.get("x", 0)
@@ -216,7 +174,7 @@ def compile_schematic(document):
         variable = f"part_{index + 1}"
         lines.extend([
             f"    # {node.reference!r}: {SYMBOLS[node.kind].title} ({node.preset})",
-            f"    {variable} = Component(label={node.reference!r}, definition={_definition(node)})",
+            f"    {variable} = Component(label={node.reference!r}, definition={_definition(node, topology)})",
             "    x, y, angle = SOURCE['x'], SOURCE['y'], SOURCE['angle'] + 180" if node.kind == "fiber_source" else
             f"    x, y, angle = PLACEMENTS[{node.reference!r}]",
             f"    objects[{node.reference!r}] = layout.add({variable}, position=(x, y, 0), rotation=angle)",

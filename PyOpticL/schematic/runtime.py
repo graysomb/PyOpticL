@@ -10,7 +10,7 @@ def _unit_dot(first, second):
 
 
 def check_trace(beam, objects, expected, source_reference, splitters=()):
-    """Raise an actionable error for missing, extra, or swapped optical branches."""
+    """Check resolved interactions (out/transmitted/reflected), not symbol port IDs."""
     object_refs = {proxy.get_object().Name: reference for reference, proxy in objects.items()}
     segments = list(beam.get_object().BeamSegments)
     incoming = {}

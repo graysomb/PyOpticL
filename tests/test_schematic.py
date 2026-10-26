@@ -12,19 +12,23 @@ from types import SimpleNamespace
 import unittest
 
 from PyOpticL.schematic import (
-    Connection, History, Schematic, compile_schematic, load_schematic,
-    save_schematic, validate_schematic,
+    Connection, Endpoint, History, Schematic, compile_schematic, load_schematic,
+    resolve_topology, save_schematic, validate_schematic,
 )
 from PyOpticL.schematic.geometry import (
     apply_drawing_directions, connection_points, route_to, snap_angle, snap_point,
 )
 from PyOpticL.schematic.model import document_from_dict, new_id
-from PyOpticL.schematic.registry import SYMBOLS
+from PyOpticL.schematic.registry import REFLECTION, TRANSMISSION, SYMBOLS
 from PyOpticL.schematic.runtime import check_trace
 
 
-def connect(document, source, target, port="out", bends=None):
-    edge = Connection(new_id(), source.id, port, target.id, bends=bends or [])
+def connect(document, source, target, port=None, bends=None, target_port=None):
+    if port is None:
+        port = "beam" if SYMBOLS[source.kind].role == "source" else ("right" if source.kind == "splitter" else "B")
+    if target_port is None:
+        target_port = "beam" if SYMBOLS[target.kind].role == "terminal" else ("left" if target.kind == "splitter" else "A")
+    edge = Connection(new_id(), Endpoint(source.id, port), Endpoint(target.id, target_port), bends=bends or [])
     document.connections.append(edge)
     return edge
 
@@ -41,12 +45,12 @@ def branched(nested=False):
     document = chain("source", "lens", "splitter")
     splitter = document.nodes[-1]
     straight = document.add_node("fiber_output", (480, 0))
-    connect(document, splitter, straight, "transmitted")
+    connect(document, splitter, straight, "right")
     reflected = document.add_node("splitter" if nested else "stop", (320, -160))
-    connect(document, splitter, reflected, "reflected")
+    connect(document, splitter, reflected, "top")
     if nested:
-        for port, kind, position in (("transmitted", "stop", (320, -320)),
-                                     ("reflected", "output", (160, -160))):
+        for port, kind, position in (("right", "stop", (320, -320)),
+                                     ("top", "output", (160, -160))):
             connect(document, reflected, document.add_node(kind, position), port)
     return document
 
@@ -91,7 +95,9 @@ class ModelTests(unittest.TestCase):
         duplicate = deepcopy(original)
         duplicate["nodes"].append(deepcopy(duplicate["nodes"][0]))
         cases.append(duplicate)
-        for field, value in (("target", "missing"), ("source_port", "invalid"), ("bends", [[0]])):
+        for field, value in (("b", {"node_id": "missing", "port_id": "beam"}),
+                             ("a", {"node_id": original["nodes"][0]["id"], "port_id": "invalid"}),
+                             ("bends", [[0]])):
             case = deepcopy(original)
             case["connections"][0][field] = value
             cases.append(case)
@@ -149,7 +155,7 @@ class CompilerTests(unittest.TestCase):
                     elif kind == "splitter":
                         document = branched()
                         node = document.nodes[2]
-                    elif not symbol.outputs:
+                    elif symbol.role == "terminal":
                         document = chain("source", kind)
                         node = document.nodes[-1]
                     else:
@@ -248,7 +254,7 @@ class CompilerTests(unittest.TestCase):
                 elif kind == "fiber_source":
                     document = chain(kind, "stop")
                 else:
-                    document = chain("source", kind, "stop") if symbol.outputs else chain("source", kind)
+                    document = chain("source", kind, "stop") if symbol.role == "passive" else chain("source", kind)
                     document.nodes[1].preset = preset
                 result = self.assert_valid(document)
                 tree = ast.parse(result.source)
@@ -279,7 +285,7 @@ class CompilerTests(unittest.TestCase):
         multiple.add_node("source")
         documents.append(multiple)
         merge = branched()
-        merge.connections[-1].target = merge.nodes[3].id
+        merge.connections[-1].b = Endpoint(merge.nodes[3].id, "beam")
         documents.append(merge)
         cycle = chain("source", "mirror", "mirror")
         connect(cycle, cycle.nodes[-1], cycle.nodes[1])

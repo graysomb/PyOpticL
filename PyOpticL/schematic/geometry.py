@@ -3,6 +3,7 @@
 from math import atan2, cos, degrees, hypot, radians, sin
 
 from .registry import SYMBOLS
+from .topology import resolve_topology
 
 
 def snap_point(point, grid=20, enabled=True):
@@ -40,26 +41,45 @@ def port_position(node, port):
             node.position[1] + x * sin(angle) + y * cos(angle))
 
 
-def connection_points(document, edge):
-    points = [port_position(document.node(edge.source), edge.source_port), *edge.bends,
-              port_position(document.node(edge.target), edge.target_port)]
+def route_connection(start, end, bends, settings, forward=True):
+    """Route in propagation order, returning points in stored endpoint order."""
+    points = [start, *bends, end]
+    if not forward:
+        points.reverse()
     routed = [points[0]]
     for target in points[1:]:
-        routed.extend(route_to(routed[-1], target, document.settings["angle"], document.settings["snap_angle"]))
+        routed.extend(route_to(routed[-1], target, settings["angle"], settings["snap_angle"]))
+    if not forward:
+        routed.reverse()
     return routed
 
 
+def connection_points(document, edge, topology=None):
+    topology = topology if topology is not None else resolve_topology(document)
+    resolved = topology.edges.get(edge.id)
+    forward = resolved.source == edge.a if resolved else edge.a <= edge.b
+    return route_connection(port_position(document.node(edge.a.node_id), edge.a.port_id),
+                            port_position(document.node(edge.b.node_id), edge.b.port_id),
+                            edge.bends, document.settings, forward)
+
+
 def apply_drawing_directions(document):
-    """Explicitly copy outgoing port tangents to source/mirror/splitter hints."""
+    """Copy resolved beam tangents to physical hints; return topology diagnostics."""
+    topology = resolve_topology(document)
     incoming, outgoing = {}, {}
     for edge in document.connections:
-        points = connection_points(document, edge)
+        resolved = topology.edges.get(edge.id)
+        if resolved is None:
+            continue
+        points = connection_points(document, edge, topology)
+        if resolved.source != edge.a:
+            points.reverse()
         start, end = points[0], points[-1]
         forward = next((p for p in points[1:] if hypot(p[0] - start[0], p[1] - start[1]) > 1e-6), end)
         backward = next((p for p in reversed(points[:-1]) if hypot(end[0] - p[0], end[1] - p[1]) > 1e-6), start)
         # Canvas Y points down; physical Y points up.
-        outgoing[(edge.source, edge.source_port)] = degrees(atan2(start[1] - forward[1], forward[0] - start[0]))
-        incoming[edge.target] = degrees(atan2(backward[1] - end[1], end[0] - backward[0]))
+        outgoing[(resolved.source.node_id, resolved.interaction)] = degrees(atan2(start[1] - forward[1], forward[0] - start[0]))
+        incoming[resolved.target.node_id] = degrees(atan2(backward[1] - end[1], end[0] - backward[0]))
     for node in document.nodes:
         if node.kind in ("source", "fiber_source") and (node.id, "out") in outgoing:
             node.physical["angle"] = outgoing[(node.id, "out")]
@@ -68,3 +88,4 @@ def apply_drawing_directions(document):
             if (node.id, port) in outgoing:
                 turn = (outgoing[(node.id, port)] - incoming[node.id] + 180) % 360 - 180
                 node.physical["turn"] = (90 if turn >= 0 else -90) if node.kind == "splitter" else round(turn / 45) * 45
+    return topology.diagnostics

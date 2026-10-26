@@ -49,7 +49,7 @@ def build_layout():
     part_3 = Component(label='BS1', definition=optics.Beamsplitter_Cube(rotate_cube=False, **PARAMETERS['BS1']))
     x, y, angle = PLACEMENTS['BS1']
     objects['BS1'] = layout.add(part_3, position=(x, y, 0), rotation=angle)
-    # 'FO1': Fiber output (paf2)
+    # 'FO1': Fiber receiver (paf2)
     part_4 = Component(label='FO1', definition=thorlabs.Fiberport_PAF2A4A())
     x, y, angle = PLACEMENTS['FO1']
     objects['FO1'] = layout.add(part_4, position=(x, y, 0), rotation=angle)

@@ -25,7 +25,7 @@ try:
 except ImportError:
     QT_AVAILABLE = False
 
-from PyOpticL.schematic import compile_schematic, load_schematic, save_schematic
+from PyOpticL.schematic import Endpoint, compile_schematic, load_schematic, save_schematic
 from test_schematic import branched, chain
 
 
@@ -72,18 +72,18 @@ class EditorTests(unittest.TestCase):
         self.editor.fit()
         self.app.processEvents()
         source, mirror, stop = self.editor.document.nodes
-        for start, port, target in ((source, "out", mirror), (mirror, "out", stop)):
+        for start, port, target, target_port in ((source, "beam", mirror, "A"), (mirror, "B", stop, "beam")):
             item = self.editor.scene.symbols[start.id].ports[port]
             QtTest.QTest.mouseClick(self.editor.view.viewport(), QtCore.Qt.LeftButton,
                                     pos=self.editor.view.mapFromScene(item.scenePos()))
             self.assertIsNotNone(self.editor.scene.pending)
-            item = self.editor.scene.symbols[target.id].ports["in"]
+            item = self.editor.scene.symbols[target.id].ports[target_port]
             QtTest.QTest.mouseClick(self.editor.view.viewport(), QtCore.Qt.LeftButton,
                                     pos=self.editor.view.mapFromScene(item.scenePos()))
             self.app.processEvents()
         self.assertEqual(len(self.editor.document.connections), 2)
         self.assertTrue(self.editor.validate().ok)
-        self.assertFalse(self.editor.connect_ports(source.id, "out", stop.id))
+        self.assertFalse(self.editor.connect_ports(source.id, "beam", stop.id, "beam"))
         self.assertEqual(len(self.editor.document.connections), 2)
 
     def test_drawing_edits_do_not_change_exported_placements(self):
@@ -196,6 +196,73 @@ class EditorTests(unittest.TestCase):
         self.assertEqual(self.editor.history.index, index + 1)
         self.editor.undo()
         self.assertEqual(self.editor.document.connections[0].bends, [(-40, 100)])
+
+    def test_neutral_ports_can_be_wired_backwards_and_arrows_follow_source(self):
+        self.editor.document = chain("source", "lens", "stop")
+        source, lens, stop = self.editor.document.nodes
+        source.position, source.rotation = (320, 0), 180
+        stop.position, stop.rotation = (0, 0), 180
+        self.editor.document.connections.clear()
+        self.editor.history = self.editor.history.__class__(self.editor.document)
+        self.editor.restore()
+        self.editor.fit()
+        self.app.processEvents()
+        colors = {port.brush().color().name() for item in self.editor.scene.symbols.values()
+                  for port in item.ports.values()}
+        self.assertEqual(len(colors), 1)
+        for start, port, target, target_port in ((lens, "B", source, "beam"), (stop, "beam", lens, "A")):
+            for node, name in ((start, port), (target, target_port)):
+                item = self.editor.scene.symbols[node.id].ports[name]
+                self.assertNotIn("(input)", item.toolTip())
+                self.assertNotIn("(output)", item.toolTip())
+                QtTest.QTest.mouseClick(self.editor.view.viewport(), QtCore.Qt.LeftButton,
+                                        pos=self.editor.view.mapFromScene(item.scenePos()))
+                self.app.processEvents()
+        self.assertTrue(self.editor.validate().ok)
+        self.assertEqual(self.editor.scene.topology.incident_ports[lens.id], "B")
+        for edge in self.editor.document.connections:
+            resolved = self.editor.scene.topology.edges[edge.id]
+            self.assertEqual(resolved.source, edge.b)
+            item = self.editor.scene.connections[edge.id]
+            arrow_tip = item.path().elementAt(item.path().elementCount() - 2)
+            target = self.editor.scene.symbols[resolved.target.node_id].ports[resolved.target.port_id].scenePos()
+            distance = ((arrow_tip.x - target.x()) ** 2 + (arrow_tip.y - target.y()) ** 2) ** 0.5
+            self.assertAlmostEqual(distance, 10)
+        self.assertFalse(self.editor.connect_ports(source.id, "beam", stop.id, "beam"))
+        self.assertTrue(self.editor.port_connected(Endpoint(source.id, "beam")))
+        self.editor.undo()
+        self.assertEqual(len(self.editor.document.connections), 1)
+        self.editor.redo()
+        self.assertEqual(self.editor.scene.topology.incident_ports[lens.id], "B")
+
+    def test_ambiguous_graph_hides_arrows_and_four_splitter_ports_are_visible(self):
+        splitter = next(item for item in self.editor.scene.symbols.values() if item.node.kind == "splitter")
+        self.assertEqual(set(splitter.ports), {"left", "right", "top", "bottom"})
+        first = self.editor.document.connections[0]
+        directed_count = self.editor.scene.connections[first.id].path().elementCount()
+        self.assertGreater(directed_count, 2)
+        self.editor.add_symbol("source", (-160, -160))
+        self.assertFalse(self.editor.scene.topology.edges)
+        self.assertEqual(self.editor.scene.connections[first.id].path().elementCount(), 2)
+        self.assertFalse(self.editor.validate().ok)
+
+    def test_turn_inspector_displays_the_resolved_default(self):
+        for incident, expected in (("A", "90"), ("B", "-90")):
+            document = chain("source", "mirror", "stop")
+            mirror = document.nodes[1]
+            document.connections[0].b = Endpoint(mirror.id, incident)
+            document.connections[1].a = Endpoint(mirror.id, "B" if incident == "A" else "A")
+            self.editor.document = document
+            self.editor.history = self.editor.history.__class__(document)
+            self.editor.restore()
+            self.editor.scene.symbols[mirror.id].setSelected(True)
+            self.app.processEvents()
+            fields = [widget for widget in self.editor.properties.findChildren(QtWidgets.QComboBox)
+                      if widget.isVisible() and self.editor.form.labelForField(widget) is not None and
+                      self.editor.form.labelForField(widget).text() == "Reflected turn (deg)"]
+            self.assertEqual(len(fields), 1)
+            self.assertEqual(fields[0].currentText(), expected)
+            self.assertNotIn("turn", mirror.physical)
 
 
 if __name__ == "__main__":

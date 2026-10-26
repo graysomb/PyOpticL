@@ -83,42 +83,62 @@
   "connections": [
     {
       "id": "S1-M1",
-      "source": "S1",
-      "source_port": "out",
-      "target": "M1",
-      "target_port": "in",
+      "a": {
+        "node_id": "M1",
+        "port_id": "A"
+      },
+      "b": {
+        "node_id": "S1",
+        "port_id": "beam"
+      },
       "bends": []
     },
     {
       "id": "M1-L1",
-      "source": "M1",
-      "source_port": "out",
-      "target": "L1",
-      "target_port": "in",
+      "a": {
+        "node_id": "M1",
+        "port_id": "B"
+      },
+      "b": {
+        "node_id": "L1",
+        "port_id": "A"
+      },
       "bends": []
     },
     {
       "id": "L1-BS1",
-      "source": "L1",
-      "source_port": "out",
-      "target": "BS1",
-      "target_port": "in",
+      "a": {
+        "node_id": "L1",
+        "port_id": "B"
+      },
+      "b": {
+        "node_id": "BS1",
+        "port_id": "left"
+      },
       "bends": []
     },
     {
       "id": "BS1-FO1",
-      "source": "BS1",
-      "source_port": "transmitted",
-      "target": "FO1",
-      "target_port": "in",
+      "a": {
+        "node_id": "BS1",
+        "port_id": "right"
+      },
+      "b": {
+        "node_id": "FO1",
+        "port_id": "beam"
+      },
       "bends": []
     },
     {
       "id": "BS1-D1",
-      "source": "BS1",
-      "source_port": "reflected",
-      "target": "D1",
-      "target_port": "in",
+      "a": {
+        "node_id": "BS1",
+        "port_id": "top"
+      },
+      "b": {
+        "node_id": "D1",
+        "port_id": "beam"
+      },
       "bends": []
     }
   ],
@@ -130,5 +150,5 @@
     "spacing": 50,
     "open_length": 50
   },
-  "version": 1
+  "version": 2
 }

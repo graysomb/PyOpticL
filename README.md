@@ -71,8 +71,18 @@ then use **Export Python…** to generate an ordinary PyOpticL macro. Export doe
 not execute the macro or modify an existing CAD layout.
 
 - Drag symbols from the palette, or double-click a palette entry to place one.
-  Click an orange output port, optionally click to add bends, then click a blue
-  input port to connect. Press **Esc** to cancel. Crossing paths stay separate.
+  Click any free port, optionally click to add bends, then click another free
+  port to connect. All ports have the same neutral color. Press **Esc** to cancel.
+  Crossing paths stay separate.
+- Passive optics have interchangeable **A/B** ports. Connect either side of a
+  lens, mirror, waveplate, or iris; the editor infers propagation from the beam
+  source, independently of the order in which connections were drawn. Arrows
+  show that inferred direction. Ambiguous paths have no arrows and block export.
+- Cube splitters have four neutral face ports. Transmission connects opposite
+  faces; reflection pairs left/top and right/bottom for the drawn diagonal.
+  Connect the incident face and both resulting branches; the remaining face
+  stays unused in the current single-source model. Rotating a symbol rotates
+  its port positions without changing these optical relationships.
 - Move parts on the drawing grid, rotate with **R**, and use the grid/angle snap
   controls for 45° or 90° drawing. Double-click a connection to add an editable
   bend. Select a part, connection, or bend and press **Delete** to remove it.
@@ -80,8 +90,13 @@ not execute the macro or modify an existing CAD layout.
   distance, and mirror/splitter turn. Drawing positions and lengths have no
   physical scale. **Apply Drawing Directions** explicitly copies drawing
   tangents into physical routing hints; later drawing edits leave them alone.
+  Default mirror/splitter turns follow the resolved incident port. Explicit
+  physical turn overrides remain unchanged when connections are edited.
 - Save editable drawings as `.pyopticl-schematic.json`. Undo/redo includes parts,
   connections, settings, and properties. Incomplete drawings can be saved.
+  Version 1 drawings load through an in-memory migration that preserves existing
+  port locations, bends, references, and physical settings. Files are written in
+  version 2 format only when saved; opening a drawing does not rewrite it.
 - **Validate** checks topology and physical origin overlaps. Every branch must
   end in a fiber output, beam stop, or explicit open output. Export is blocked
   until errors are resolved; click a message to locate the affected part.
@@ -127,6 +142,14 @@ with `QT_QPA_PLATFORM=offscreen`; FreeCAD supplies Qt for normal workbench use.
 For actual CAD/beam integration tests, execute
 `tests/schematic_freecad.py` inside FreeCAD. That test suite creates and closes
 its own documents and preserves existing designs.
+
+The portable connection API uses unordered endpoints, for example
+`Connection(id, Endpoint(lens_id, "B"), Endpoint(source_id, "beam"))`.
+`resolve_topology(schematic)` returns source-oriented connections, incident
+ports, interaction roles, and diagnostics without modifying the document.
+Source/fiber-source symbols remain emitters; receiver, stop, and open-output
+symbols remain terminals. Neutral optic ports do not add double-pass or
+counterpropagating-beam support to the current compiler.
 
 ### Used by researchers at:
 

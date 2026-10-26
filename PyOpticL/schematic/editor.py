@@ -4,10 +4,11 @@ from math import ceil, floor
 from pathlib import Path
 
 from .compiler import compile_schematic
-from .geometry import apply_drawing_directions, route_to, snap_angle, snap_point
-from .model import Connection, History, Schematic, load_schematic, new_id, save_schematic
+from .geometry import apply_drawing_directions, route_connection, route_to, snap_angle, snap_point
+from .model import Connection, Endpoint, History, Schematic, load_schematic, new_id, save_schematic
 from .qt import Action, QtCore, QtGui, QtWidgets
-from .registry import SYMBOLS, parameter_values
+from .registry import SYMBOLS, default_turn, parameter_values
+from .topology import resolve_topology
 
 Qt = QtCore.Qt
 MIME = "application/x-pyopticl-schematic-symbol"
@@ -46,14 +47,14 @@ class Palette(QtWidgets.QListWidget):
 
 
 class PortItem(QtWidgets.QGraphicsEllipseItem):
-    def __init__(self, symbol, name, is_output):
+    def __init__(self, symbol, name):
         super().__init__(-6, -6, 12, 12, symbol)
-        self.symbol, self.name, self.is_output = symbol, name, is_output
+        self.symbol, self.name = symbol, name
         self.setPos(point(SYMBOLS[symbol.node.kind].port_position(name)))
-        self.setBrush(QtGui.QColor("#e79b36" if is_output else "#438cc2"))
+        self.setBrush(QtGui.QColor("#8199aa"))
         self.setPen(QtGui.QPen(QtGui.QColor("#1f2937"), 1))
         self.setZValue(3)
-        self.setToolTip(f"{symbol.node.reference}.{name} ({'output' if is_output else 'input'})")
+        self.setToolTip(f"{symbol.node.reference}.{name} — connect in either order")
 
 
 class SymbolItem(QtWidgets.QGraphicsObject):
@@ -67,13 +68,13 @@ class SymbolItem(QtWidgets.QGraphicsObject):
         self.setZValue(1)
         self.ports = {}
         spec = SYMBOLS[node.kind]
-        for name in (*spec.inputs, *spec.outputs):
-            self.ports[name] = PortItem(self, name, name in spec.outputs)
+        for name in spec.ports:
+            self.ports[name] = PortItem(self, name)
         label = QtWidgets.QGraphicsSimpleTextItem(node.reference, self)
         label.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
         label.setBrush(QtGui.QColor("#163c54"))
         label.setPos(-16, 32)
-        self.setToolTip(f"{node.reference}: {spec.title}\nClick a port to draw a connection")
+        self.setToolTip(f"{node.reference}: {spec.title}\nAny free port can start a connection")
 
     def boundingRect(self):
         return QtCore.QRectF(-48, -49, 96, 106)
@@ -176,22 +177,21 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
     def refresh(self):
         symbols = self.editor.scene.symbols
         edge = self.connection
-        if edge.source not in symbols or edge.target not in symbols:
+        if edge.a.node_id not in symbols or edge.b.node_id not in symbols:
             return
-        start = symbols[edge.source].ports[edge.source_port].scenePos()
-        end = symbols[edge.target].ports[edge.target_port].scenePos()
+        start = symbols[edge.a.node_id].ports[edge.a.port_id].scenePos()
+        end = symbols[edge.b.node_id].ports[edge.b.port_id].scenePos()
         path = QtGui.QPainterPath(start)
-        positions = [pair(start), *edge.bends, pair(end)]
         settings = self.editor.document.settings
-        # Automatic finishing segments retain angle snapping after parts move.
-        routed = [positions[0]]
-        for target in positions[1:]:
-            routed.extend(route_to(routed[-1], target, settings["angle"], settings["snap_angle"]))
+        resolved = self.editor.scene.topology.edges.get(edge.id)
+        forward = resolved.source == edge.a if resolved else edge.a <= edge.b
+        routed = route_connection(pair(start), pair(end), edge.bends, settings, forward)
         for position in routed[1:]:
             path.lineTo(point(position))
-        # Direction arrow on the final nonzero segment.
-        if len(routed) > 1:
-            a, b = point(routed[-2]), point(routed[-1])
+        # Arrows follow the source, independently of the connection's click order.
+        directed = routed if forward else list(reversed(routed))
+        if resolved and len(directed) > 1:
+            a, b = point(directed[-2]), point(directed[-1])
             delta = b - a
             length = (delta.x() ** 2 + delta.y() ** 2) ** 0.5
             if length > 1:
@@ -207,8 +207,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
     def mouseDoubleClickEvent(self, event):
         position = pair(event.scenePos())
         symbols = self.editor.scene.symbols
-        starts = [pair(symbols[self.connection.source].ports[self.connection.source_port].scenePos()), *self.connection.bends]
-        ends = [*self.connection.bends, pair(symbols[self.connection.target].ports[self.connection.target_port].scenePos())]
+        starts = [pair(symbols[self.connection.a.node_id].ports[self.connection.a.port_id].scenePos()), *self.connection.bends]
+        ends = [*self.connection.bends, pair(symbols[self.connection.b.node_id].ports[self.connection.b.port_id].scenePos())]
         def distance(index):
             a, b = starts[index], ends[index]
             dx, dy = b[0] - a[0], b[1] - a[1]
@@ -227,6 +227,7 @@ class SchematicScene(QtWidgets.QGraphicsScene):
         super().__init__(editor)
         self.editor = editor
         self.symbols, self.connections = {}, {}
+        self.topology = resolve_topology(editor.document)
         self.pending = None
         self.bends = []
         self.preview = None
@@ -237,6 +238,7 @@ class SchematicScene(QtWidgets.QGraphicsScene):
         self.blockSignals(True)
         self.pending, self.preview, self.bends = None, None, []
         self.symbols, self.connections = {}, {}
+        self.topology = resolve_topology(self.editor.document)
         self.clear()
         for node in self.editor.document.nodes:
             item = SymbolItem(node, self.editor)
@@ -283,14 +285,19 @@ class SchematicScene(QtWidgets.QGraphicsScene):
         if event.button() == Qt.LeftButton:
             hit = self.itemAt(event.scenePos(), QtGui.QTransform())
             if isinstance(hit, PortItem):
-                if hit.is_output:
-                    self.cancel_connection()
+                if self.pending is None:
+                    if self.editor.port_connected(Endpoint(hit.symbol.node.id, hit.name)):
+                        self.editor.status.setText("That port is already connected. Delete its connection first.")
+                        event.accept()
+                        return
                     self.pending = (hit.symbol.node.id, hit.name)
                     self.preview = self.addPath(QtGui.QPainterPath(), QtGui.QPen(QtGui.QColor("#e79b36"), 2, Qt.DashLine))
-                    self.editor.status.setText("Click to add bends; click an input port to connect; Esc cancels")
-                elif self.pending:
+                    self.editor.status.setText("Click to add bends; click any other free port to connect; Esc cancels")
+                else:
                     source, port = self.pending
-                    if self.editor.connect_ports(source, port, hit.symbol.node.id, hit.name, list(self.bends)):
+                    if self.pending == (hit.symbol.node.id, hit.name):
+                        self.cancel_connection()
+                    elif self.editor.connect_ports(source, port, hit.symbol.node.id, hit.name, list(self.bends)):
                         self.cancel_connection()
                         self.editor.commit()
                 event.accept()
@@ -398,7 +405,7 @@ class SchematicEditor(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.scene = SchematicScene(self)
         self.view = SchematicView(self.scene, self)
-        self.status = QtWidgets.QLabel("Drag parts from the library. Connect an output port to an input port.")
+        self.status = QtWidgets.QLabel("Connect any two free ports. Beam direction is inferred from the source.")
         self.status.setWordWrap(True)
         self.properties = QtWidgets.QWidget()
         self.form = QtWidgets.QFormLayout(self.properties)
@@ -496,15 +503,26 @@ class SchematicEditor(QtWidgets.QWidget):
         node = self.document.add_node(kind, snap_point(position, settings["grid"], settings["snap_grid"]))
         self.commit(selected=[node.id])
 
-    def connect_ports(self, source, port, target, target_port="in", bends=None):
+    def port_connected(self, endpoint):
+        return any(endpoint in (edge.a, edge.b) for edge in self.document.connections)
+
+    def connect_ports(self, source, port, target, target_port, bends=None):
         if source == target:
             self.status.setText("A component cannot connect to itself in the first release")
             return False
-        for edge in self.document.connections:
-            if (edge.source, edge.source_port) == (source, port) or (edge.target, edge.target_port) == (target, target_port):
+        a, b = Endpoint(source, port), Endpoint(target, target_port)
+        for endpoint in (a, b):
+            try:
+                valid = endpoint.port_id in SYMBOLS[self.document.node(endpoint.node_id).kind].ports
+            except StopIteration:
+                valid = False
+            if not valid:
+                self.status.setText("The connection refers to an invalid component or port")
+                return False
+            if self.port_connected(endpoint):
                 self.status.setText("That port is already connected. Delete its connection first.")
                 return False
-        self.document.connections.append(Connection(new_id(), source, port, target, target_port, bends or []))
+        self.document.connections.append(Connection(new_id(), a, b, bends or []))
         self.status.setText("Connected. Use Validate to check the complete optical topology.")
         return True
 
@@ -559,9 +577,10 @@ class SchematicEditor(QtWidgets.QWidget):
         self.commit()
 
     def apply_directions(self):
-        apply_drawing_directions(self.document)
+        diagnostics = apply_drawing_directions(self.document)
         self.commit()
-        self.status.setText("Copied drawing tangents to physical routing hints. Validate mirror turns before exporting.")
+        self.display_diagnostics(diagnostics)
+        self.status.setText("Copied source-resolved tangents where available. Resolve any topology errors before exporting.")
 
     def clear_form(self):
         while self.form.count():
@@ -626,10 +645,12 @@ class SchematicEditor(QtWidgets.QWidget):
             turns = (-135, -90, -45, 45, 90, 135) if node.kind == "mirror" else (-90, 90)
             turn = QtWidgets.QComboBox()
             turn.addItems([str(value) for value in turns])
-            value = node.physical.get("turn", 90)
+            value = node.physical.get("turn", default_turn(node.kind, self.scene.topology.incident_ports.get(node.id)))
             if value not in turns:
                 turn.addItem(str(value))
-            turn.setCurrentText(str(value))
+                turn.setCurrentIndex(turn.count() - 1)
+            else:
+                turn.setCurrentIndex(turns.index(value))
             turn.currentTextChanged.connect(lambda value: self.set_node_dict(node.id, "physical", "turn", float(value)))
             self.form.addRow("Reflected turn (deg)", turn)
         self.note("Rotate with R. Drawing edits do not change physical layout.")
@@ -660,7 +681,7 @@ class SchematicEditor(QtWidgets.QWidget):
             item.setData(Qt.UserRole, (diagnostic.node_id, diagnostic.connection_id))
             self.messages.addItem(item)
         if not diagnostics:
-            self.messages.addItem("Topology is valid. Physical placement is checked when the exported Python runs.")
+            self.messages.addItem("Directions are resolved from the source. Physical placement is checked when the exported Python runs.")
 
     def validate(self):
         result = compile_schematic(self.document)

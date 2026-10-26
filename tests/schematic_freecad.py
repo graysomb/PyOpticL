@@ -8,29 +8,37 @@ Creates and closes its own test documents; existing designs are preserved.
 import unittest
 import FreeCAD as App
 
-from PyOpticL.schematic import Connection, Schematic, compile_schematic
+from PyOpticL.schematic import Connection, Endpoint, Schematic, compile_schematic
 from PyOpticL.schematic.model import new_id
+from PyOpticL.schematic.registry import REFLECTION, TRANSMISSION, SYMBOLS
+
+
+def connect(document, source, target, port=None, target_port=None):
+    port = port or ("beam" if SYMBOLS[source.kind].role == "source" else "B")
+    target_port = target_port or ("beam" if SYMBOLS[target.kind].role == "terminal" else
+                                  "left" if target.kind == "splitter" else "A")
+    document.connections.append(Connection(new_id(), Endpoint(source.id, port), Endpoint(target.id, target_port)))
 
 
 def chain(*kinds):
     document = Schematic()
     nodes = [document.add_node(kind) for kind in kinds]
     for source, target in zip(nodes, nodes[1:]):
-        document.connections.append(Connection(new_id(), source.id, "out", target.id))
+        connect(document, source, target)
     return document
 
 
 def branched(nested=False):
     document = chain("source", "lens", "splitter")
     splitter = document.nodes[-1]
-    for port, kind in (("transmitted", "fiber_output"), ("reflected", "splitter" if nested else "stop")):
+    for port, kind in (("right", "fiber_output"), ("top", "splitter" if nested else "stop")):
         target = document.add_node(kind)
-        document.connections.append(Connection(new_id(), splitter.id, port, target.id))
+        connect(document, splitter, target, port)
     if nested:
         splitter = document.nodes[-1]
-        for port, kind in (("transmitted", "stop"), ("reflected", "output")):
+        for port, kind in (("right", "stop"), ("top", "output")):
             target = document.add_node(kind)
-            document.connections.append(Connection(new_id(), splitter.id, port, target.id))
+            connect(document, splitter, target, port)
     return document
 
 
@@ -89,6 +97,27 @@ class FreeCADSchematicTests(unittest.TestCase):
             namespace["PLACEMENTS"]["D1"] = (25, 0, 180)
         with self.assertRaisesRegex(RuntimeError, "Missing:.*L1"):
             self.build(document, change)
+
+    def test_reversed_passive_ports_and_connection_click_order(self):
+        for kind in ("mirror", "lens", "iris", "hwp", "qwp"):
+            with self.subTest(kind=kind):
+                document = chain("source", kind, "stop")
+                optic = document.nodes[1]
+                document.connections[0].b = Endpoint(optic.id, "B")
+                document.connections[1].a = Endpoint(optic.id, "A")
+                for edge in document.connections:
+                    edge.a, edge.b = edge.b, edge.a
+                self.build(document)
+
+    def test_splitter_incidence_from_all_four_faces(self):
+        for face in ("left", "right", "top", "bottom"):
+            with self.subTest(face=face):
+                document = chain("source", "splitter")
+                cube = document.nodes[-1]
+                document.connections[0].b = Endpoint(cube.id, face)
+                for port in (TRANSMISSION[face], REFLECTION[face]):
+                    connect(document, cube, document.add_node("stop"), port)
+                self.build(document)
 
 
 def run():

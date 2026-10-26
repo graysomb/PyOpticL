@@ -9,9 +9,9 @@ from pathlib import Path
 import tempfile
 from uuid import uuid4
 
-from .registry import SYMBOLS
+from .registry import SYMBOLS, legacy_port
 
-VERSION = 1
+VERSION = 2
 
 
 def new_id():
@@ -30,13 +30,19 @@ class Node:
     physical: dict = field(default_factory=dict)
 
 
+@dataclass(frozen=True, order=True)
+class Endpoint:
+    node_id: str
+    port_id: str
+
+
 @dataclass
 class Connection:
+    """An undirected connection; bends run from a to b in storage order."""
+
     id: str
-    source: str
-    source_port: str
-    target: str
-    target_port: str = "in"
+    a: Endpoint
+    b: Endpoint
     bends: list = field(default_factory=list)
 
 
@@ -69,7 +75,7 @@ class Schematic:
         ids = set(ids)
         self.nodes[:] = [node for node in self.nodes if node.id not in ids]
         self.connections[:] = [edge for edge in self.connections
-                               if edge.source not in ids and edge.target not in ids]
+                               if edge.a.node_id not in ids and edge.b.node_id not in ids]
 
     def duplicate_nodes(self, ids):
         copies = []
@@ -99,8 +105,8 @@ def _point(value):
 def document_from_dict(data):
     """Reject malformed files before they can reach Qt or the compiler."""
     try:
-        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] != VERSION:
-            raise ValueError("Unsupported schematic version (expected version 1)")
+        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] not in (1, VERSION):
+            raise ValueError("Unsupported schematic version (expected version 1 or 2)")
         if not isinstance(data.get("title"), str):
             raise ValueError("Schematic title must be text")
         if not isinstance(data.get("nodes"), list) or not isinstance(data.get("connections"), list):
@@ -140,24 +146,31 @@ def document_from_dict(data):
             document.nodes.append(node)
         edge_ids = set()
         for value in data["connections"]:
-            edge = Connection(**value)
-            if not all(isinstance(x, str) and x for x in
-                       (edge.id, edge.source, edge.source_port, edge.target, edge.target_port)):
+            if data["version"] == 1:
+                a_node, b_node = document.node(value["source"]), document.node(value["target"])
+                edge = Connection(value["id"], Endpoint(a_node.id, legacy_port(a_node.kind, value["source_port"])),
+                                  Endpoint(b_node.id, legacy_port(b_node.kind, value.get("target_port", "in"))),
+                                  deepcopy(value.get("bends", [])))
+            else:
+                edge = Connection(value["id"], Endpoint(**value["a"]), Endpoint(**value["b"]),
+                                  deepcopy(value.get("bends", [])))
+            if not all(isinstance(x, str) and x for x in (edge.id, edge.a.node_id, edge.a.port_id,
+                                                         edge.b.node_id, edge.b.port_id)):
                 raise ValueError("Connection identifiers must be nonempty text")
             if edge.id in edge_ids:
                 raise ValueError("Duplicate connection identity")
             edge_ids.add(edge.id)
-            if edge.source not in ids or edge.target not in ids:
+            if edge.a.node_id not in ids or edge.b.node_id not in ids:
                 raise ValueError("Connection refers to a missing component")
-            if (edge.source_port not in SYMBOLS[document.node(edge.source).kind].outputs or
-                    edge.target_port not in SYMBOLS[document.node(edge.target).kind].inputs):
+            if (edge.a.port_id not in SYMBOLS[document.node(edge.a.node_id).kind].ports or
+                    edge.b.port_id not in SYMBOLS[document.node(edge.b.node_id).kind].ports):
                 raise ValueError("Connection refers to an invalid port")
             if not isinstance(edge.bends, list) or not all(_point(p) for p in edge.bends):
                 raise ValueError("Connection bends must be finite coordinate pairs")
             edge.bends = [tuple(p) for p in edge.bends]
             document.connections.append(edge)
         return document
-    except (TypeError, KeyError, AttributeError) as error:
+    except (TypeError, KeyError, AttributeError, StopIteration) as error:
         raise ValueError(f"Malformed schematic: {error}") from error
 
 

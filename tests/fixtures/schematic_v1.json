@@ -1,0 +1,134 @@
+{
+  "title": "Branched optical example",
+  "nodes": [
+    {
+      "id": "S1",
+      "reference": "S1",
+      "kind": "source",
+      "preset": "beam",
+      "parameters": {},
+      "position": [
+        -80,
+        0
+      ],
+      "rotation": 0,
+      "physical": {}
+    },
+    {
+      "id": "M1",
+      "reference": "M1",
+      "kind": "mirror",
+      "preset": "mounted",
+      "parameters": {},
+      "position": [
+        160,
+        0
+      ],
+      "rotation": 0,
+      "physical": {}
+    },
+    {
+      "id": "L1",
+      "reference": "L1",
+      "kind": "lens",
+      "preset": "mounted",
+      "parameters": {},
+      "position": [
+        160,
+        -160
+      ],
+      "rotation": 270,
+      "physical": {}
+    },
+    {
+      "id": "BS1",
+      "reference": "BS1",
+      "kind": "splitter",
+      "preset": "bare",
+      "parameters": {},
+      "position": [
+        160,
+        -320
+      ],
+      "rotation": 270,
+      "physical": {}
+    },
+    {
+      "id": "FO1",
+      "reference": "FO1",
+      "kind": "fiber_output",
+      "preset": "paf2",
+      "parameters": {},
+      "position": [
+        160,
+        -480
+      ],
+      "rotation": 270,
+      "physical": {}
+    },
+    {
+      "id": "D1",
+      "reference": "D1",
+      "kind": "stop",
+      "preset": "absorber",
+      "parameters": {},
+      "position": [
+        -40,
+        -320
+      ],
+      "rotation": 180,
+      "physical": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "S1-M1",
+      "source": "S1",
+      "source_port": "out",
+      "target": "M1",
+      "target_port": "in",
+      "bends": []
+    },
+    {
+      "id": "M1-L1",
+      "source": "M1",
+      "source_port": "out",
+      "target": "L1",
+      "target_port": "in",
+      "bends": []
+    },
+    {
+      "id": "L1-BS1",
+      "source": "L1",
+      "source_port": "out",
+      "target": "BS1",
+      "target_port": "in",
+      "bends": []
+    },
+    {
+      "id": "BS1-FO1",
+      "source": "BS1",
+      "source_port": "transmitted",
+      "target": "FO1",
+      "target_port": "in",
+      "bends": []
+    },
+    {
+      "id": "BS1-D1",
+      "source": "BS1",
+      "source_port": "reflected",
+      "target": "D1",
+      "target_port": "in",
+      "bends": []
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 50
+  },
+  "version": 1
+}
