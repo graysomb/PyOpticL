@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "POLARIS-K05T6",
+  "product_url": "https://www.thorlabs.com/item/POLARIS-K05T6",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/p/po/pol/polaris-k05t6/24020-e0w.pdf?v=0116021918",
+  "vendor_filename": "24020-e0w.pdf",
+  "document_id": "24020-e0w",
+  "revision": "G",
+  "retrieved_at": "2026-10-26T18:07:49.756134+00:00",
+  "sha256": "e78c7d2113dd073c7fca782a2f4c93e5d5824c210c143dfbce271e7fc1219aa9",
+  "kind": "pdf",
+  "cache_path": "objects/e78c7d2113dd073c7fca782a2f4c93e5d5824c210c143dfbce271e7fc1219aa9/source.pdf",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

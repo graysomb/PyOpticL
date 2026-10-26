@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "VA100",
+  "product_url": "https://www.thorlabs.com/item/VA100",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/v/va/va1/va100/12127-e0w.step?v=0116033456",
+  "vendor_filename": "12127-e0w.step",
+  "document_id": "12127-e0w",
+  "revision": null,
+  "retrieved_at": "2026-10-26T18:08:59.524099+00:00",
+  "sha256": "ecb5c011ed5a343f98ac24343e2ca31bc9598b1ad8fcde4558bf45a088dce81d",
+  "kind": "step",
+  "cache_path": "objects/ecb5c011ed5a343f98ac24343e2ca31bc9598b1ad8fcde4558bf45a088dce81d/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

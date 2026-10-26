@@ -9,6 +9,7 @@ import FreeCAD as App
 import Part
 from PyOpticL import lab_catalog
 from PyOpticL.layout import Component
+from PyOpticL import attachments
 
 PROFILES = json.loads((lab_catalog.DATA / 'baseplate_interfaces.json').read_text())
 
@@ -55,12 +56,11 @@ class MachinedBaseplate:
             contract = obj.Proxy.contract()
             if contract.catalog_id == 'displacement-pbs-holder':
                 fused.append(obj)
-            elif contract.part_number in PROFILES:
-                hardware.append(obj)
-            elif contract.catalog_id == 'iris' and hasattr(obj.Proxy, 'baseplate_profile'):
+            elif attachments.profile(obj.Proxy):
                 hardware.append(obj)
             elif contract.catalog_id in ('rotation','translation'):
-                raise ValueError('No verified baseplate attachment profile yet for '+contract.catalog_id)
+                if not any(attachments.profile(child.Proxy) for child in descendants(obj)):
+                    raise ValueError('No verified baseplate attachment profile yet for '+contract.catalog_id)
         if not hardware and not fused:
             raise ValueError('No supported catalog mounts or integral PBS supports in layout')
         shapes = []
@@ -79,19 +79,16 @@ class MachinedBaseplate:
         width = math.ceil((bounds.XMax+self.margin)/5)*5-x0
         depth = math.ceil((bounds.YMax+self.margin)/5)*5-y0
         plate = Part.makeBox(width,depth,self.thickness,App.Vector(x0,y0,-self.thickness))
-        operations, pockets = [], []
+        operations, pockets, heights, native_heights = [], [], {}, {}
         for obj in hardware:
             contract = obj.Proxy.contract()
-            part = contract.part_number or contract.catalog_id
-            if contract.catalog_id == 'iris':
-                profile = obj.Proxy.baseplate_profile()
-            else:
-                profile = PROFILES[part]
-                if lab_catalog.asset_record(part)['sha256'] != profile['step_sha256']:
-                    raise ValueError('Mounting profile must be reverified for revised CAD: '+part)
+            profile = attachments.profile(obj.Proxy)
             frames = {f.name:f for f in contract.frames}
             placement = self._relative(obj)
             seat = placement.multVec(App.Vector(*frames[profile['seat_frame']].position))
+            optical = placement.multVec(App.Vector(*frames['optical'].position))
+            heights[obj.Name] = optical.z
+            native_heights[obj.Name] = frames['optical'].position[2] - frames[profile['seat_frame']].position[2]
             local_up = placement.Rotation.multVec(App.Vector(0,0,1))
             if (local_up-App.Vector(0,0,1)).Length > 1e-7:
                 raise ValueError('Mount must stand upright for top-down plate machining: '+obj.Label)
@@ -108,40 +105,18 @@ class MachinedBaseplate:
                     App.Vector(b.XMin-self.pocket_clearance,b.YMin-self.pocket_clearance,seat.z))
                 plate = plate.cut(pocket)
                 pockets.append(dict(mount=obj.Label,depth_mm=-seat.z,clearance_mm=self.pocket_clearance))
-            for name in profile['screws']+profile['dowels']:
-                frame = frames[name]
-                center = placement.multVec(App.Vector(*frame.position))
-                if abs(center.z-seat.z) > .01:
-                    raise ValueError('Attachment hole is not on selected mounting face')
-                if name in profile['screws']:
-                    diameter, drill_depth = 3.3, 10.
-                    operation = dict(kind='tapped',thread='M4 x 0.7',thread_depth_mm=8.,
-                        diameter_mm=diameter,depth_mm=drill_depth,
-                        note='M4 selected explicitly from vendor #8/M4 clearance compatibility; 3.3 mm tap drill, 8 mm usable thread.')
-                else:
-                    diameter = profile['dowel']['plate_diameter_mm']
-                    drill_depth = profile['dowel']['plate_depth_mm']
-                    operation = dict(kind='dowel',diameter_mm=diameter,depth_mm=drill_depth,
-                        diameter_limits_mm=profile['dowel']['plate_diameter_limits_mm'],
-                        depth_tolerance_mm=profile['dowel']['plate_depth_tolerance_mm'],
-                        pin=profile['dowel']['pin'],projection_mm=profile['dowel']['pin_projection_mm'])
-                radius = diameter/2
-                tip_height = radius/math.tan(math.radians(59))
-                if center.z-drill_depth-tip_height < -self.thickness+.5:
+            for operation in attachments.operations(obj.Proxy, placement):
+                center = App.Vector(*operation['center_mm'])
+                if center.z-operation['depth_mm']-attachments.tip_height(operation['diameter_mm']) < -self.thickness+.5:
                     raise ValueError('Blind hole breaks through or leaves insufficient stock')
-                bore = Part.makeCylinder(radius,drill_depth+.01,
-                    App.Vector(center.x,center.y,center.z+.01),App.Vector(0,0,-1))
-                tip = Part.makeCone(radius,0,tip_height,
-                    App.Vector(center.x,center.y,center.z-drill_depth),App.Vector(0,0,-1))
-                plate = plate.cut(bore.fuse(tip))
-                operation.update(mount=obj.Label,mount_object=obj.Name,assembly=obj.Parent.Label,part=part,interface=name,
-                    center_mm=list(center),axis=[0,0,-1],source=profile['source'],
-                    step_sha256=profile['step_sha256'],drawing_sha256=profile['drawing_sha256'])
+                plate = plate.cut(attachments.bore(operation))
+                operation.update(mount=obj.Label, mount_object=obj.Name, assembly=obj.Parent.Label)
                 operations.append(operation)
         # The PBS holder is part of the stock, including its existing clamp bore.
         self.integrated_names = []
         for obj in fused:
             shape = obj.Shape.copy();shape.Placement = self._relative(obj)
+            heights[obj.Name] = self._relative(obj).multVec(App.Vector(0, 0, 0)).z
             plate = plate.fuse(shape)
             # Fusion with the stock must not refill the existing clamp bore.
             frames = {f.name:f for f in obj.Proxy.contract().frames}
@@ -164,7 +139,8 @@ class MachinedBaseplate:
         if not plate.isValid() or len(plate.Solids) != 1:
             raise ValueError('Machined plate and integrated holders must form one valid solid')
         self.plan = dict(units='mm',top_z=0,thickness_mm=self.thickness,
-            optical_height_mm=optical_height(),stock_bounds=[x0,y0,width,depth],
+            optical_height_mm=(next(iter(heights.values())) if len({round(v, 6) for v in heights.values()}) == 1 else None),
+            optical_heights_mm=heights,native_optical_heights_mm=native_heights,stock_bounds=[x0,y0,width,depth],
             holes=operations,pockets=pockets,integrated_holders=self.integrated_names,
             note='Nominal machining model. Tap-drill cylinders carry thread annotations; threads are not helically modeled. No table attachment pattern has been added.')
         if hasattr(self, '_object'):

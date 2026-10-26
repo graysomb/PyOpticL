@@ -19,7 +19,7 @@ The optical collimator reference is a barrel-front datum, not a claimed lens pri
 
 Normalization maps vendor coordinates to component coordinates while retaining original source bytes. Optics face local +X. ELL16's mounting face is placed at holder X=10; the holder wall ends at X=13. The XR25C payload frame is local Z=23. DOF ranges remain unknown instead of inferring symmetric travel from total-travel marketing specifications.
 
-## Coupling chain
+## Legacy KA05TA coupling chain
 
 The [collimator compatibility table](https://www.thorlabs.com/fixed-focus-collimation-packages-fcpc-connectors?tabName=Overview) and exact drawings identify F260FC-1550 → AD1109F → KA05TA. The first mate is external/internal M11 × 0.5; the second is external/internal SM05 (0.535-40). The adapter's M9 thread is not used.
 
@@ -72,9 +72,9 @@ Generic M3 × 8 and 4-40 × 3/16-inch screws are explicit nominal fastening sele
 
 ## Verification boundary
 
-The automated suite passed 15 tests (7 standard-Python and 8 FreeCAD 1.1.4 integration tests). It checks FreeCAD construction, pinned solids, independently measured vendor hole axes, nominal frames, DOF transforms, read-only summaries, metadata inertness, repeat recomputation, instance isolation and an existing mirror/interfaces/drill workflow. Downloader tests cover malformed files, hash changes, identity errors, both vendor-domain handlers and dynamic-page fallback. Skills pass the skill validator; their known-chain and mismatch logic is exercised through the connection API.
+The current regression run passed 39 tests: 7 standard-Python tests and 32 FreeCAD integration tests across catalog, baseplate, fixed-iris and batch suites. It checks FreeCAD construction, pinned solids, independently measured vendor hole axes, nominal frames, DOF transforms, read-only summaries, metadata inertness, repeat recomputation, instance isolation and an existing mirror/interfaces/drill workflow. Downloader tests cover malformed files, hash changes, identity errors, both vendor-domain handlers and dynamic-page fallback. Skills pass the skill validator; their known-chain and mismatch logic is exercised through the connection API.
 
-No physical motion, motor control, optical coupling-efficiency test, complete sweep of the historic example scripts, or physical assembly test is claimed. OptoSigma public-link handling is tested with fixtures; no OptoSigma part is needed by these five catalog entries. The SPDC fastening stack and manufacturer-specific external fasteners remain open procurement/installation qualification items. The coupling nominal placement follows the explicitly selected thread-end convention.
+No physical motion, motor control, optical coupling-efficiency test, complete sweep of the historic example scripts, or physical assembly test is claimed. OptoSigma MHV source solids and their exact part identities are now checked by batch acceptance, in addition to downloader fixtures. The SPDC fastening stack and manufacturer-specific external fasteners remain open procurement/installation qualification items. The coupling nominal placement follows the explicitly selected thread-end convention.
 
 
 ## Direct baseplate attachment
@@ -99,3 +99,57 @@ than loose spline bounds. For example, the POLARIS imported compound's ordinary
 box extends below the actual mounting face; that alone is not evidence of a
 physical projection requiring a pocket. The native planar mounting faces and
 actual plate/mount solid intersection checks establish flush seating.
+
+## Vendor mount batch, 2026-10-26
+
+`batch_measurements.json` records the eight independently imported source solid
+counts, volumes, native optical datums, selected mounting faces, cylindrical
+axes, slot end arcs and STEP/drawing hashes. `normalization.json` records the
+corresponding working transforms. `batch_mounting_profiles.json` selects the
+component interfaces and mating plate dimensions. No source solids are scaled
+or drilled. The MHV asset identities are verified by the product labels and
+STEP archive members, despite misleading legacy URL slugs containing
+“front-loading”. These are **MHV-12.7L-R and MHV-25.4L-R**, not VMHV.
+
+| Part | Drawing revision | Native height, mm | Source solids |
+|---|---|---:|---:|
+| POLARIS-L05G | B | 12.7 | 1 |
+| POLARIS-L1G | E | 19.05 | 1 |
+| POLARIS-K1VS2 | B | 25.4 | 26 |
+| MHV-12.7L-R | MHV family E2505 | 12.7 | 9 |
+| MHV-25.4L-R | MHV family E2505 | 25.4 | 7 |
+| FBR | A | 14.3002 | 7 |
+| VA100 | M | 17.78 | 46 |
+| POLARIS-K05T6 | G | 12.7 | 31 |
+
+K1VS2's optical datum is the measured optic installation stop, not the compound's
+front bounding box. Front-loading optics are displaced relative to that stop
+by their thickness; MHV rear-loading optics seat with their reflecting face at
+the selected ledge. The MHV-12.7L-R moving plate has small source pose noise,
+producing approximately 0.00036 mm³ contact overlap with the nominal mirror,
+within the 0.01 mm/0.01° comparison threshold. This source geometry is preserved.
+
+FBR has included Ø3.175 mm pins, not the lab's usual 2 mm pins. Its working
+retaining-ring solid is translated to the chosen waveplate face without changing
+its dimensions; the cached source remains untouched. The custom 3.20 mm receiving
+bore choice is clearance geometry, with no vendor fit tolerance claimed.
+
+VA100's selected 8-32 UNC attachment is 6.35 mm deep. Its 9.652 × 50.8 mm
+seating footprint drives the 37 × 56.8 × 10 mm bracket. The independently checked
+assembly height is 27.78 mm. Its source mechanical opening is 5.8928 mm; blade
+motion cannot be represented by translating the two blade solids alone without
+housing collisions. Width 0–6 mm therefore configures only the ideal optical
+slit, with the reference mechanical pose explicitly retained in the contract.
+
+The new default coupling uses K05T6's independently measured source solid 25 as
+the removed front POLARIS-SM05RR; rear solid 26 remains. The AD1109F shoulder
+seats at X=8.0518 mm. Collimator/adapter and collimator/mount overlaps are zero.
+Adapter/mount overlap is approximately 4.08248 mm³, confined to the simplified
+SM05 engagement envelopes, radius 6.4516–6.795 mm and X=8.0518–11.2268 mm.
+Acceptance rejects any overlap outside that annulus. This is a nominal thread
+compatibility and envelope check; thread phase, torque and physical assembly
+are unresolved fit evidence. The older zero-overlap report above applies only
+to explicit KA05TA assemblies.
+
+See [batch verification](component-batch-verification.md) and
+[the catalog API](lab-catalog.md) for tests, native heights and drilling selections.

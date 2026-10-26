@@ -13,7 +13,30 @@ print(lab_catalog.report_dofs(coupler))  # world axes
 print(lab_catalog.bom(coupler))
 ```
 
-Supported IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`, `iris`. Rotation accepts `thickness` (default 1 mm) and `retardance` (default half-wave); these describe a generic half-inch waveplate, not a selected vendor optic. Mirror diameter is 12.7 mm and default thickness is 3 mm. Iris accepts `aperture_diameter` (default 0.5 mm). Other unknown parameters fail explicitly. Changing optic thickness changes the nominal assembly configuration and may require fit revalidation.
+Supported preset IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`,
+`iris`, `slit`. Purchased mounts are also available directly through
+`create(part_number, label)` for every part in the native-height table below.
+These return ordinary reusable `Component` objects with `VendorPart` definitions.
+Unknown parameters fail explicitly. Dimensions use mm.
+
+```python
+lens_mount = lab_catalog.create('POLARIS-L1G', 'Lens mount')
+mirror = lab_catalog.create('mirror', 'M1', mount='MHV-25.4L-R', thickness=3)
+waveplate = lab_catalog.create('rotation', 'HWP', mount='FBR',
+                              thickness=1, retardance=0.5, fast_axis_angle=45)
+slit = lab_catalog.create('slit', 'Entrance slit', slit_width=1.0)
+coupler = lab_catalog.create('coupling', 'Output')  # POLARIS-K05T6
+legacy = lab_catalog.create('coupling', 'Legacy output', mount='KA05TA')
+```
+
+Mirror defaults remain POLARIS-K05VS2, Ø12.7 × 3 mm. Select POLARIS-K1VS2,
+MHV-12.7L-R or MHV-25.4L-R to derive optic diameter and front/rear seating from
+the selected mount. MHV parts are the rear-loading family, not VMHV.
+Rotation defaults to ELL16 with its HOM holder. FBR uses the same generic
+half-inch waveplate and Jones behavior without that holder; thickness must be
+positive and no greater than 4 mm. `retardance` is in waves and
+`fast_axis_angle` is in degrees. Iris accepts `aperture_diameter` (default 0.5).
+Changing optic thickness changes the nominal assembly and requires fit checking.
 
 Contracts are immutable dataclasses with versioned JSON serialization. Frames are directly component-local, in millimeters and fixed XYZ degrees. Optical frames use local +X along the beam; seating/interface frames use local +Z for the outward normal, and hole frames use local +Z for the hole axis. DOF axes are unit vectors in their named frame. `limits=None` means unknown; it never means zero travel. DOFs describe capabilities and affected parts, not exact pivots. `report_dofs(component, relative_to=layout)` expresses axes in the requested layout without changing any placements. FreeCAD shows read-only `AvailableDOFs` and `ComponentContract` properties.
 
@@ -24,17 +47,68 @@ Commercial thread designations are explicit and independent of the global metric
 | ID | Contents | DOFs |
 |---|---|---|
 | mirror | Generic Ø12.7 × 3 mm mirror; POLARIS-K05VS2 | Tip, tilt |
-| coupling | F260FC-1550; AD1109F; KA05TA; supplied rings accounted for | Tip, tilt, axial translation |
+| coupling | F260FC-1550; AD1109F; POLARIS-K05T6 (KA05TA optional); supplied rings accounted for | Tip, tilt, axial translation |
 | pbs | Generic 12.7 mm PBS; displacement center-piece support patch with register relief trenches | Fixed |
-| rotation | Generic Ø12.7 mm waveplate; ELL16; HOM holder; four generic cage screws | Optical-axis rotation |
+| rotation | Generic Ø12.7 mm waveplate; ELL16/HOM holder or FBR | Optical-axis rotation |
 | translation | XR25C, nominal payload attachment frame | Stage-axis translation |
 | iris | Fabricated fixed aperture plate; two round dowel mounting holes | Fixed |
+| slit | VA100 variable slit; fabricated 10 mm support; three nominal screws | Slit width (optical parameter) |
 
-The PBS support is an explicitly bounded patch of the displacement mount’s main center piece, not a newly qualified stand-alone bolt-on holder. External baseplates, fibers, cables, controllers, payloads, and their installation hardware are outside the component presets. No optical coupling-efficiency model is inferred from the mechanical collimator model.
+The PBS support is an explicitly bounded patch of the displacement mount’s main center piece, not a newly qualified stand-alone bolt-on holder. Baseplates, fibers, cables, controllers and stage payloads remain separate. BOM mounting-hardware requirements identify plate screws and pins; VA100 also includes nominal screw geometry. No optical coupling-efficiency model is inferred from the mechanical collimator model.
 
 The coupling uses the user-selected thread-end datum: the F260FC-1550 M11 thread-end plane aligns with the AD1109F opening, 2.9972 mm behind the collimator front. This is a measured nominal placement convention, not a claim of bottoming against the internal shoulder.
 
-The coupling preset removes the **front SM05KRR** from the installed KA05TA solid compound. The BOM retains it as an unused included accessory; the rear ring remains in its vendor position. Vendor adjusters and internal hardware remain static compounds, not articulated bodies. `bom()` lists separately instantiated optics, mounts, adapters, supports and external fasteners, and records included rings without requiring a second purchase.
+The coupling preset removes the front **POLARIS-SM05RR** from K05T6, retaining
+the rear ring. The BOM records the removed ring as an unused included accessory.
+The explicit KA05TA option removes its own front SM05KRR. Solid indices and
+mounting patterns are measured independently for each mount. The AD1109F shoulder
+sits at assembly X=8.0518 mm; the established collimator insertion is unchanged.
+K05T6 and AD1109F simplified SM05 envelopes overlap about 4.0825 mm³ within the
+thread engagement annulus (radius 6.4516–6.795 mm, X=8.0518–11.2268 mm).
+Acceptance excludes interference outside this region. Physical thread phase,
+torque and engagement under load remain unverified.
+
+## Native heights and VA100 support
+
+Heights are measured from the selected mounting face to the optical datum.
+There is no common-height constraint or compensating spacer.
+
+| Purchased part | Native height (mm) | Assembly height on plate (mm) | Plate operations |
+|---|---:|---:|---|
+| POLARIS-L05G | 12.7 | 12.7 | 1 M4 + 2 dowel bores |
+| POLARIS-L1G | 19.05 | 19.05 | 1 M4 + 2 dowel bores |
+| POLARIS-K1VS2 | 25.4 | 25.4 | 1 M4 + 2 dowel bores |
+| MHV-12.7L-R | 12.7 | 12.7 | 2 M4 + 2 dowel bores |
+| MHV-25.4L-R | 25.4 | 25.4 | 3 M4 + 2 dowel bores |
+| FBR | 14.3002 | 14.3002 | 2 receiving bores for included Ø3.175 mm pins |
+| VA100 | 17.78 | 27.78 with bracket | 2 M4; central slit screw ends in VA100 |
+| POLARIS-K05T6 | 12.7 | 12.7 | 1 M4 + 2 dowel bores |
+
+FBR's measured 14.3002 mm corresponds to the drawing's rounded 14.3 mm.
+Its included SM05RR is positioned against the selected optic in a static working
+copy. Its 3.20 mm × 5 mm plate bores are a custom nominal clearance selection;
+the source drawing supplies no receiving-hole fit tolerance. Its pins remain
+purchased solids, rather than being described as holes in the component contract.
+
+`slit_width` accepts finite values from 0 to 6 mm, including fully closed.
+The ideal interface clips along component-local Z, rotating with the component,
+inside the existing finite entrance field. It transmits or terminates ray
+centers without diffraction or Gaussian clipping calculations. Supplier VA100
+CAD remains at its reference opening, measured as 5.8928 mm; `slit_width` changes
+only the optical interface. Blade/linkage motion is not modeled. Bare
+`create('VA100', label)` returns the purchased reference part without a bracket
+or configured optical interface; use `create('slit', ...)` for the assembly.
+
+`VA100Bracket` reuses `Surface_Adapter`: thickness 10 mm, footprint 37 × 56.8 mm,
+providing at least 3 mm around the 9.652 × 50.8 mm measured seating footprint.
+Two M4 clearance holes are 25 mm apart along X, with accessible top counterbores.
+An underside counterbore accepts a nominal 8-32 × 3/8-inch screw into the VA100's
+6.35 mm-deep 8-32 attachment. Install this screw before attaching the bracket to
+the plate. Nominal engagement is 3.925 mm. Two M4 × 12 mm plate screws provide
+6.4 mm engagement. The bracket contract describes three clearance holes; its
+plate drilling footprint contains only the two M4 tap drills. Assembly contracts
+record both native and bracket mounting faces; the review report records the
+17.78 mm component height, 10 mm support and 27.78 mm total separately.
 
 ## Assets and acquisition
 
@@ -82,7 +156,7 @@ The example uses PyOpticL's `BeamPath` and the mirror reflection interfaces.
 An optical-only `Stop` at the receiving coupler's front datum terminates the
 trace; it adds no hardware to the BOM. The 1550 nm beam's 0.75 mm waist radius
 and 1 mW power are illustrative inputs, not measured collimator specifications.
-This demonstrates nominal alignment, not fiber coupling efficiency. The example now includes a machined baseplate with four M4 threaded mounting holes and four 2 mm pin holes. The saved
+This demonstrates nominal alignment, not fiber coupling efficiency. The example now includes a machined baseplate with four M4 threaded mounting holes and eight 2 mm pin holes. The saved
 native document includes the hardware, traced beam solids, contracts and BOM,
 and reopens without the vendor asset cache; the Python example rebuilds the
 live PyOpticL layout for editing.
@@ -90,8 +164,9 @@ live PyOpticL layout for editing.
 
 ## Integral machined baseplates
 
-`PyOpticL.machined_baseplate.optical_height()` derives the 12.7 mm optical height
-from the POLARIS mounting-face datum. Use this height for the layout, then call
+`lab_catalog.native_height(component)` derives the optical height from the selected
+mounting face, including real bracket thickness. Place each component at its own
+height above plate top Z=0, then call
 `plate, machining = machined_baseplate.add(layout)` before recomputing. The plate
 top is layout Z=0; thickness defaults to 12.7 mm and margin to 15 mm. Stock bounds
 round outward to a 5 mm grid. The two-mirror example produces a 320 × 180 mm plate.
@@ -99,33 +174,49 @@ round outward to a 5 mm grid. The two-mirror example produces a 320 × 180 mm pl
 The selected mounting face sits directly on the plate. If its datum lies below
 Z=0, a rectangular clearance pocket is machined down to that face; insufficient
 remaining stock fails explicitly. A face above Z=0 is rejected rather than given
-a spacer. Current POLARIS and KA05TA mounts both have a 12.7 mm optical height,
-so the example requires no pockets. Side-facing KA05TA mounting holes are an
+a spacer. The two-mirror example uses 12.7 mm mounts and requires no pockets. Side-facing KA05TA mounting holes are an
 alternative mounting orientation and do not become holes in a horizontal plate.
 
 Mounting coordinates are transformed from the pinned vendor CAD datums.
-`baseplate_interfaces.json` records the independently checked attachment
-pattern and drawing hashes. The plate uses explicit M4 × 0.7 threads in the
+`baseplate_interfaces.json` and `batch_mounting_profiles.json` record independently
+checked attachment patterns and drawing hashes. Shared `attachments.operations()`
+builds both ordinary baseplate drill footprints and machined-plate operations,
+including nested assembly placements. The plate uses explicit M4 × 0.7 threads in the
 vendor's #8/M4 clearance holes: Ø3.3 mm tap drills, 10 mm straight drill depth,
 8 mm nominal usable thread depth, with 118° drill tips. Thread helices are not
 modeled; the thread designation is recorded in the read-only `MachiningPlan`.
 The plate holes are threaded, while the purchased mount holes remain clearance
 holes. Exact screw length/head selection is not yet included in the example BOM.
 
-Each POLARIS mount gets both pins: native X=-5 mm (round feature) and X=+5 mm
+The original POLARIS-K05VS2 profile gets both pins: native X=-5 mm (round feature) and X=+5 mm
 (slotted feature). The mating plate has two round Ø2.01 mm holes, 4.445 mm deep,
 for 2 × 5 mm pins, following drawing revision C notes 1–2. Permitted diameter
 range is 2.0066–2.02184 mm; depth tolerance is +0.0508/-0 mm. A pin projects
 0.555 mm above the plate, within the mount's 1.905 mm blind depth. KA05TA has no
 documented mating dowel pattern, so no pin holes are invented for it.
 
+The batch profiles retain each part's own pin-hole recommendation. K05T6 uses
+4.699 ±0.127 mm straight depth and Ø2.00914–2.02184 mm plate bores; its two
+2 × 5 mm pins project 0.301 mm nominally. L05G and L1G use Ø2.002–2.008 mm
+bores, with depths 4.699 and 4.318 mm respectively, each ±0.127 mm. K1VS2
+uses 4.445 ±0.0508 mm depth and Ø2.00914–2.02184 mm bores. MHV profiles use
+the compatible nominal 2 × 5 mm convention with 0.555 mm projection, explicitly
+identified as a custom mating-plate selection rather than a vendor fit guarantee.
+No holes are added to purchased geometry. `ComponentContract.holes` describes
+component holes; machining operations describe distinct mating plate bores.
+
+Machining plans include `optical_heights_mm` per mounting object and
+`native_optical_heights_mm` for the selected support datum. The legacy scalar
+`optical_height_mm` remains a number for uniform-height layouts and is `null`
+for mixed heights. Contract serialization remains unchanged.
+
 The displacement PBS support is fused into the plate as one solid. Its existing
 clamp bore is recut after fusion so that the plate stock does not fill it. No
 holder-attachment holes are added. `machining.integrated_names` identifies the
 source support features for omission when exporting an assembly or BOM; the live
 features are hidden where a GUI is present. `examples/integral_pbs_plate.py` writes a separate fused PBS demonstration,
-exporting just the plate/support solid and the optic. The two-mirror example contains no PBS. Rotation and translation baseplate attachments are rejected
-until their installation profiles are independently verified.
+exporting just the plate/support solid and the optic. The two-mirror example contains no PBS. ELL16 and translation baseplate attachments remain unsupported; FBR has its
+own selected receiving-pin profile.
 
 `artifacts/two_mirror_coupling.machining.json` lists all drilling operations,
 source hashes and selected threads. No optical-table attachment pattern is added.
@@ -197,3 +288,20 @@ The Python example rebuilds the parametric source layout for editing.
 PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python tests/catalog/freecad_iris_acceptance.py
 PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python examples/iris_on_baseplate.py
 ```
+
+## Batch review and acceptance
+
+Run `examples/component_batch.py` with FreeCAD's Python to generate eight native-height
+samples, individual drilled plates (25 operations), contracts and BOMs in one
+static `artifacts/component_batch.FCStd` review document. The companion
+`component_batch.step` preserves solid geometry; `component_batch.report.json`
+includes source measurements, heights, machining plans, BOMs and fit qualifications.
+The saved document reopens without proxy classes or cache access. Rebuild the
+editable source layout through the example script.
+
+Run `tests/catalog/freecad_component_batch_acceptance.py` for source hashes,
+valid solids, seats, reflection, FBR Jones behavior, slit width/orientation,
+thread-envelope qualification, retaining-ring disposition, both plate workflows,
+nested rotations/translations, recomputation and isolation. Existing catalog,
+baseplate and fixed-iris suites remain regression requirements. See
+[the batch verification report](component-batch-verification.md) for delivered results.

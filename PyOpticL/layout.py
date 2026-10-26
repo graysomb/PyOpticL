@@ -275,6 +275,12 @@ class Component(Layout):
             # don't apply drilling to some groups
             if (getattr(self, "apply_drilling", True) and
                     obj.Proxy.object_group not in ["hardware", "optics", "beam_path"]):
+                if self.object_group == 'baseplate' and obj.Parent is not None:
+                    from PyOpticL import attachments
+                    # Profile-bearing mounts may be nested below optics/assemblies.
+                    # Traverse the enclosing layout once, not only direct peers.
+                    for mount, operation in attachments.plate_attachments(obj.Parent, obj):
+                        shape = shape.cut(attachments.bore(operation))
                 # gather peer objects
                 drill_objs = []
                 if obj.Parent != None:
@@ -288,6 +294,10 @@ class Component(Layout):
 
                 # apply drilling
                 for drill_obj in drill_objs:
+                    if self.object_group == 'baseplate':
+                        from PyOpticL import attachments
+                        if attachments.profile(drill_obj.Proxy):
+                            continue  # Already cut from the shared profile above.
                     if hasattr(drill_obj.Proxy, "drill"):
                         if (
                             hasattr(drill_obj.Proxy, "drill_groups")
@@ -298,6 +308,8 @@ class Component(Layout):
 
                         drill_obj.Proxy.compute_placement()
                         drill_shape = drill_obj.Proxy.drill()
+                        if drill_shape.isNull() or drill_shape.Volume < 1e-6:
+                            continue
                         drill_shape.Placement = (
                             obj.Placement.inverse() * drill_obj.Placement
                         )
@@ -342,7 +354,7 @@ class Component(Layout):
         """Recursively recompute all children of this object"""
 
         super().recompute()
-        if not self.computed_shape or getattr(self, "always_recompute_shape", False):
+        if not self.computed_shape or getattr(self, "always_recompute_shape", False) or self.object_group == 'baseplate':
             self.compute_shape()
             self.computed_shape = True
 

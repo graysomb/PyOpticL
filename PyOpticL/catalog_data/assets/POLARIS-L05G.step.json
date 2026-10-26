@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "POLARIS-L05G",
+  "product_url": "https://www.thorlabs.com/item/POLARIS-L05G",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/p/po/pol/polaris-l05g/ttn099184-e0w.step?v=0116022010",
+  "vendor_filename": "ttn099184-e0w.step",
+  "document_id": "ttn099184-e0w",
+  "revision": null,
+  "retrieved_at": "2026-10-26T18:08:30.050002+00:00",
+  "sha256": "8318b18cc1c38310475b5c9f54eddf69f144b947d86bb87155ab5850dd887d4a",
+  "kind": "step",
+  "cache_path": "objects/8318b18cc1c38310475b5c9f54eddf69f144b947d86bb87155ab5850dd887d4a/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

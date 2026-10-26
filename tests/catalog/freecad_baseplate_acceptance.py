@@ -16,7 +16,7 @@ class BaseplateTests(unittest.TestCase):
         cls.doc = App.newDocument('PlateAcceptance')
         cls.layout = Layout('Plate layout')
         h = machining.optical_height()
-        cls.assemblies = [cls.layout.add(catalog.create(kind,label),pos,angle)
+        cls.assemblies = [cls.layout.add(catalog.create(kind,label, **({'mount':'KA05TA'} if kind == 'coupling' else {})),pos,angle)
             for kind,label,pos,angle in [
                 ('coupling','input',(0,0,h),0),('mirror','first',(120,0,h),135),
                 ('mirror','second',(120,100,h),-45),('coupling','output',(240,100,h),180)]]

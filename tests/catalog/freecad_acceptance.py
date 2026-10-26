@@ -17,7 +17,7 @@ class FreeCADTests(unittest.TestCase):
     def setUpClass(cls):
         cls.document = App.newDocument('CatalogAcceptance')
         cls.root = Layout('root')
-        cls.parts = {name: cls.root.add(catalog.create(name,name), (i*160,0,0), (0,0,0))
+        cls.parts = {name: cls.root.add(catalog.create(name,name, **({'mount':'KA05TA'} if name == 'coupling' else {})), (i*160,0,0), (0,0,0))
                      for i,name in enumerate(catalog.CATALOG_IDS)}
         cls.root.recompute()
 

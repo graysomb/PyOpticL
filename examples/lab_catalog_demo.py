@@ -16,9 +16,8 @@ def build(output):
     source = App.newDocument('LabCatalogSource')
     layout = Layout('Lab catalog')
     assemblies = []
-    for kind, position in zip(lab_catalog.CATALOG_IDS,
-                             [(0,0,0),(80,0,0),(0,100,0),(90,100,0),(220,50,0),(220,100,0)],
-                             strict=True):
+    for i, kind in enumerate(lab_catalog.CATALOG_IDS):
+        position = ((i % 4) * 90, (i // 4) * 100, 0)
         assemblies.append(layout.add(lab_catalog.create(kind, kind), position, 0))
     layout.recompute()
     source.recompute()

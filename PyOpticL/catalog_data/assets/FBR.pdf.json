@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "FBR",
+  "product_url": "https://www.thorlabs.com/item/FBR",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/f/fb/fbr/fbr/ttn014187-e0w.pdf?v=0116112948",
+  "vendor_filename": "ttn014187-e0w.pdf",
+  "document_id": "ttn014187-e0w",
+  "revision": "A",
+  "retrieved_at": "2026-10-26T18:08:30.941538+00:00",
+  "sha256": "06e65a1af2332bebd3e53313fb01ca9a3896c344c00e6ffe3fd1230a3d37eeb5",
+  "kind": "pdf",
+  "cache_path": "objects/06e65a1af2332bebd3e53313fb01ca9a3896c344c00e6ffe3fd1230a3d37eeb5/source.pdf",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

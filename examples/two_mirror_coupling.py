@@ -51,7 +51,7 @@ def build(output=None):
         assert abs(segment.Proxy.distance-distance) < .01
         assert segment.Shape.isValid()
     assert segments[-1].EndObject.Label == 'Receiver front datum'
-    assert len(machining.plan['holes']) == 8  # Four M4 threads and four dowels.
+    assert len(machining.plan['holes']) == 12  # Four M4 threads and eight dowels.
     assert not machining.plan['pockets']  # Both mount types have 12.7 mm axis height.
 
     # Native static features reopen without Python proxies or the asset cache.
@@ -60,13 +60,13 @@ def build(output=None):
     information.addProperty('App::PropertyString', 'Description')
     information.Description = ('1550 nm nominal link: 120 + 100 + 120 mm. '
         f'Optical height {height:g} mm above the plate. Illustrative waist radius 0.75 mm, power 1 mW. '
-        'Integral machined baseplate, M4 tapped mounting holes and 2 mm dowel pins; no spacers. No fiber efficiency model.')
+        'Integral machined baseplate, POLARIS-K05T6 couplers, M4 tapped mounting holes and 2 mm dowel pins; no spacers. No fiber efficiency model.')
     information.addProperty('App::PropertyString', 'BOM')
     rows = [row for a in assemblies for row in lab_catalog.bom(a)]
     rows.append(dict(label='Machined baseplate',procurement='fabricated',quantity=1,
                      dimensions_mm=[*machining.plan['stock_bounds'][2:],machining.thickness]))
     rows.append(dict(label='2 mm x 5 mm DIN 7-m6 / ISO 2338 dowel pins',
-                     procurement='generic',quantity=4,modeled=False))
+                     procurement='generic',quantity=8,modeled=False))
     information.BOM = json.dumps(rows, indent=2)
     plate_feature = static.addObject('Part::Feature','Baseplate')
     plate_feature.Label = 'Machined baseplate — M4 and dowel pattern'

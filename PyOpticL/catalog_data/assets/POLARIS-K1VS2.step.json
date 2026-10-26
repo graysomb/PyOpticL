@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "POLARIS-K1VS2",
+  "product_url": "https://www.thorlabs.com/item/POLARIS-K1VS2",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/p/po/pol/polaris-k1vs2/polaris-k1vs2-e0w.step?v=1115074545",
+  "vendor_filename": "polaris-k1vs2-e0w.step",
+  "document_id": "polaris-k1vs2-e0w",
+  "revision": null,
+  "retrieved_at": "2026-10-26T18:07:50.560207+00:00",
+  "sha256": "45daa0030a7a8a226187c51684a2d81563c520aa358956d3ade124f546b2545e",
+  "kind": "step",
+  "cache_path": "objects/45daa0030a7a8a226187c51684a2d81563c520aa358956d3ade124f546b2545e/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

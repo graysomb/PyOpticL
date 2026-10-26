@@ -725,5 +725,917 @@
         "thread": "1/4-20 UNC"
       }
     ]
+  },
+  "POLARIS-L05G": {
+    "origin": [
+      13.28850354,
+      18.43958737,
+      26.57025165
+    ],
+    "rotation": [
+      90,
+      0,
+      90
+    ],
+    "datums": {
+      "mounting_face": [
+        13.28850354,
+        5.73958737,
+        18.57025165
+      ],
+      "optic_seat": [
+        13.28850354,
+        18.43958737,
+        26.57025165
+      ]
+    },
+    "holes": [
+      {
+        "name": "post",
+        "center": [
+          13.28850354,
+          5.73958737,
+          18.57025165
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.699,
+        "depth": null,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            13.28850354,
+            5.73958737,
+            15.91595165
+          ],
+          [
+            13.28850354,
+            5.73958737,
+            21.22455165
+          ]
+        ]
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          18.28850354,
+          5.73958737,
+          18.57025165
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          8.28850354,
+          5.73958737,
+          18.57025165
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            8.783933540000001,
+            5.73958737,
+            18.57025165
+          ],
+          [
+            7.793073540000001,
+            5.73958737,
+            18.57025165
+          ]
+        ]
+      }
+    ],
+    "dofs": [],
+    "native_optical_height_mm": 12.7,
+    "optic_diameter_mm": 12.7,
+    "datum_rotations": {
+      "optic_seat": [
+        0,
+        90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    },
+    "mount_slot_note": "Focus slot is represented at its central position; alternate focus translations require moving the optic/mount and rechecking alignment."
+  },
+  "POLARIS-L1G": {
+    "origin": [
+      25.49044907,
+      20.48974434,
+      35.81099828
+    ],
+    "rotation": [
+      90,
+      0,
+      90
+    ],
+    "datums": {
+      "mounting_face": [
+        25.49044907,
+        1.43974434,
+        27.81099828
+      ],
+      "optic_seat": [
+        25.49044907,
+        20.48974434,
+        35.81099828
+      ]
+    },
+    "holes": [
+      {
+        "name": "post",
+        "center": [
+          25.49044907,
+          1.43974434,
+          27.81099828
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.699,
+        "depth": null,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            25.49044907,
+            1.43974434,
+            25.15669828
+          ],
+          [
+            25.49044907,
+            1.43974434,
+            30.46529828
+          ]
+        ]
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          30.49044907,
+          1.43974434,
+          27.81099828
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          20.49044907,
+          1.43974434,
+          27.81099828
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            20.98587907,
+            1.43974434,
+            27.81099828
+          ],
+          [
+            19.99501907,
+            1.43974434,
+            27.81099828
+          ]
+        ]
+      }
+    ],
+    "dofs": [],
+    "native_optical_height_mm": 19.05,
+    "optic_diameter_mm": 25.4,
+    "datum_rotations": {
+      "optic_seat": [
+        0,
+        90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    },
+    "mount_slot_note": "Focus slot is represented at its central position; alternate focus translations require moving the optic/mount and rechecking alignment."
+  },
+  "POLARIS-K1VS2": {
+    "origin": [
+      0,
+      0,
+      -58.94908707
+    ],
+    "rotation": [
+      90,
+      0,
+      -90
+    ],
+    "datums": {
+      "mounting_face": [
+        0,
+        -25.4,
+        -49.9330045317
+      ],
+      "optic_seat": [
+        0,
+        0,
+        -58.94908707
+      ]
+    },
+    "holes": [
+      {
+        "name": "post",
+        "center": [
+          0,
+          -25.4,
+          -49.9330045317
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.699,
+        "depth": null,
+        "thread": null
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          -5.0038,
+          -25.4,
+          -49.9330045317
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          5.0038,
+          -25.4,
+          -49.9330045317
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            4.50837,
+            -25.4,
+            -49.9330045317
+          ],
+          [
+            5.49923,
+            -25.4,
+            -49.9330045317
+          ]
+        ]
+      }
+    ],
+    "dofs": [
+      "tip",
+      "tilt"
+    ],
+    "native_optical_height_mm": 25.4,
+    "optic_diameter_mm": 25.4,
+    "mirror_loading": "front",
+    "optic_thickness_range_mm": [
+      0,
+      8.763
+    ],
+    "datum_rotations": {
+      "optic_seat": [
+        0,
+        90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    }
+  },
+  "POLARIS-K05T6": {
+    "origin": [
+      -1.778,
+      1.778,
+      4.826
+    ],
+    "rotation": [
+      90,
+      0,
+      -90
+    ],
+    "datums": {
+      "mounting_face": [
+        -1.778,
+        -10.922,
+        -11.7023545243
+      ],
+      "adapter_seat": [
+        -1.778,
+        1.778,
+        4.826
+      ]
+    },
+    "holes": [
+      {
+        "name": "post",
+        "center": [
+          -1.778,
+          -10.922,
+          -11.7023545243
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.6228,
+        "depth": null,
+        "thread": null
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          3.222,
+          -10.922,
+          -11.7023545243
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          -6.778,
+          -10.922,
+          -11.7023545243
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            -6.28257,
+            -10.922,
+            -11.7023545243
+          ],
+          [
+            -7.27343,
+            -10.922,
+            -11.7023545243
+          ]
+        ]
+      }
+    ],
+    "dofs": [
+      "tip",
+      "tilt",
+      "axial"
+    ],
+    "native_optical_height_mm": 12.7,
+    "datum_rotations": {
+      "adapter_seat": [
+        0,
+        -90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    },
+    "coupling_excluded_solids": [
+      25
+    ],
+    "included_retaining_rings": {
+      "part": "POLARIS-SM05RR",
+      "front_solid": 25,
+      "rear_solid": 26,
+      "front_center_native": [
+        -1.778,
+        1.778,
+        3.98673
+      ],
+      "front_volume_mm3": 79.773
+    }
+  },
+  "MHV-12.7L-R": {
+    "origin": [
+      7,
+      0,
+      0
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "datums": {
+      "mounting_face": [
+        3.5,
+        0,
+        -12.7
+      ],
+      "optic_seat": [
+        7,
+        0,
+        0
+      ]
+    },
+    "holes": [
+      {
+        "name": "screw_left",
+        "center": [
+          -8.5,
+          -5.675,
+          -12.7
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 4.5,
+        "depth": null,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            -8.5,
+            -6.35,
+            -12.7
+          ],
+          [
+            -8.5,
+            -5,
+            -12.7
+          ]
+        ]
+      },
+      {
+        "name": "screw_right",
+        "center": [
+          -8.5,
+          5.675,
+          -12.7
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 4.5,
+        "depth": null,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            -8.5,
+            5,
+            -12.7
+          ],
+          [
+            -8.5,
+            6.35,
+            -12.7
+          ]
+        ]
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          3.5,
+          -5,
+          -12.7
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 2,
+        "depth": 1.5,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          3.5,
+          5,
+          -12.7
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 2,
+        "depth": 1.5,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            3.5,
+            4.5,
+            -12.7
+          ],
+          [
+            3.5,
+            5.5,
+            -12.7
+          ]
+        ]
+      }
+    ],
+    "dofs": [
+      "tip",
+      "tilt"
+    ],
+    "native_optical_height_mm": 12.7,
+    "optic_diameter_mm": 12.7,
+    "mirror_loading": "rear",
+    "optic_thickness_range_mm": [
+      2,
+      6
+    ],
+    "datum_rotations": {
+      "optic_seat": [
+        0,
+        90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    }
+  },
+  "MHV-25.4L-R": {
+    "origin": [
+      2,
+      -10,
+      0.4
+    ],
+    "rotation": [
+      0,
+      0,
+      90
+    ],
+    "datums": {
+      "mounting_face": [
+        2,
+        -6,
+        -25
+      ],
+      "optic_seat": [
+        2,
+        -10,
+        0.4
+      ]
+    },
+    "holes": [
+      {
+        "name": "screw_left",
+        "center": [
+          -10.6,
+          9.5,
+          -25
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 4.5,
+        "depth": null,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            -10.7,
+            9.5,
+            -25
+          ],
+          [
+            -10.5,
+            9.5,
+            -25
+          ]
+        ]
+      },
+      {
+        "name": "screw_middle",
+        "center": [
+          2,
+          9.5,
+          -25
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 4.5,
+        "depth": null,
+        "thread": null
+      },
+      {
+        "name": "screw_right",
+        "center": [
+          14.6,
+          9.5,
+          -25
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 4.5,
+        "depth": null,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            14.5,
+            9.5,
+            -25
+          ],
+          [
+            14.7,
+            9.5,
+            -25
+          ]
+        ]
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          -10.5,
+          -6,
+          -25
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 2,
+        "depth": 3,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          14.5,
+          -6,
+          -25
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "diameter": 2,
+        "depth": 3,
+        "thread": null,
+        "slot_arc_centers_native": [
+          [
+            14,
+            -6,
+            -25
+          ],
+          [
+            15,
+            -6,
+            -25
+          ]
+        ]
+      }
+    ],
+    "dofs": [
+      "tip",
+      "tilt"
+    ],
+    "native_optical_height_mm": 25.4,
+    "optic_diameter_mm": 25.4,
+    "mirror_loading": "rear",
+    "optic_thickness_range_mm": [
+      3,
+      7
+    ],
+    "datum_rotations": {
+      "optic_seat": [
+        0,
+        90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    }
+  },
+  "FBR": {
+    "origin": [
+      0,
+      0,
+      -1.3716
+    ],
+    "rotation": [
+      90,
+      0,
+      -90
+    ],
+    "datums": {
+      "mounting_face": [
+        0,
+        -14.3002,
+        -0.0127
+      ],
+      "optic_seat": [
+        0,
+        0,
+        -1.3716
+      ],
+      "pin_left": [
+        -6.35,
+        -14.3002,
+        -0.0127
+      ],
+      "pin_right": [
+        6.35,
+        -14.3002,
+        -0.0127
+      ]
+    },
+    "holes": [],
+    "dofs": [
+      "rotation"
+    ],
+    "native_optical_height_mm": 14.3002,
+    "optic_diameter_mm": 12.7,
+    "datum_rotations": {
+      "optic_seat": [
+        0,
+        90,
+        0
+      ],
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    },
+    "included_retaining_rings": {
+      "part": "SM05RR",
+      "solid": 5,
+      "native_contact_z": 2.9718,
+      "optic_seat_z": -1.3716
+    },
+    "pins_native": [
+      {
+        "center": [
+          -6.35,
+          -14.3002,
+          -0.0127
+        ],
+        "diameter": 3.175,
+        "projection": 4.7752
+      },
+      {
+        "center": [
+          6.35,
+          -14.3002,
+          -0.0127
+        ],
+        "diameter": 3.175,
+        "projection": 4.7752
+      }
+    ]
+  },
+  "VA100": {
+    "origin": [
+      0,
+      -1.6383,
+      4.6101
+    ],
+    "rotation": [
+      90,
+      0,
+      90
+    ],
+    "datums": {
+      "mounting_face": [
+        0,
+        -19.4183,
+        4.826
+      ],
+      "slit_center": [
+        0,
+        -1.6383,
+        4.6101
+      ]
+    },
+    "holes": [
+      {
+        "name": "post",
+        "center": [
+          0,
+          -19.4183,
+          4.826
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 3.4544,
+        "depth": 6.35,
+        "thread": "8-32 UNC"
+      }
+    ],
+    "dofs": [],
+    "native_optical_height_mm": 17.78,
+    "datum_rotations": {
+      "mounting_face": [
+        180,
+        0,
+        0
+      ]
+    },
+    "slit_width_range_mm": [
+      0,
+      6
+    ],
+    "nominal_slit_width_mm": 5.8928,
+    "blade_solids": [
+      1,
+      2
+    ],
+    "body_seating_footprint_mm": [
+      9.652,
+      50.8
+    ],
+    "clear_aperture_mm": 13.589
   }
 }

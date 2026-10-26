@@ -77,27 +77,29 @@ mounting hardware is outside the initial scope.
 ## Requested component additions
 
 Backlog recorded 2026-10-23. Product selections and design notes below are the
-requested additions; CAD, mounting interfaces and optical settings still need
-verification during implementation.
+requested additions. Entries 2–6 and 8 passed the batch acceptance checks on
+2026-10-26; see [the verification report](../component-batch-verification.md) for
+source evidence and remaining physical-fit qualifications.
 
 - [ ] **Monolithic grating mount and transmission grating:** CAD a monolithic
   mount with the grating set for operation at 1550 nm; determine the mounting
   angle during implementation. Selected grating:
   [Coherent® LightSmyth™ 1525–1565 nm, 1000 grooves/mm, 31.8 × 12.3 mm transmission diffraction grating](https://www.edmundoptics.com/p/ii-vi-lightsmytht-1525---1565nm-1000-groovesmm-318-x-123mm-transmission-diffraction-grating/44712/).
-- [ ] **Fixed Polaris lens mounts:** add both
+- [x] **Fixed Polaris lens mounts:** add both
   [POLARIS-L05G](https://www.thorlabs.com/item/POLARIS-L05G) and
   [POLARIS-L1G](https://www.thorlabs.com/item/POLARIS-L1G).
-- [ ] **1-inch Polaris mirror mount:** add
+- [x] **1-inch Polaris mirror mount:** add
   [POLARIS-K1VS2](https://www.thorlabs.com/item/POLARIS-K1VS2).
-- [ ] **½-inch and 1-inch OptoSigma mirror mounts:** add both sizes from the
+- [x] **½-inch and 1-inch OptoSigma mirror mounts:** add both sizes from the
   [top-adjust clear-edge mirror mount family](https://www.optosigma.com/us_en/opto-mechanical-components-2/mirror-mounts/top-adjust-mirror-mounts/top-adjust-clear-edge-mirror-mounts.html).
-  Exact part numbers remain to be selected.
-- [ ] **Waveplate mount:** add the Thorlabs
+  Implemented rear-loading **MHV-12.7L-R** and **MHV-25.4L-R**, at native heights.
+- [x] **Waveplate mount:** add the Thorlabs
   [FBR](https://www.thorlabs.com/item/FBR).
-- [ ] **Adjustable iris with a custom CAD mounting bracket:** add the Thorlabs
+- [x] **VA100 variable slit with a custom CAD mounting bracket:** add the Thorlabs
   [VA100](https://www.thorlabs.com/item/VA100?aID=c4d16e7217368a3d6b2f57305109823a&aC=2)
-  and design its mounting bracket. Tentative reference: a bracket similar to
-  PyOpticL's existing waveplate brackets.
+  with a 10 mm surface-adapter bracket, two M4 plate attachments and its 8-32
+  slit attachment. Optical width is configurable; mechanical CAD retains the
+  supplier reference pose. Native height 17.78 mm; assembly height 27.78 mm.
 - [ ] **HRS1015-P01 with a custom CAD mount:** add the Thorlabs
   [HRS1015-P01](https://www.thorlabs.com/item/HRS1015-P01) and design a mount
   that supports **both orientations**. Use
@@ -114,13 +116,14 @@ verification during implementation.
   can represent the full path or an explicit displaced-output interface is
   needed. Validate exit position, direction and optical path length in both
   orientations before integrating the component into beam layouts.
-- [ ] **Custom output coupler — missing dowel pins in drill contract:** the
-  user's custom output coupler is missing its dowel-pin holes from the drilling
-  contract. Verify the custom component's actual pin pattern against its CAD,
-  add the matching dowel bores to the drill contract and applicable baseplate
-  machining workflow, and check that generated holes follow component placement
-  and rotation. Pin count, spacing, diameter and depth must follow the custom
-  coupler's geometry rather than being inferred from another coupler preset.
+- [x] **Corrected output coupler and dowel drilling:** default to
+  [POLARIS-K05T6](https://www.thorlabs.com/item/POLARIS-K05T6), retaining F260FC-1550,
+  AD1109F and the selected insertion convention. Its own measured mounting profile
+  supplies one M4 operation and two documented dowel bores. KA05TA remains an
+  explicit legacy option with its existing screw-only pattern. SM05 nominal
+  envelopes pass the qualified interference check; physical thread phase remains
+  unverified. Native heights, nested drilling and ring disposition are covered
+  by batch acceptance.
 
 ## Degrees of freedom
 

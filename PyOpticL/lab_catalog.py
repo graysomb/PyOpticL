@@ -13,10 +13,14 @@ from PyOpticL.component_contract import ComponentContract, DOF, Frame, Hole, Mec
 from PyOpticL.layout import Component, Subcomponent
 from PyOpticL.vendor_cad import resolve
 from PyOpticL.library import optics
-from PyOpticL.beam_path import Stop
+from PyOpticL.beam_path import Interface, Stop
+from PyOpticL.library.adapters import Surface_Adapter
+from PyOpticL import attachments
 
 DATA = Path(__file__).with_name('catalog_data')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris')
+VENDOR_IDS = ('POLARIS-L05G', 'POLARIS-L1G', 'POLARIS-K1VS2',
+              'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit')
 
 
 def asset_record(part):
@@ -68,17 +72,38 @@ class VendorPart:
     object_group = 'mounts'
     apply_drilling = False
     object_color = (0.27, 0.28, 0.3)
+    drill_groups = ('baseplate',)
 
-    def __init__(self, part, contract=None, exclude_solids=()):
+    def __init__(self, part, contract=None, exclude_solids=(), optic_thickness=None):
         self.part = part
         self.part_numbers = [part]
         specification = json.loads((DATA / 'normalization.json').read_text())[part]
         self.origin, self.rotation = specification['origin'], specification['rotation']
         self._contract = contract
         self.exclude_solids = tuple(exclude_solids)
+        self.optic_thickness = optic_thickness
+
+    def baseplate_profile(self):
+        specification = json.loads((DATA / 'baseplate_interfaces.json').read_text()).get(self.part)
+        if specification is None:
+            specification = json.loads((DATA / 'batch_mounting_profiles.json').read_text()).get(self.part)
+        if specification and asset_record(self.part)['sha256'] != specification['step_sha256']:
+            raise ValueError('Mounting profile must be reverified for revised CAD: ' + self.part)
+        return specification
+
+    def drill(self):
+        return attachments.footprint(self)
 
     def shape(self):
         shape = vendor_shape(self.part)
+        if self.part == 'FBR' and self.optic_thickness is not None:
+            # Configure the included ring as one static working compound.
+            specification = json.loads((DATA / 'normalization.json').read_text())[self.part]
+            ring = specification['included_retaining_rings']
+            solids = [s.copy() for s in shape.Solids]
+            solids[ring['solid']].translate(App.Vector(0, 0,
+                ring['optic_seat_z'] + self.optic_thickness - ring['native_contact_z']))
+            shape = Part.makeCompound(solids)
         if self.exclude_solids:
             shape = Part.makeCompound([s for i, s in enumerate(shape.Solids) if i not in self.exclude_solids])
         return transform(shape, self.origin, self.rotation)
@@ -103,19 +128,22 @@ class VendorPart:
                               source=record['product_url']))
         pairs = connection_interfaces()
         interfaces = {'F260FC-1550': (replace(pairs['F260FC-1550'], frame='thread_end', seating='Barrel front datum; M11 thread-end datum aligned with adapter opening, 2.9972 mm from barrel front; user-specified nominal convention.'), pairs['fiber']),
-                      'AD1109F': (replace(pairs['AD1109F-in'], frame='collimator_opening', seating='M11 end faces the collimator; opposed to mount end.'), replace(pairs['AD1109F-out'], frame='mount_seat', engagement_mm=3.175, seating='Shoulder against KA05TA front; remove front SM05KRR.')),
+                      'AD1109F': (replace(pairs['AD1109F-in'], frame='collimator_opening', seating='M11 end faces the collimator; opposed to mount end.'), replace(pairs['AD1109F-out'], frame='mount_seat', engagement_mm=3.175, seating='Shoulder against selected SM05 mount front; remove its front retaining ring as specified by the assembly.')),
                       'KA05TA': (replace(pairs['KA05TA'], frame='adapter_seat', seating='Front plate plane; adapter enters along local +X.'),)}.get(self.part, ())
         if self.part == 'POLARIS-K05VS2':
             interfaces += (MechanicalInterface('dowel_slot', 'dowel_slot', 'slot',
                 seating='2.00914 mm wide alignment slot at native X=+5 mm; mates to one round 2 mm pin. Round feature at X=-5 mm.'),)
-        names = {'POLARIS-K05VS2': ('tip','tilt'), 'KA05TA': ('tip','tilt','axial'),
-                 'ELL16': ('rotation',)}.get(self.part, ())
+        if self.part == 'POLARIS-K05T6':
+            interfaces += (replace(pairs['POLARIS-K05T6'], frame='adapter_seat'),)
+        names = specification.get('dofs', {'POLARIS-K05VS2': ('tip','tilt'),
+            'KA05TA': ('tip','tilt','axial'), 'ELL16': ('rotation',)}.get(self.part, ()))
         if self.part == 'XR25C':
             frames.append(Frame('stage'))
             names = ('translation',)
-        return ComponentContract(self.part, '1', 'Thorlabs', self.part, 'purchased',
+        return ComponentContract(self.part, '1', 'OptoSigma' if record['vendor'] == 'optosigma' else 'Thorlabs', self.part, 'purchased',
             frames=tuple(frames), interfaces=interfaces, holes=tuple(holes),
             dofs=_dofs(names, 'attached optic' if self.part != 'XR25C' else 'payload', record['product_url']),
+            optical_reference='optical' if self.part in VENDOR_IDS else None,
             provenance=(Provenance(record['product_url'], 'documented', record['sha256'],
                 'Vendor nominal compound; see normalization and independent reference measurements.'),))
 
@@ -179,9 +207,7 @@ class AlignmentIris:
         return shape.removeSplitter()
 
     def drill(self):
-        profile = self.baseplate_profile()
-        return Part.makeCompound([_blind_bore(position, profile['dowel']['plate_diameter_mm'],
-            profile['dowel']['plate_depth_mm'], (0, 0, -1)) for position in self.pin_positions])
+        return attachments.footprint(self)
 
     def interfaces(self):
         # Same ideal aperture-stop behavior as the existing Thorlabs iris.
@@ -360,6 +386,121 @@ class Assembly:
                 for label, definition, position, rotation in self.children]
 
 
+class SlitStop(Interface):
+    """Finite circular entrance field clipped by a slit along local Z."""
+    def __init__(self, width):
+        super().__init__((0, 0, 0), (0, 0, 0), diameter=13.589)
+        self.slit_width = width
+
+    def get_output_beams(self, incident_beam):
+        point = self.get_intercept(incident_beam)
+        if point is None:
+            return []
+        local = self.parent.get_object().Placement.inverse().multVec(App.Vector(*point))
+        if abs(local.z) < self.slit_width / 2:
+            return super().get_output_beams(incident_beam)
+        return []
+
+
+class VariableSlit(VendorPart):
+    """Vendor reference CAD with a separately configured optical slit width."""
+    def __init__(self, slit_width=1.):
+        if not math.isfinite(slit_width) or not 0 <= slit_width <= 6:
+            raise ValueError('VA100 slit width must be finite and between 0 and 6 mm')
+        super().__init__('VA100')
+        self.slit_width = float(slit_width)
+
+    def contract(self):
+        contract = super().contract()
+        return replace(contract, provenance=contract.provenance + (
+            Provenance('VA100 nominal configuration', 'documented',
+                note=f'Optical slit width {self.slit_width:g} mm. All mechanical CAD remains in the '
+                     'supplier reference pose (measured center opening 5.8928 mm). Width does not '
+                     'articulate the blades, micrometer, or linkage; no motion simulation.'),))
+
+    def interfaces(self):
+        return [SlitStop(self.slit_width)]
+
+
+class VA100Bracket:
+    """Surface-adapter family sized around the measured slit seating footprint."""
+    object_group = 'adapters'
+    object_color = (.5, .7, .5)
+    apply_drilling = False
+    drill_groups = ('baseplate',)
+    part_numbers = []
+    height = 10.
+    spacing = 25.
+
+    def __init__(self):
+        specification = json.loads((DATA / 'normalization.json').read_text())['VA100']
+        self.native_height = specification['native_optical_height_mm']
+        rotation = App.Rotation('XYZ', *specification['rotation'])
+        self.seat = rotation.multVec(App.Vector(*specification['datums']['mounting_face']) -
+                                    App.Vector(*specification['origin']))
+        self.surface = Surface_Adapter(height=self.height, bolt_spacing=self.spacing,
+            min_length=max(12., specification['body_seating_footprint_mm'][1] + 6.),
+            bolt_types=['M4'])
+
+    def shape(self):
+        shape = self.surface.shape()
+        shape.rotate(App.Vector(), App.Vector(0, 0, 1), 90)
+        shape.translate(self.seat)
+        # Plate screws enter from above, outside the slit body's narrow X footprint.
+        for dx in (-self.spacing / 2, self.spacing / 2):
+            top = self.seat + App.Vector(dx, 0, .01)
+            shape = shape.cut(Part.makeCylinder(2.25, self.height + .02, top, App.Vector(0, 0, -1)))
+            shape = shape.cut(Part.makeCylinder(3.75, 4.41, top, App.Vector(0, 0, -1)))
+        # The slit screw is fitted before the bracket is installed on the plate.
+        bottom = self.seat - App.Vector(0, 0, self.height + .01)
+        shape = shape.cut(Part.makeCylinder(2.25, self.height + .02, bottom))
+        shape = shape.cut(Part.makeCylinder(3.75, 4.41, bottom))
+        return shape.removeSplitter()
+
+    def contract(self):
+        floor = self.seat - App.Vector(0, 0, self.height)
+        frames = [Frame('optical'), Frame('mounting_face', tuple(floor)),
+                  Frame('slit_attachment', tuple(self.seat))]
+        holes = [Hole('slit_attachment', 'slit_attachment', 4.5, self.height,
+                      counterbore_mm=7.5, source='Fabricated clearance for VA100 8-32 attachment screw')]
+        for name, dx in zip(('plate_left', 'plate_right'), (-self.spacing / 2, self.spacing / 2)):
+            frames.append(Frame(name, tuple(floor + App.Vector(dx, 0, 0))))
+            holes.append(Hole(name, name, 4.5, self.height, counterbore_mm=7.5,
+                              source='Custom bracket M4 clearance, 25 mm spacing along beam axis'))
+        return ComponentContract('va100-bracket', '1', 'Lab', '', 'fabricated',
+            frames=tuple(frames), holes=tuple(holes), optical_reference='optical',
+            provenance=(Provenance('PyOpticL Surface_Adapter; VA100 engineering drawing', 'documented',
+                note='10 mm adapter; seating footprint plus 3 mm margin; three clearance bores. '
+                     'Two accessible top M4 screw counterbores and one underside 8-32 screw counterbore.'),))
+
+    def baseplate_profile(self):
+        return dict(seat_frame='mounting_face', screws=['plate_left', 'plate_right'], dowels=[],
+                    optical_height_mm=self.native_height + self.height,
+                    source='Fabricated VA100 surface adapter, 25 mm M4 pattern; VA100 drawing M')
+
+    def drill(self):
+        return attachments.footprint(self)
+
+
+def native_height(component):
+    """Optical center above the selected seating face, including physical adapters."""
+    contract = component.contract() if hasattr(component, 'contract') else None
+    frames = {f.name: f for f in contract.frames} if contract else {}
+    if 'mounting_face' in frames:
+        return frames['optical'].position[2] - frames['mounting_face'].position[2]
+    heights = []
+    for child in component.get_object().Children:
+        if attachments.profile(child.Proxy):
+            heights.append(native_height(child.Proxy) - child.BasePlacement.Base.z)
+        elif child.Children:
+            heights.append(native_height(child.Proxy) - child.BasePlacement.Base.z)
+    if not heights:
+        raise ValueError('No selected mounting face for ' + (contract.catalog_id if contract else 'component'))
+    if max(heights) - min(heights) > .01:
+        raise ValueError('Assembly has inconsistent seating heights')
+    return heights[0]
+
+
 def _dofs(names, affects, source):
     axes = {'tip': (0, 1, 0), 'tilt': (0, 0, 1), 'axial': (1, 0, 0), 'rotation': (1, 0, 0), 'translation': (1, 0, 0)}
     return tuple(DOF(n, 'translation' if n in ('axial', 'translation') else 'rotation',
@@ -368,10 +509,11 @@ def _dofs(names, affects, source):
 
 def _contract(kind, part, names, frames=None):
     frames = frames or (Frame('origin'), Frame('optical'))
+    source = asset_record(part)['product_url']
     return ComponentContract(kind, '1', 'Lab', '', 'assembly', frames=frames,
-        dofs=_dofs(names, 'optic' if kind != 'translation' else 'payload', 'https://www.thorlabs.com/item/' + part),
+        dofs=_dofs(names, 'optic' if kind != 'translation' else 'payload', source),
         optical_reference=None if kind == 'translation' else 'optical',
-        provenance=(Provenance('https://www.thorlabs.com/item/' + part, 'documented'),))
+        provenance=(Provenance(source, 'documented'),))
 
 
 def connection_interfaces():
@@ -381,6 +523,8 @@ def connection_interfaces():
         'AD1109F-in': MechanicalInterface('collimator', 'optical', 'thread', Thread('M11 x 0.5', 'internal', 11, .5), engagement_mm=2.9972, seating='User-specified nominal thread-end alignment; available internal depth 6.35 mm.'),
         'AD1109F-out': MechanicalInterface('mount', 'optical', 'thread', Thread('SM05 (0.535-40)', 'external', 13.589, .635)),
         'KA05TA': MechanicalInterface('bore', 'optical', 'thread', Thread('SM05 (0.535-40)', 'internal', 13.589, .635)),
+        'POLARIS-K05T6': MechanicalInterface('bore', 'optical', 'thread', Thread('SM05 (0.535-40)', 'internal', 13.589, .635),
+            seating='AD1109F shoulder at front plate; remove the front POLARIS-SM05RR retaining ring.'),
         'fiber': MechanicalInterface('fiber', 'optical', 'fiber', connector='FC/PC'),
     }
 
@@ -388,42 +532,88 @@ def connection_interfaces():
 def create(catalog_id, label, **parameters):
     """Construct an ordinary Component. Recompute it using the existing API.
 
-    Supported parameters: mirror/waveplate thickness (mm), waveplate retardance,
-    and iris aperture_diameter (mm). Unknown options fail explicitly.
+    Parameters select mounts, optic thickness (mm), waveplate retardance/axis,
+    iris aperture_diameter (mm) or slit_width (mm). Unknown options fail explicitly.
     """
+    if catalog_id in VENDOR_IDS:
+        if parameters:
+            raise TypeError('Bare vendor mounts do not accept assembly parameters')
+        return Component(label, VendorPart(catalog_id))
     if catalog_id not in CATALOG_IDS:
         raise KeyError('Unknown lab catalog ID: ' + catalog_id)
-    allowed = {'mirror': {'thickness'}, 'rotation': {'thickness', 'retardance'},
-               'iris': {'aperture_diameter'}}.get(catalog_id, set())
+    allowed = {'mirror': {'thickness', 'mount'}, 'rotation': {'thickness', 'retardance', 'mount', 'fast_axis_angle'},
+               'iris': {'aperture_diameter'}, 'coupling': {'mount'}, 'slit': {'slit_width'}}.get(catalog_id, set())
     if set(parameters) - allowed:
         raise TypeError('Unsupported parameters: ' + ', '.join(sorted(set(parameters) - allowed)))
-    if 'thickness' in parameters and parameters['thickness'] <= 0:
+    if 'thickness' in parameters and (not math.isfinite(parameters['thickness']) or parameters['thickness'] <= 0):
         raise ValueError('Thickness must be positive')
     if catalog_id == 'iris':
         return Component(label, AlignmentIris(**parameters))
     if catalog_id == 'mirror':
         thickness = parameters.get('thickness', 3.)
-        mount = VendorPart('POLARIS-K05VS2')
-        definition = optics.Circular_Mirror(diameter=12.7, thickness=thickness, mount_definition=mount)
-        definition.contract = lambda: replace(_contract('mirror', 'POLARIS-K05VS2', ('tip', 'tilt')), procurement='generic')
+        part = parameters.get('mount', 'POLARIS-K05VS2')
+        if part not in ('POLARIS-K05VS2', 'POLARIS-K1VS2', 'MHV-12.7L-R', 'MHV-25.4L-R'):
+            raise ValueError('Unsupported mirror mount: ' + part)
+        spec = json.loads((DATA / 'normalization.json').read_text())[part]
+        bounds = spec.get('optic_thickness_range_mm', (0, math.inf))
+        if not bounds[0] <= thickness <= bounds[1]:
+            raise ValueError('Mirror thickness is outside the selected mount range')
+        mount = VendorPart(part)
+        offset = (0, 0, 0) if spec.get('mirror_loading') == 'rear' else (-thickness, 0, 0)
+        definition = optics.Circular_Mirror(diameter=spec.get('optic_diameter_mm', 12.7),
+            thickness=thickness, mount_definition=mount, mount_offset=offset)
+        definition.contract = lambda: replace(_contract('mirror', part, ('tip', 'tilt')), procurement='generic')
         return Component(label, definition)
+    if catalog_id == 'slit':
+        definition = VariableSlit(parameters.get('slit_width', 1.))
+        bracket = VA100Bracket()
+        children = [('slit', definition, (0, 0, 0), (0, 0, 0)),
+                    ('bracket', bracket, (0, 0, 0), (0, 0, 0)),
+                    ('8-32 attachment screw', NominalScrew('8-32 UNC x 3/8 in', 4.1656, .79375,
+                        9.525, 7.14, 4.166), tuple(bracket.seat - App.Vector(0, 0, 5.6)), (180, 0, 0))]
+        children.extend((f'M4 plate screw {dx:g}', NominalScrew('M4 x 0.7 x 12 mm', 4, .7, 12, 7, 4),
+                         tuple(bracket.seat + App.Vector(dx, 0, -4.4)), (0, 0, 0))
+                        for dx in (-12.5, 12.5))
+        contract = ComponentContract('slit', '1', 'Lab', '', 'assembly',
+            frames=(Frame('optical'), Frame('native_mounting_face', tuple(bracket.seat)),
+                    Frame('mounting_face', tuple(bracket.seat - App.Vector(0, 0, 10)))),
+            optical_reference='optical', provenance=definition.contract().provenance)
+        return Component(label, Assembly(contract, children))
     if catalog_id == 'coupling':
+        part = parameters.get('mount', 'POLARIS-K05T6')
+        if part not in ('KA05TA', 'POLARIS-K05T6'):
+            raise ValueError('Unsupported coupling mount: ' + part)
+        spec = json.loads((DATA / 'normalization.json').read_text())[part]
+        exclusions = (6,) if part == 'KA05TA' else spec['coupling_excluded_solids']
         # Each transform is measured in the source STEP coordinate system.
         children = [
             ('collimator', VendorPart('F260FC-1550'), (0, 0, 0), (0, 0, 0)),
             ('adapter', VendorPart('AD1109F'), (0, 0, 0), (0, 0, 0)),
-            ('mount', VendorPart('KA05TA', exclude_solids=(6,)), (8.0518, 0, 0), (0, 0, 0)),
+            ('mount', VendorPart(part, exclude_solids=exclusions), (8.0518, 0, 0), (0, 0, 0)),
         ]
-        contract = replace(_contract('coupling', 'KA05TA', ('tip', 'tilt', 'axial')), provenance=(Provenance('https://www.thorlabs.com/item/AD1109F', 'cad_verified', note='User-specified nominal placement: M11 thread-end plane aligned with AD1109F opening, 2.9972 mm from barrel front. SM05 shoulder seated against KA05TA. This is a static datum convention, not a thread torque or bottoming model.'),))
+        contract = replace(_contract('coupling', part, ('tip', 'tilt', 'axial')), provenance=(Provenance('https://www.thorlabs.com/item/AD1109F', 'documented', note='User-specified nominal placement: M11 thread-end plane aligned with AD1109F opening, 2.9972 mm from barrel front. SM05 shoulder seated against '+part+'. Front retaining ring removed. Static datum convention, not a torque or bottoming model. K05T6 simplified SM05 envelopes overlap only inside the nominal engagement annulus; physical thread phase is unverified.'),))
     elif catalog_id == 'pbs':
         definition = optics.Beamsplitter_Cube(side_length=12.7, ref_polarization=0,
             mount_definition=DisplacementPBSHolder(), mount_offset=(0, 0, 0))
         children = [('optic', definition, (0, 0, 0), (0, 0, 0))]
         contract = ComponentContract('pbs', '2', 'Lab', '', 'assembly', frames=(Frame('optical'),), optical_reference='optical', provenance=(Provenance('Data/Displacement setup/Displacement Mount Assembly.step', 'cad_verified', note='Center-piece PBS seat with relief trenches; fixed nominal placement.'),))
     elif catalog_id == 'rotation':
-        mount = VendorPart('ELL16')
+        part = parameters.get('mount', 'ELL16')
+        if part not in ('ELL16', 'FBR'):
+            raise ValueError('Unsupported rotation mount: ' + part)
+        thickness = parameters.get('thickness', 1.)
+        if part == 'FBR' and thickness > 4:
+            raise ValueError('FBR supports optics up to 4 mm thick')
+        for key in ('retardance', 'fast_axis_angle'):
+            if not math.isfinite(parameters.get(key, 0)):
+                raise ValueError(key + ' must be finite')
+        mount = VendorPart(part, optic_thickness=thickness if part == 'FBR' else None)
         definition = optics.Circular_Waveplate(diameter=12.7, thickness=parameters.get('thickness', 1.),
-            retardance=parameters.get('retardance', .5), mount_definition=mount, mount_offset=(0, 0, 0))
+            retardance=parameters.get('retardance', .5), fast_axis_angle=parameters.get('fast_axis_angle', 0),
+            mount_definition=mount, mount_offset=(thickness / 2 if part == 'FBR' else 0, 0, 0))
+        if part == 'FBR':
+            contract = _contract('rotation', part, ('rotation',))
+            return Component(label, Assembly(contract, [('optic', definition, (0, 0, 0), (0, 0, 0))]))
         children = [('optic', definition, (0, 0, 0), (0, 0, 0)),
                     ('holder', HOMHolder('rotation-holder'), (0, 0, 0), (0, 0, 0))]
         children.extend((f'cage screw {y} {z}', NominalScrew('4-40 UNC x 3/16 in',2.8448,.635,4.7625,4.76,2.84), (13,y,z),(0,90,0)) for y in (-15,15) for z in (-15,15))
@@ -443,8 +633,20 @@ def bom(component):
         if hasattr(proxy, 'contract'):
             c = proxy.contract()
             if c.procurement != 'assembly':
-                rows.append(dict(path=path, catalog_id=c.catalog_id, part_number=c.part_number,
-                                 manufacturer=c.manufacturer, procurement=c.procurement, quantity=1))
+                row = dict(path=path, catalog_id=c.catalog_id, part_number=c.part_number,
+                           manufacturer=c.manufacturer, procurement=c.procurement, quantity=1)
+                if c.part_number in VENDOR_IDS:
+                    row['excluded_vendor_solids'] = list(getattr(proxy, 'exclude_solids', ()))
+                    mounting = attachments.profile(proxy)
+                    if mounting:
+                        row['mounting_hardware'] = []
+                        if mounting['screws']:
+                            row['mounting_hardware'].append(dict(kind='M4 mounting screws', quantity=len(mounting['screws']),
+                                note='Length/head selected for installation stack; plate uses M4 threads.'))
+                        if mounting['dowels']:
+                            row['mounting_hardware'].append(dict(kind=mounting['dowel']['pin'],
+                                quantity=len(mounting['dowels']), included=c.part_number == 'FBR'))
+                rows.append(row)
         elif hasattr(proxy, 'shape'):
             rows.append(dict(path=path, catalog_id='', part_number='', manufacturer='', procurement='generic', quantity=1))
         for child in obj.Children:
@@ -457,6 +659,21 @@ def bom(component):
                 part_number='SM05KRR', manufacturer='Thorlabs', procurement='included',
                 quantity=1, disposition=state, included_in='KA05TA')
                 for state in ('installed rear ring (in vendor compound)', 'uninstalled front ring; removed for AD1109F')])
+        elif row['part_number'] == 'POLARIS-K05T6':
+            spec = json.loads((DATA / 'normalization.json').read_text())['POLARIS-K05T6']['included_retaining_rings']
+            rows.extend(dict(path=row['path'] + '/' + side + ' retaining ring', catalog_id=spec['part'],
+                part_number=spec['part'], manufacturer='Thorlabs', procurement='included', quantity=1,
+                included_in='POLARIS-K05T6', disposition=('uninstalled; removed for AD1109F' if
+                    spec[side + '_solid'] in row['excluded_vendor_solids'] else 'installed in vendor compound'))
+                for side in ('front', 'rear'))
+        elif row['part_number'] in ('POLARIS-L05G', 'POLARIS-L1G'):
+            rows.append(dict(path=row['path']+'/included washer', catalog_id='flat washer', part_number='',
+                manufacturer='Thorlabs', procurement='included', quantity=1, included_in=row['part_number'],
+                disposition='Included #8/M4 flat washer per drawing; not present in supplier STEP'))
+        elif row['part_number'] == 'FBR':
+            rows.append(dict(path=row['path']+'/SM05RR', catalog_id='SM05RR', part_number='SM05RR',
+                manufacturer='Thorlabs', procurement='included', quantity=1, included_in='FBR',
+                disposition='Installed retaining ring; positioned against optic when assembled'))
     return rows
 
 
