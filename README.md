@@ -86,11 +86,32 @@ not execute the macro or modify an existing CAD layout.
 - Move parts on the drawing grid, rotate with **R**, and use the grid/angle snap
   controls for 45° or 90° drawing. Double-click a connection to add an editable
   bend. Select a part, connection, or bend and press **Delete** to remove it.
+- **Part bounds** toggles physical XY bounding circles, **off by default**.
+  Each circle is centered on the part's optical/placement origin and conservatively
+  encloses its modeled body, mounts, adapters, and attached hardware, including
+  hidden hardware. Select an element to read the radius and diameter in mm.
+  With nothing selected, change **Bounds scale (canvas units/mm)** to resize all
+  circles together (default 4); **Refresh bounds** recalculates cached geometry.
+  Visibility and scale are saved with the drawing and support undo/redo.
+  Circle sizes share a scale, while schematic positions remain topological:
+  overlapping circles do not constitute a physical collision check. Missing
+  geometry is reported in the inspector without blocking editing or export.
 - Select a beam connection, enable **Constrain beam length**, and enter its
   **Length (mm)** in the inspector. The constraint belongs to the beam between
   the two optical interaction points, independently of connection click order.
   Uncheck it to use the document's default beam length (or default open beam
-  length for an open output). Splitter branches can have independent lengths.
+  length for an open output), adjusted when needed to satisfy pinned positions.
+  The beam inspector shows the resolved length. Splitter branches can have independent lengths.
+- Select an optical element and enable **Constrain position** to pin its optical
+  interaction point to absolute physical **X (mm)** and **Y (mm)** coordinates.
+  Unchecking it restores automatic placement; an unconstrained source starts at
+  the origin. Pins persist with the element through drawing edits, save/load,
+  and undo/redo. The compiler adjusts unconstrained beam lengths, keeping them
+  close to their defaults, to reach pinned positions along the current beam
+  directions. Source direction and optic turns keep their existing values or
+  port defaults; this does not solve for new angles. Incompatible pins, explicit
+  lengths, or routing angles block export with a diagnostic on the element.
+  Physical pins and lengths have no effect on the scale of the drawn schematic.
 - Select a mirror or beamsplitter, enable **Constrain angle** in the element's
   inspector, and enter **Turn (deg)** or **Reflected turn (deg)**. Positive
   turns counterclockwise and negative clockwise in the physical XY plane;
@@ -162,6 +183,13 @@ with `QT_QPA_PLATFORM=offscreen`; FreeCAD supplies Qt for normal workbench use.
 For actual CAD/beam integration tests, execute
 `tests/schematic_freecad.py` inside FreeCAD. That test suite creates and closes
 its own documents and preserves existing designs.
+
+Every CAD `Component` exposes `get_xy_bounding_circle(include_children=True)`.
+It returns an immutable `BoundingCircleXY` with `center_mm == (0, 0)`,
+`radius_mm`, and `diameter_mm`, in the component's local XY plane. Set
+`include_children=False` to bound only its own body. Missing physical geometry
+raises `PyOpticL.bounds.BoundsUnavailable`; visibility and drilling-clearance
+envelopes do not affect the result.
 
 The portable connection API uses unordered endpoints, for example
 `Connection(id, Endpoint(lens_id, "B"), Endpoint(source_id, "beam"))`.

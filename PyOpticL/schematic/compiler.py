@@ -5,8 +5,10 @@ from dataclasses import dataclass, field
 from math import atan2, cos, degrees, hypot, radians, sin
 from pprint import pformat
 
+from .constraints import POSITION_TOLERANCE, resolve_position_lengths
 from .model import connection_length, document_from_dict, interface_turn, _finite
-from .registry import MIN_BEAM_TURN, SYMBOLS, default_turn, incident_heading, parameter_values, supports_beam_turn
+from .parts import part_spec
+from .registry import MIN_BEAM_TURN, SYMBOLS, incident_heading, parameter_values, supports_beam_turn
 from .topology import Diagnostic, resolve_topology
 
 
@@ -16,6 +18,7 @@ class Compilation:
     diagnostics: list[Diagnostic]
     object_map: dict[str, str] = field(default_factory=dict)
     placements: dict = field(default_factory=dict)
+    lengths: dict[str, float] = field(default_factory=dict)
 
     @property
     def ok(self):
@@ -44,7 +47,7 @@ def validate_schematic(document):
                 diagnostics.append(Diagnostic(f"{node.reference}: invalid {spec.label}", node.id))
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
-        allowed = {"x", "y", "angle"} if symbol.role == "source" else set()
+        allowed = {"x", "y", "angle"} if symbol.role == "source" else {"x", "y"}
         if node.kind in ("mirror", "splitter"):
             allowed.add("turn")
         for name, value in node.physical.items():
@@ -81,11 +84,11 @@ def _number(value):
     return 0.0 if abs(result) < 1e-9 else result
 
 
-def _placements(document, topology):
+def _placements(document, topology, lengths=None):
     nodes = {node.id: node for node in document.nodes}
     source = nodes[topology.source_id]
     connections = {edge.id: edge for edge in document.connections}
-    positions, order = {}, []
+    positions, order, headings = {}, [], {}
     queue = deque([(source.id, source.physical.get("x", 0), source.physical.get("y", 0), source.physical.get("angle", 0))])
     while queue:
         node_id, x, y, incoming = queue.popleft()
@@ -112,38 +115,16 @@ def _placements(document, topology):
             if node.kind == "mirror" or edge.interaction == "reflected":
                 heading += turn
             target = nodes[edge.target.node_id]
-            distance = connection_length(document, connections[edge.id])
+            headings[edge.id] = heading
+            distance = lengths[edge.id] if lengths is not None else connection_length(document, connections[edge.id])
             queue.append((target.id, x + distance * cos(radians(heading)),
                           y + distance * sin(radians(heading)), heading))
-    return source, order, positions
+    return source, order, positions, headings
 
 
 def _definition(document, node, topology):
-    """Only registry-controlled identifiers become executable source."""
-    p = f"PARAMETERS[{node.reference!r}]"
-    mounted = node.preset == "mounted"
-    if node.kind == "mirror":
-        mount = ", mount_definition=thorlabs.Mirror_Mount_K05S1()" if mounted else ""
-        return f"optics.Circular_Mirror(**{p}{mount})"
-    if node.kind == "lens":
-        mount = ", mount_definition=thorlabs.Lens_Mount_L05G()" if mounted else ""
-        return f"optics.Spherical_Lens(**{p}{mount})"
-    if node.kind in ("hwp", "qwp"):
-        mount = ", mount_definition=thorlabs.Rotation_Mount_RSP05()" if mounted else ""
-        retardance = 0.5 if node.kind == "hwp" else 0.25
-        return f"optics.Circular_Waveplate(retardance={retardance}, **{p}{mount})"
-    if node.kind == "splitter":
-        factory = "Beamsplitter_Cube_on_Surface_Adapter" if node.preset == "surface_adapter" else "Beamsplitter_Cube"
-        canonical_turn = default_turn(node.kind, topology.incident_ports.get(node.id))
-        turn = interface_turn(document, node, topology)
-        return f"optics.{factory}(rotate_cube={(turn > 0) != (canonical_turn > 0)!r}, **{p})"
-    if node.kind == "iris":
-        return f"thorlabs.Iris_IDA12(**{p})"
-    if node.kind in ("fiber_source", "fiber_output"):
-        return "thorlabs.Fiberport_PAF2A4A()"
-    if node.kind == "stop":
-        return f"optics.Beam_Stop(**{p})"
-    raise ValueError(node.kind)
+    """Render the same registry-controlled specification used for CAD bounds."""
+    return part_spec(document, node, topology).render(f"PARAMETERS[{node.reference!r}]")
 
 
 def compile_schematic(document):
@@ -155,7 +136,18 @@ def compile_schematic(document):
     if diagnostics:
         return Compilation("", diagnostics)
     topology = resolve_topology(document)
-    source, order, placements = _placements(document, topology)
+    source, order, placements, headings = _placements(document, topology)
+    lengths = {edge.id: connection_length(document, edge) for edge in document.connections}
+    if any(node.id != source.id and ("x" in node.physical or "y" in node.physical)
+           for node in document.nodes):
+        lengths, position_errors = resolve_position_lengths(document, topology, headings)
+        if position_errors:
+            return Compilation("", position_errors, placements=placements)
+        source, order, placements, _ = _placements(document, topology, lengths)
+        for node in order:
+            for axis, key in enumerate(("x", "y")):
+                if key in node.physical and abs(placements[node.reference][axis] - node.physical[key]) > POSITION_TOLERANCE:
+                    diagnostics.append(Diagnostic(f"{node.reference}: position constraint could not be satisfied within {POSITION_TOLERANCE:g} mm", node.id))
     physical_nodes = [node for node in order if node.kind not in ("source", "output")]
     for index, node in enumerate(physical_nodes):
         x, y, _ = placements[node.reference]
@@ -164,14 +156,14 @@ def compile_schematic(document):
             if hypot(x - ox, y - oy) < 1e-6:
                 diagnostics.append(Diagnostic(f"{node.reference} overlaps {other.reference}; change physical distances or turns", node.id))
     if diagnostics:
-        return Compilation("", diagnostics, placements=placements)
+        return Compilation("", diagnostics, placements=placements, lengths=lengths)
     object_map = {node.id: node.reference for node in order}
     nodes = {node.id: node for node in order}
     expected = [(nodes[edge.source.node_id].reference, edge.interaction,
                  None if nodes[edge.target.node_id].kind == "output" else nodes[edge.target.node_id].reference)
                 for edge in sorted(topology.edges.values(), key=lambda e: (nodes[e.source.node_id].reference, e.interaction))]
     open_lengths = {(nodes[edge.source.node_id].reference, edge.interaction):
-                    connection_length(document, document.connection(edge.id))
+                    lengths[edge.id]
                     for edge in topology.edges.values() if nodes[edge.target.node_id].kind == "output"}
     parameters = {node.reference: parameter_values(node) for node in physical_nodes
                   if node.kind != "fiber_source"}
@@ -219,4 +211,4 @@ def compile_schematic(document):
         f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r}, open_lengths=OPEN_LENGTHS)",
         "    return layout", "", "", "if __name__ == '__main__':", "    build_layout()", "",
     ])
-    return Compilation("\n".join(lines), [], object_map, placements)
+    return Compilation("\n".join(lines), [], object_map, placements, lengths)

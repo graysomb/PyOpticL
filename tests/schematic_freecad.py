@@ -5,12 +5,18 @@
 Creates and closes its own test documents; existing designs are preserved.
 """
 
+import math
 import unittest
 import FreeCAD as App
 
+from PyOpticL.bounds import BoundsUnavailable
+from PyOpticL.layout import Component
 from PyOpticL.schematic import Connection, Endpoint, Schematic, compile_schematic
+from PyOpticL.schematic.bounds import BoundsProvider
 from PyOpticL.schematic.model import new_id
+from PyOpticL.schematic.parts import part_spec
 from PyOpticL.schematic.registry import REFLECTION, TRANSMISSION, SYMBOLS
+from PyOpticL.schematic.topology import resolve_topology
 
 
 def connect(document, source, target, port=None, target_port=None):
@@ -145,6 +151,15 @@ class FreeCADSchematicTests(unittest.TestCase):
             document.nodes[1].physical["turn"] = turn
             self.build(document)
 
+    def test_pinned_positions_resolve_lengths_and_reach_the_traced_optics(self):
+        document = chain("source", "mirror", "stop")
+        document.nodes[-1].physical.update(x=100, y=75)
+        layout = self.build(document)
+        objects = {child.Label: child for child in layout.get_object().Children}
+        self.assertAlmostEqual(objects["M1"].Placement.Base.x, 100)
+        self.assertAlmostEqual(objects["D1"].Placement.Base.x, 100)
+        self.assertAlmostEqual(objects["D1"].Placement.Base.y, 75)
+
     def test_continuous_splitter_turn_from_every_face(self):
         for face in TRANSMISSION:
             for turn in (-62.5, 117.25):
@@ -155,6 +170,58 @@ class FreeCADSchematicTests(unittest.TestCase):
                 for port in (TRANSMISSION[face], REFLECTION[face]):
                     connect(document, cube, document.add_node("stop"), port)
                 self.build(document)
+
+    def test_xy_circle_uses_local_bare_mirror_and_full_mounted_assembly(self):
+        from PyOpticL.library import optics, thorlabs
+
+        bare = Component("BareBounds", optics.Circular_Mirror())
+        self.assertAlmostEqual(bare.get_xy_bounding_circle().radius_mm, math.hypot(6, 6.35), places=5)
+        mounted = Component("MountedBounds", optics.Circular_Mirror(mount_definition=thorlabs.Mirror_Mount_K05S1()))
+        full = mounted.get_xy_bounding_circle()
+        self.assertGreater(full.radius_mm, mounted.get_xy_bounding_circle(include_children=False).radius_mm)
+        mounted.get_object().BasePlacement = App.Placement(App.Vector(100, 200, 300), App.Rotation(App.Vector(0, 0, 1), 37))
+        mounted.recompute()
+        self.assertAlmostEqual(mounted.get_xy_bounding_circle().radius_mm, full.radius_mm)
+
+    def test_xy_circle_mesh_placement_is_not_mutated_and_empty_mesh_fails(self):
+        import Mesh
+        import MeshPart
+        import Part
+
+        class Body:
+            mesh = MeshPart.meshFromShape(Shape=Part.makeBox(3, 4, 5), LinearDeflection=0.1, AngularDeflection=0.5)
+
+        Body.mesh.Placement = App.Placement(App.Vector(500, 600, 700), App.Rotation(App.Vector(0, 0, 1), 23))
+        before = str(Body.mesh.Placement)
+        part = Component("MeshBounds", Body())
+        self.assertAlmostEqual(part.get_xy_bounding_circle().radius_mm, 5)
+        self.assertEqual(str(Body.mesh.Placement), before)
+
+        class Missing:
+            mesh = Mesh.Mesh()
+
+        with self.assertRaises(BoundsUnavailable):
+            Component("MissingMesh", Missing()).get_xy_bounding_circle()
+
+    def test_every_schematic_preset_resolves_bounds_without_touching_user_document(self):
+        provider = BoundsProvider()
+        original_objects = [obj.Name for obj in self.cad.Objects]
+        documents = set(App.listDocuments())
+        for kind, symbol in SYMBOLS.items():
+            for preset in symbol.presets:
+                with self.subTest(kind=kind, preset=preset):
+                    document = Schematic()
+                    node = document.add_node(kind)
+                    node.preset = preset
+                    spec = part_spec(document, node, resolve_topology(document))
+                    if spec is None:
+                        continue
+                    result = provider.get(spec)
+                    self.assertIsNone(result.error, result.error)
+                    self.assertGreater(result.circle.radius_mm, 0)
+                    self.assertEqual(App.ActiveDocument.Name, self.cad.Name)
+                    self.assertEqual(set(App.listDocuments()), documents)
+                    self.assertEqual([obj.Name for obj in self.cad.Objects], original_objects)
 
 
 def run():

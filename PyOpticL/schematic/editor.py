@@ -3,6 +3,7 @@
 from math import ceil, floor
 from pathlib import Path
 
+from .bounds import BoundsProvider
 from .compiler import compile_schematic
 from .geometry import apply_drawing_directions, route_connection, route_to, snap_angle, snap_point
 from .model import (
@@ -10,6 +11,7 @@ from .model import (
     interface_turn, migrate_legacy_lengths, new_id, save_schematic,
 )
 from .qt import Action, QtCore, QtGui, QtWidgets
+from .parts import part_spec
 from .registry import SYMBOLS, parameter_values
 from .topology import resolve_topology
 
@@ -78,6 +80,18 @@ class SymbolItem(QtWidgets.QGraphicsObject):
         label.setBrush(QtGui.QColor("#163c54"))
         label.setPos(-16, 32)
         self.setToolTip(f"{node.reference}: {spec.title}\nAny free port can start a connection")
+        self.bounds_circle = QtWidgets.QGraphicsEllipseItem(self)
+        self.bounds_circle.setFlag(QtWidgets.QGraphicsItem.ItemStacksBehindParent)
+        self.bounds_circle.setAcceptedMouseButtons(Qt.NoButton)
+        self.bounds_circle.setAcceptHoverEvents(False)
+        self.bounds_circle.setPen(QtGui.QPen(QtGui.QColor("#8b9eac"), 1, Qt.DashLine))
+        self.bounds_circle.setBrush(QtGui.QBrush(Qt.NoBrush))
+        self.bounds_circle.hide()
+
+    def show_bounds(self, circle, scale):
+        radius = circle.radius_mm * scale
+        self.bounds_circle.setRect(-radius, -radius, 2 * radius, 2 * radius)
+        self.bounds_circle.show()
 
     def boundingRect(self):
         return QtCore.QRectF(-48, -49, 96, 106)
@@ -207,7 +221,9 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         self.setPath(path)
         self.setPen(QtGui.QPen(QtGui.QColor("#e79b36" if self.isSelected() else "#bd3c43"), 3 if self.isSelected() else 2))
         description = f"Constrained length: {edge.length:g} mm" if edge.length is not None else f"Default length: {connection_length(self.editor.document, edge):g} mm"
-        self.setToolTip(f"{description}\nSelect to edit beam length; select an optic to constrain its angle; double-click to add a bend")
+        if edge.length is None and any("x" in node.physical or "y" in node.physical for node in self.editor.document.nodes):
+            description += " (adjusts for pinned positions)"
+        self.setToolTip(f"{description}\nSelect to edit beam length; select an optic for position and angle constraints; double-click to add a bend")
 
     def mouseDoubleClickEvent(self, event):
         position = pair(event.scenePos())
@@ -259,6 +275,7 @@ class SchematicScene(QtWidgets.QGraphicsScene):
         self.blockSignals(False)
         self.selection_changed()
         self.update()
+        self.editor.schedule_bounds_refresh()
 
     def selection_changed(self):
         for item in self.connections.values():
@@ -402,12 +419,17 @@ class SchematicView(QtWidgets.QGraphicsView):
 
 
 class SchematicEditor(QtWidgets.QWidget):
-    def __init__(self, document=None, path=None, parent=None):
+    def __init__(self, document=None, path=None, parent=None, bounds_provider=None):
         super().__init__(parent)
         self.document = document or Schematic()
         migrate_legacy_lengths(self.document)
         self.path = Path(path) if path else None
         self.history = History(self.document)
+        self.bounds_provider = bounds_provider or BoundsProvider()
+        self.bounds_info = None
+        self.bounds_timer = QtCore.QTimer(self)
+        self.bounds_timer.setSingleShot(True)
+        self.bounds_timer.timeout.connect(self.update_part_bounds)
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.scene = SchematicScene(self)
         self.view = SchematicView(self.scene, self)
@@ -435,6 +457,7 @@ class SchematicEditor(QtWidgets.QWidget):
             ("rotate", "Rotate 45°", self.rotate, "R"),
             ("delete", "Delete", self.delete_selected, "Delete"),
             ("fit", "Fit", self.fit, "F"),
+            ("refresh_bounds", "Refresh bounds", self.refresh_part_bounds, ""),
             ("directions", "Apply Drawing Directions", self.apply_directions, ""),
             ("validate", "Validate", self.validate, ""),
             ("export", "Export Python…", self.export_python, ""),
@@ -461,6 +484,12 @@ class SchematicEditor(QtWidgets.QWidget):
         self.angle_choice.setCurrentIndex(0 if self.document.settings["angle"] == 45 else 1)
         self.angle_choice.currentIndexChanged.connect(lambda index: self.change_setting("angle", 45 if index == 0 else 90))
         self.toolbar.addWidget(self.angle_choice)
+        self.bounds_toggle = QtWidgets.QCheckBox("Part bounds")
+        self.bounds_toggle.setObjectName("partBoundsToggle")
+        self.bounds_toggle.setChecked(self.document.settings["show_bounds"])
+        self.bounds_toggle.setToolTip("Show physical assembly circles. Their common size scale is independent of topological drawing positions.")
+        self.bounds_toggle.toggled.connect(lambda value: self.change_setting("show_bounds", value))
+        self.toolbar.insertWidget(self.actions["refresh_bounds"], self.bounds_toggle)
         split = QtWidgets.QSplitter()
         split.addWidget(Palette(self))
         split.addWidget(self.view)
@@ -492,6 +521,8 @@ class SchematicEditor(QtWidgets.QWidget):
         self.messages.clear()
         if rebuild:
             self.scene.rebuild(selected)
+        else:
+            self.schedule_bounds_refresh()
         self.update_title()
 
     def update_title(self):
@@ -502,6 +533,7 @@ class SchematicEditor(QtWidgets.QWidget):
             parent.setWindowTitle(self.windowTitle())
         self.actions["undo"].setEnabled(self.history.index > 0)
         self.actions["redo"].setEnabled(self.history.index < len(self.history.states) - 1)
+        self.actions["refresh_bounds"].setEnabled(self.document.settings["show_bounds"])
 
     def add_symbol(self, kind, position=None):
         if position is None:
@@ -543,7 +575,8 @@ class SchematicEditor(QtWidgets.QWidget):
 
     def restore(self):
         for widget, value in ((self.grid_toggle, self.document.settings["snap_grid"]),
-                              (self.angle_toggle, self.document.settings["snap_angle"])):
+                              (self.angle_toggle, self.document.settings["snap_angle"]),
+                              (self.bounds_toggle, self.document.settings["show_bounds"])):
             widget.blockSignals(True)
             widget.setChecked(value)
             widget.blockSignals(False)
@@ -575,13 +608,75 @@ class SchematicEditor(QtWidgets.QWidget):
         self.commit()
 
     def fit(self):
-        bounds = self.scene.itemsBoundingRect()
+        bounds = QtCore.QRectF()
+        for item in self.scene.items():
+            if item.isVisible():
+                bounds = bounds.united(item.sceneBoundingRect())
         if not bounds.isEmpty():
             self.view.fitInView(bounds.adjusted(-60, -60, 60, 60), Qt.KeepAspectRatio)
 
     def change_setting(self, key, value):
         self.document.settings[key] = value
-        self.commit()
+        # Display-only edits keep the current symbol/beam selection and widgets.
+        self.commit(rebuild=key not in ("show_bounds", "bounds_scale"))
+
+    def schedule_bounds_refresh(self):
+        if self.document.settings["show_bounds"]:
+            if not self.bounds_timer.isActive():
+                self.bounds_timer.start(0)
+        else:
+            self.bounds_timer.stop()
+            for item in self.scene.symbols.values():
+                item.bounds_circle.hide()
+        self.update_bounds_info()
+
+    def refresh_part_bounds(self):
+        self.bounds_provider.clear()
+        self.schedule_bounds_refresh()
+
+    def update_part_bounds(self):
+        if not self.document.settings["show_bounds"]:
+            return
+        # FreeCAD may activate its temporary document's view. Keep this
+        # schematic workspace active when the batch completes, even on error.
+        parent = self.parentWidget()
+        area = parent.mdiArea() if isinstance(parent, QtWidgets.QMdiSubWindow) else None
+        previous = area.activeSubWindow() if area is not None else None
+        try:
+            for node in self.document.nodes:
+                item = self.scene.symbols[node.id]
+                spec = part_spec(self.document, node, self.scene.topology)
+                if spec is None:
+                    item.bounds_circle.hide()
+                    continue
+                result = self.bounds_provider.get(spec)
+                if result.circle is not None:
+                    item.show_bounds(result.circle, self.document.settings["bounds_scale"])
+                else:
+                    item.bounds_circle.hide()
+        finally:
+            if area is not None and previous is not None:
+                area.setActiveSubWindow(previous)
+        self.update_bounds_info()
+
+    def update_bounds_info(self):
+        if self.bounds_info is None:
+            return
+        ids = self.selected_nodes()
+        if len(ids) != 1:
+            return
+        node = self.document.node(ids[0])
+        spec = part_spec(self.document, node, self.scene.topology)
+        result = self.bounds_provider.peek(spec) if spec is not None else None
+        if result is not None and result.circle is not None:
+            circle = result.circle
+            self.bounds_info.setText(f"Physical XY bounds: radius {circle.radius_mm:.3f} mm; diameter {circle.diameter_mm:.3f} mm. Includes the modeled assembly.")
+        elif result is not None:
+            self.bounds_info.setText(f"Physical bounds unavailable: {result.error}")
+        elif self.document.settings["show_bounds"]:
+            self.bounds_info.setText("Calculating physical XY bounds…")
+        else:
+            self.bounds_info.setText("Enable Part bounds to calculate the physical assembly circle.")
 
     def apply_directions(self):
         diagnostics = apply_drawing_directions(self.document)
@@ -590,6 +685,7 @@ class SchematicEditor(QtWidgets.QWidget):
         self.status.setText("Copied source-resolved tangents where available. Resolve any topology errors before exporting.")
 
     def clear_form(self):
+        self.bounds_info = None
         while self.form.count():
             item = self.form.takeAt(0)
             if item.widget():
@@ -601,6 +697,7 @@ class SchematicEditor(QtWidgets.QWidget):
         label = QtWidgets.QLabel(text)
         label.setWordWrap(True)
         self.form.addRow(label)
+        return label
 
     def number_field(self, label, value, callback, minimum=-1000000, maximum=1000000):
         field = QtWidgets.QDoubleSpinBox()
@@ -624,10 +721,12 @@ class SchematicEditor(QtWidgets.QWidget):
             title.editingFinished.connect(lambda: self.set_title(title.text()))
             self.form.addRow("Schematic title", title)
             for key, label in (("grid", "Drawing grid"), ("spacing", "Default beam length (mm)"),
-                               ("open_length", "Default open beam length (mm)")):
+                               ("open_length", "Default open beam length (mm)"),
+                               ("bounds_scale", "Bounds scale (canvas units/mm)")):
                 self.number_field(label, self.document.settings[key],
                                   lambda value, key=key: self.change_setting(key, value), minimum=0.001)
-            self.note("Select an optical element for optical parameters and supported angle constraints, or a beam to constrain its length. Drawing positions have no physical scale.")
+            self.note("Select an optical element for optical parameters, position, and supported angle constraints, or a beam to constrain its length. Drawing positions have no physical scale.")
+            self.note("Part bounds enclose modeled physical assemblies at a shared display scale. Circle overlaps on this topological drawing are not physical collision checks.")
             return
         node = self.document.node(ids[0])
         symbol = SYMBOLS[node.kind]
@@ -644,11 +743,14 @@ class SchematicEditor(QtWidgets.QWidget):
             spec = symbol.parameters[name]
             self.number_field(spec.label, value,
                               lambda value, name=name: self.set_node_dict(node.id, "parameters", name, value))
+        if node.kind not in ("source", "output"):
+            self.bounds_info = self.note("")
+            self.update_bounds_info()
         self.form.addRow(QtWidgets.QLabel("Physical layout (independent of canvas)"))
+        self.show_position_property(node)
         if node.kind in ("source", "fiber_source"):
-            for key, label in (("x", "Source X (mm)"), ("y", "Source Y (mm)"), ("angle", "Source direction (deg)")):
-                self.number_field(label, node.physical.get(key, 0),
-                                  lambda value, key=key: self.set_node_dict(node.id, "physical", key, value))
+            self.number_field("Source direction (deg)", node.physical.get("angle", 0),
+                              lambda value: self.set_node_dict(node.id, "physical", "angle", value))
         if node.kind in ("mirror", "splitter"):
             self.show_angle_property(node)
         if "distance" in node.physical:
@@ -663,7 +765,7 @@ class SchematicEditor(QtWidgets.QWidget):
         constrained.setObjectName("beamLengthConstrained")
         constrained.setChecked(edge.length is not None)
         self.form.addRow(constrained)
-        length = self.number_field("Length (mm)", connection_length(self.document, edge),
+        length = self.number_field("Length (mm)", self.effective_beam_length(edge),
                                    lambda value: self.set_connection_length(edge.id, value)
                                    if edge.length is not None else None, minimum=0.001)
         length.setObjectName("beamLengthMm")
@@ -673,11 +775,57 @@ class SchematicEditor(QtWidgets.QWidget):
             length.setEnabled(checked)
             self.set_connection_length(edge.id, length.value() if checked else None)
             if not checked:
-                length.setValue(connection_length(self.document, edge))
+                length.setValue(self.effective_beam_length(edge))
 
         constrained.toggled.connect(toggle)
-        self.note("Physical separation between the connected optical interaction points. Leave unconstrained to use the document default; drawn bends and spacing have no physical scale.")
+        self.note("Physical separation between the connected optical interaction points. Unconstrained lengths use the document default and adjust to satisfy pinned positions. Drawn bends and spacing have no physical scale.")
         self.note("Select a mirror or beamsplitter to enable or edit its angle constraint.")
+
+    def effective_beam_length(self, edge):
+        return compile_schematic(self.document).lengths.get(edge.id, connection_length(self.document, edge))
+
+    def show_position_property(self, node):
+        def current_position():
+            placement = compile_schematic(self.document).placements.get(node.reference, (0, 0, 0))
+            return tuple(node.physical.get(key, placement[axis]) for axis, key in enumerate(("x", "y")))
+
+        constrained = QtWidgets.QCheckBox("Constrain position")
+        constrained.setObjectName("opticPositionConstrained")
+        constrained.setChecked("x" in node.physical or "y" in node.physical)
+        self.form.addRow(constrained)
+        initial = current_position()
+
+        def update_position(_value):
+            if constrained.isChecked():
+                self.set_optic_position(node.id, (x.value(), y.value()))
+
+        x = self.number_field("X (mm)", initial[0], update_position)
+        y = self.number_field("Y (mm)", initial[1], update_position)
+        x.setObjectName("opticPositionX")
+        y.setObjectName("opticPositionY")
+        for field in (x, y):
+            field.setEnabled(constrained.isChecked())
+
+        def toggle(checked):
+            for field in (x, y):
+                field.setEnabled(checked)
+            self.set_optic_position(node.id, (x.value(), y.value()) if checked else None)
+            if not checked:
+                px, py = current_position()
+                x.setValue(px)
+                y.setValue(py)
+
+        constrained.toggled.connect(toggle)
+        self.note("Physical X/Y of the optical interaction point, in mm. Free beam lengths adjust along the current beam directions to reach it. Conflicting constraints block export; drawing positions are independent.")
+
+    def set_optic_position(self, node_id, position):
+        node = self.document.node(node_id)
+        if position is None:
+            node.physical.pop("x", None)
+            node.physical.pop("y", None)
+        else:
+            node.physical.update(x=position[0], y=position[1])
+        self.commit(rebuild=False)
 
     def show_angle_property(self, node):
         legacy = [edge.turns[node.id] for edge in self.document.connections if node.id in edge.turns]

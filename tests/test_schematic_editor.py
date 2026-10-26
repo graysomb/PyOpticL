@@ -303,6 +303,70 @@ class EditorTests(unittest.TestCase):
         self.assertFalse(any(widget.isVisible() and widget.objectName() == "opticAngleConstrained"
                              for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)))
 
+    def test_optic_position_inspector_toggle_edit_undo_and_reset(self):
+        node = self.editor.document.nodes[1]  # Lens, initially at physical (50, 0).
+        self.editor.scene.symbols[node.id].setSelected(True)
+        self.app.processEvents()
+        control = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                       if widget.objectName() == "opticPositionConstrained" and widget.isVisible())
+        x = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                 if widget.objectName() == "opticPositionX" and widget.isVisible())
+        y = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                 if widget.objectName() == "opticPositionY" and widget.isVisible())
+        self.assertFalse(control.isChecked())
+        self.assertFalse(x.isEnabled())
+        self.assertFalse(y.isEnabled())
+        self.assertEqual((x.value(), y.value()), (50, 0))
+        control.setChecked(True)
+        x.setValue(75)
+        self.assertEqual(node.physical, {"x": 75, "y": 0})
+        self.assertEqual(compile_schematic(self.editor.document).placements["L1"][:2], (75, 0))
+        self.assertTrue(self.editor.scene.symbols[node.id].isSelected())
+        control.setChecked(False)
+        self.assertFalse(node.physical)
+        self.assertEqual((x.value(), y.value()), (50, 0))
+        self.editor.undo()
+        self.assertEqual(self.editor.document.node(node.id).physical, {"x": 75, "y": 0})
+        self.editor.redo()
+        self.assertFalse(self.editor.document.node(node.id).physical)
+
+    def test_beam_inspector_shows_position_solved_length_and_freezes_it(self):
+        node = self.editor.document.nodes[1]
+        self.editor.set_optic_position(node.id, (80, 0))
+        edge = self.editor.document.connections[0]
+        self.editor.scene.connections[edge.id].setSelected(True)
+        self.app.processEvents()
+        length = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                      if widget.objectName() == "beamLengthMm" and widget.isVisible())
+        control = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                       if widget.objectName() == "beamLengthConstrained" and widget.isVisible())
+        self.assertEqual(length.value(), 80)
+        control.setChecked(True)
+        self.assertEqual(edge.length, 80)
+        self.assertTrue(self.editor.validate().ok)
+
+    def test_source_position_constraint_can_be_cleared_without_changing_direction(self):
+        source = self.editor.document.nodes[0]
+        source.physical.update(x=20, y=-30, angle=90)
+        self.editor.commit()
+        self.editor.scene.symbols[source.id].setSelected(True)
+        self.app.processEvents()
+        control = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                       if widget.objectName() == "opticPositionConstrained" and widget.isVisible())
+        self.assertTrue(control.isChecked())
+        control.setChecked(False)
+        self.assertEqual(source.physical, {"angle": 90})
+        self.assertEqual(compile_schematic(self.editor.document).placements[source.reference][:2], (0, 0))
+
+    def test_incompatible_position_diagnostic_selects_optic(self):
+        lens = self.editor.document.nodes[1]
+        self.editor.set_optic_position(lens.id, (50, 10))
+        self.assertFalse(self.editor.validate().ok)
+        item = next(self.editor.messages.item(index) for index in range(self.editor.messages.count())
+                    if "position" in self.editor.messages.item(index).text())
+        self.editor.focus_diagnostic(item)
+        self.assertTrue(self.editor.scene.symbols[lens.id].isSelected())
+
     def test_optic_angle_inspector_edits_clears_and_undoes(self):
         document = chain("source", "mirror", "stop")
         mirror = document.nodes[1]

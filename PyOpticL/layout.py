@@ -5,6 +5,7 @@ from collections import namedtuple
 import FreeCAD as App
 import Part
 
+from PyOpticL.bounds import BoundingCircleXY
 from PyOpticL.settings import get_hidden_object_groups
 from PyOpticL.utils import collect_children
 
@@ -244,6 +245,17 @@ class Component(Layout):
                 )
 
         self.computed_shape = False
+
+    def get_xy_bounding_circle(self, include_children=True) -> "BoundingCircleXY":
+        """Return the full physical XY envelope about this component's origin.
+
+        Includes modeled mounts/hardware regardless of display visibility.
+        Raises BoundsUnavailable if any required body geometry is missing.
+        The result is local to this component, independent of global placement.
+        """
+        from PyOpticL.bounds import component_circle_xy
+
+        return component_circle_xy(self, App.Placement(), App.Vector, include_children)
 
     def compute_shape(self):
         """Calculate and set the shape of the object"""

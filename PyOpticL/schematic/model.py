@@ -56,6 +56,7 @@ class Schematic:
     settings: dict = field(default_factory=lambda: {
         "grid": 20, "angle": 45, "snap_grid": True, "snap_angle": True,
         "spacing": 50, "open_length": 50,
+        "show_bounds": False, "bounds_scale": 4.0,
     })
     version: int = VERSION
 
@@ -120,12 +121,12 @@ def document_from_dict(data, *, migrate_lengths=True):
         if not isinstance(data.get("settings", {}), dict):
             raise ValueError("Invalid schematic settings")
         settings.update(data.get("settings", {}))
-        for key in ("grid", "spacing", "open_length"):
+        for key in ("grid", "spacing", "open_length", "bounds_scale"):
             if not _finite(settings[key]) or settings[key] <= 0:
                 raise ValueError(f"{key} must be positive")
         if settings["angle"] not in (45, 90):
             raise ValueError("Angle snap must be 45 or 90 degrees")
-        for key in ("snap_grid", "snap_angle"):
+        for key in ("snap_grid", "snap_angle", "show_bounds"):
             if not isinstance(settings[key], bool):
                 raise ValueError(f"{key} must be true or false")
         document = Schematic(data["title"], settings=settings)
