@@ -305,3 +305,64 @@ thread-envelope qualification, retaining-ring disposition, both plate workflows,
 nested rotations/translations, recomputation and isolation. Existing catalog,
 baseplate and fixed-iris suites remain regression requirements. See
 [the batch verification report](component-batch-verification.md) for delivered results.
+
+
+## One recessed plate with all new components
+
+`examples/all_components_baseplate.py` builds a continuous folded path through
+both lens mounts, the fixed iris, all three new mirror mounts, FBR and VA100,
+with K05T6 input/output couplers. Every optical datum is **12.7 mm above the
+unrecessed plate top**. Purchased parts retain their native dimensions and
+mounting heights; the mounting surfaces are lowered into the plate.
+
+```python
+from examples.all_components_baseplate import build
+review, report = build()  # 30 mm plate stock
+# Optional output path and thickness, in millimeters:
+# review, report = build('/absolute/path/demo.FCStd', plate_thickness=30.0)
+```
+
+The nominal stock is 395 × 255 × 30 mm, with 20 mm margins and 0.25 mm pocket
+clearance. Recess depths are FBR 1.6002 mm, L1G 6.35 mm, K1VS2 and MHV-25.4L-R
+12.7 mm, and the VA100 bracket 15.08 mm. There are no extra height-compensating
+risers; VA100 retains its existing 10 mm bracket. The deepest drill leaves
+3.9286 mm of stock. Insufficient stock fails before any export.
+
+The 1550 nm trace has nine segments, three reflections and 760 mm total length.
+The generic 2 mm-thick lenses use focal lengths 100 and 150 mm; they are ideal
+thin lenses with cylindrical CAD envelopes, not selected vendor optics.
+The iris diameter and slit width default to 2 mm. FBR carries a 1 mm half-wave
+plate with its fast axis at 22.5°, producing linear 45° polarization in the
+existing Jones model. Input waist radius 0.2 mm and power 1 mW are illustrative;
+no fiber efficiency, diffraction or Gaussian clipping-loss model is implied.
+
+Edit `PLACEMENTS` and the optical constants in the example; update
+`EXPECTED_ROUTE` and the default-layout checks when changing the route or its
+footprint. The height assignment and recess generation reuse existing component
+contracts and `MachinedBaseplate`; this example adds no global placement solver.
+
+Outputs are `artifacts/all_components_baseplate.FCStd`, hardware-only `.step`,
+`all_components_baseplate_baseplate.step`, `.machining.json`, `.bom.json`,
+`.report.json` and `.report.md`. The review has ten component groups, a drilled
+plate, sixteen external nominal Ø2 × 5 mm pins and nine beam solids. FBR's two
+supplied pins remain in its vendor compound. Thirty machining operations comprise
+twelve M4 tap drills and eighteen pin bores. VA100 includes its nominal screws;
+the other ten M4 mounting screws remain BOM requirements with installation
+lengths unselected. Vendor `mounting_hardware` annotations are requirements,
+not additional inventory quantities.
+
+The editable source document remains open after `build()`. The static review
+reopens without Python proxies or cache access; its groups retain contracts and
+BOMs. In a GUI session the beam is red (false color for infrared). Headless
+exports also retain intended colors as `DisplayColor` metadata. The hardware
+STEP excludes the optical-only receiver and beam geometry.
+
+The report carries forward VA100's fixed mechanical reference pose, qualified
+SM05 thread-envelope overlap, FBR's custom receiving-bore selection, and the
+small MHV source pose deviation. Recesses are nominal rectangular clearances;
+no CAM/tool-access or physical manufacturing-fit certification is inferred.
+
+```bash
+PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python examples/all_components_baseplate.py
+PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python tests/catalog/freecad_all_components_baseplate_acceptance.py
+```
