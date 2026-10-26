@@ -1734,6 +1734,114 @@ class Waveplate(Interface):
         return [output_beam]
 
 
+def grating_angles(wavelength_nm=1550., incidence_angle_deg=49.9, order=1,
+                   grooves_per_mm=1000.):
+    """Air-to-air angles in degrees: sin(alpha)+sin(beta)=m*lambda/d.
+
+    Positive beta lies across the normal from the incident port. Consequently
+    the signed turn of the propagating beam is alpha+beta, including zero for
+    the zeroth order. This helper does not prescribe an efficiency.
+    """
+    if isinstance(order, bool) or not isinstance(order, (int, np.integer)):
+        raise ValueError('Diffraction order must be an integer')
+    if not all(np.isfinite(v) and v > 0 for v in (wavelength_nm, grooves_per_mm)):
+        raise ValueError('Wavelength and groove density must be finite and positive')
+    if not np.isfinite(incidence_angle_deg) or not -90 < incidence_angle_deg < 90:
+        raise ValueError('Incidence angle must be finite and between -90 and 90 degrees')
+    sine = order*wavelength_nm*1e-6*grooves_per_mm - np.sin(np.radians(incidence_angle_deg))
+    if abs(sine) >= 1:
+        raise ValueError('Selected nominal diffraction order is nonpropagating or grazing')
+    beta = float(np.degrees(np.arcsin(sine)))
+    return dict(incidence_angle_deg=float(incidence_angle_deg), diffraction_angle_deg=beta,
+                deflection_angle_deg=float(incidence_angle_deg)+beta,
+                period_mm=1./grooves_per_mm, wavelength_nm=float(wavelength_nm), order=int(order))
+
+
+class TransmissionGrating(Interface):
+    """One ideal transmitted order at a finite, thin grating in air.
+
+    Local +Y is the grating vector and +Z follows the grooves. The actual ray's
+    tangential wave vector changes by m*lambda/d along +Y; its groove component
+    is conserved. No efficiency, substrate displacement/OPL, or Gaussian
+    anamorphism is modeled. Jones fields undergo minimal-rotation transport.
+    """
+    name = 'transmission_grating'
+    role = 'diffraction'
+
+    def __init__(self, position=(0,0,0), rotation=(0,0,0), grooves_per_mm=1000., order=1,
+                 width=31.8, height=12.3, clear_width=30.8, clear_height=11.3):
+        if isinstance(order, bool) or not isinstance(order, (int, np.integer)):
+            raise ValueError('Diffraction order must be an integer')
+        if not all(np.isfinite(v) and v > 0 for v in
+                   (grooves_per_mm, width, height, clear_width, clear_height)):
+            raise ValueError('Grating dimensions and groove density must be finite and positive')
+        if clear_width > width or clear_height > height:
+            raise ValueError('Clear aperture cannot exceed substrate dimensions')
+        super().__init__(position, rotation, width=width, height=height)
+        self.grooves_per_mm, self.order = float(grooves_per_mm), int(order)
+        self.clear_width, self.clear_height = clear_width, clear_height
+
+    def _coordinates(self, point):
+        n, u = self.get_global_normal(), self.get_global_transverse()
+        delta = np.asarray(point)-self.get_global_position()
+        return delta@u, delta@np.cross(n,u)
+
+    def get_intercept(self, beam):
+        # Bounds are in the actual face frame, independent of placement/yaw.
+        n, d = self.get_global_normal(), beam.get_global_direction()
+        denominator = n@d
+        if abs(denominator) < 1e-8:
+            return None
+        distance = (self.get_global_position()-beam.get_global_position())@n/denominator
+        if distance <= 1e-6 or (beam.get_object().EndObject is not None and distance > beam.distance+1e-7):
+            return None
+        point = beam.get_global_position()+distance*d
+        y, z = self._coordinates(point)
+        return point if abs(y) <= self.width/2 and abs(z) <= self.height/2 else None
+
+    def diffracted_direction(self, direction, wavelength_nm):
+        if not np.isfinite(wavelength_nm) or wavelength_nm <= 0:
+            raise ValueError('Wavelength must be finite and positive')
+        n, u = self.get_global_normal(), self.get_global_transverse()
+        d = np.asarray(direction, dtype=float)
+        if not np.all(np.isfinite(d)) or np.linalg.norm(d) < 1e-12:
+            raise ValueError('Ray direction must be finite and nonzero')
+        d = d/np.linalg.norm(d)
+        dn = d@n
+        if abs(dn) < 1e-8:
+            return None
+        tangent = d-dn*n + self.order*wavelength_nm*1e-6*self.grooves_per_mm*u
+        normal_squared = 1.-tangent@tangent
+        if normal_squared <= 1e-14:
+            return None
+        return tangent + np.copysign(np.sqrt(normal_squared),dn)*n
+
+    def get_output_beams(self, incident_beam):
+        point = self.get_intercept(incident_beam)
+        if point is None:
+            return []
+        y, z = self._coordinates(point)
+        if abs(y) >= self.clear_width/2-1e-8 or abs(z) >= self.clear_height/2-1e-8:
+            return []
+        direction = self.diffracted_direction(incident_beam.get_global_direction(),incident_beam.wavelength)
+        if direction is None:
+            return []
+        incoming = np.asarray(incident_beam.direction)
+        outgoing = incident_beam.get_relative_direction(direction)
+        def basis(d):
+            rotation = App.Rotation(App.Vector(1,0,0),App.Vector(*d))
+            return np.array([list(rotation.multVec(App.Vector(*v))) for v in ((0,1,0),(0,0,1))]).T
+        transport = App.Rotation(App.Vector(*incoming),App.Vector(*outgoing))
+        carried = np.array([list(transport.multVec(App.Vector(*v))) for v in basis(incoming).T]).T
+        jones = basis(outgoing).T@carried@_normalize_jones_vector(incident_beam.polarization_jones)
+        waist_position, rayleigh_range = self.apply_abcd(incident_beam)
+        result = BeamSegment(index=incident_beam.index, direction=outgoing,
+            wavelength=incident_beam.wavelength, polarization=jones, power=incident_beam.power,
+            waist_position=waist_position, rayleigh_range=rayleigh_range)
+        incident_beam.add(result,origin=incident_beam.get_relative_position(point))
+        return [result]
+
+
 class Diffraction(Interface):
     """
     Base class for basic diffraction interfaces

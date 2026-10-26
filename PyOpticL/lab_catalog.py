@@ -13,14 +13,14 @@ from PyOpticL.component_contract import ComponentContract, DOF, Frame, Hole, Mec
 from PyOpticL.layout import Component, Subcomponent
 from PyOpticL.vendor_cad import resolve
 from PyOpticL.library import optics
-from PyOpticL.beam_path import Interface, Stop
+from PyOpticL.beam_path import Interface, Stop, grating_angles
 from PyOpticL.library.adapters import Surface_Adapter
 from PyOpticL import attachments
 
 DATA = Path(__file__).with_name('catalog_data')
 VENDOR_IDS = ('POLARIS-L05G', 'POLARIS-L1G', 'POLARIS-K1VS2',
               'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating')
 
 
 def asset_record(part):
@@ -534,8 +534,19 @@ def create(catalog_id, label, **parameters):
 
     Parameters select mounts, optic thickness (mm), waveplate retardance/axis,
     iris aperture_diameter (mm), slit_width (mm), or roof orientation and
-    beam_separation (mm). Unknown options fail explicitly.
+    beam_separation (mm), or grating design_wavelength (nm), incidence_angle
+    (degrees) and integer order. Unknown options fail explicitly.
     """
+    if catalog_id in ('grating', 'MK05S', 'LightSmyth-1336552'):
+        from PyOpticL.grating import MountedGrating, MK05SMount, GratingOptic
+        allowed = ({'mount','design_wavelength','incidence_angle','order'} if catalog_id == 'grating'
+                   else {'order'} if catalog_id == 'LightSmyth-1336552' else set())
+        unknown = set(parameters)-allowed
+        if unknown:
+            raise TypeError('Unsupported parameters: '+', '.join(sorted(unknown)))
+        definition = (MountedGrating(**parameters) if catalog_id == 'grating' else
+                      GratingOptic(**parameters) if catalog_id == 'LightSmyth-1336552' else MK05SMount())
+        return Component(label,definition)
     if catalog_id in ('roof', 'HRS1015-P01'):
         from PyOpticL.roof_mirror import RoofGeometry, RoofOptic, MountedRoof
         unknown = set(parameters) - {'orientation', 'beam_separation'}

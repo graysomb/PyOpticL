@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "MK05S",
+  "product_url": "https://www.thorlabs.com/item/MK05S",
+  "asset_url": null,
+  "vendor_filename": "MK05S-Step.step",
+  "document_id": "TTN193112-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-26T22:41:08.012980+00:00",
+  "sha256": "530ed2a20d8d81be649e457a1a6e0c4c82868f2f22b730888abcb0fdb34697fe",
+  "kind": "step",
+  "cache_path": "objects/530ed2a20d8d81be649e457a1a6e0c4c82868f2f22b730888abcb0fdb34697fe/source.step",
+  "units": "inch",
+  "identity_evidence": "product-page document association; not inferred from shape",
+  "imported_units": "mm",
+  "verification_reference": "catalog_data/grating_reference.json"
+}

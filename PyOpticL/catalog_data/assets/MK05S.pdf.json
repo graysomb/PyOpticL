@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "MK05S",
+  "product_url": "https://www.thorlabs.com/item/MK05S",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/m/mk/mk0/mk05s/ttn193112-e0w.pdf?v=0116012149",
+  "vendor_filename": "TTN193112-E0W.pdf",
+  "document_id": "TTN193112-E0W",
+  "revision": "A",
+  "retrieved_at": "2026-10-26T22:41:08.110021+00:00",
+  "sha256": "34d7563801a1f24fe51cc29921e4a08b800cdc3df6ed8a8abe82b4875791bb09",
+  "kind": "pdf",
+  "cache_path": "objects/34d7563801a1f24fe51cc29921e4a08b800cdc3df6ed8a8abe82b4875791bb09/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

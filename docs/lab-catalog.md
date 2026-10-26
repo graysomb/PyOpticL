@@ -14,9 +14,9 @@ print(lab_catalog.bom(coupler))
 ```
 
 Supported preset IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`,
-`iris`, `slit`, `roof`. Purchased mounts are also available directly through
+`iris`, `slit`, `roof`, `grating`. Purchased mounts are also available directly through
 `create(part_number, label)` for every part in the native-height table below.
-These return ordinary reusable `Component` objects with `VendorPart` definitions.
+These return ordinary reusable `Component` objects with purchased-part definitions.
 Unknown parameters fail explicitly. Dimensions use mm.
 
 ```python
@@ -54,6 +54,14 @@ Commercial thread designations are explicit and independent of the global metric
 | iris | Fabricated fixed aperture plate; two round dowel mounting holes | Fixed |
 | slit | VA100 variable slit; fabricated 10 mm support; three nominal screws | Slit width (optical parameter) |
 | roof | HRS1015-P01; integral baseplate supports and removable M2 clamp | Fixed; horizontal/vertical construction orientation |
+| grating | LightSmyth 1336552; imperial MK05S; direct grating seating and 10 mm baseplate adapter | Vendor tip/tilt described; nominal incidence is a construction parameter |
+
+The [transmission grating](grating.md) uses its actual incident ray and wavelength
+to calculate one diffracted order. `create('MK05S', label)` exposes the purchased
+mount and `create('LightSmyth-1336552', label, order=1)` the bare optic.
+`create('grating', label)` defaults to 1550 nm design wavelength and 49.9°
+incidence, giving 51.72795° diffraction. Native mount height is 10.5061 mm;
+assembly height is 20.5061 mm. Its adapter drills two M4 taps and two dowel bores.
 
 The [roof mirror](roof-mirror.md) supports both horizontal and upward vertical
 returns, with configurable nominal `beam_separation` (default 12.7 mm).

@@ -81,9 +81,15 @@ requested additions. Entries 2–6 and 8 passed the batch acceptance checks on
 2026-10-26; see [the verification report](../component-batch-verification.md) for
 source evidence and remaining physical-fit qualifications.
 
-- [ ] **Monolithic grating mount and transmission grating:** CAD a monolithic
-  mount with the grating set for operation at 1550 nm; determine the mounting
-  angle during implementation. Selected grating:
+- [x] **LightSmyth transmission grating and MK05S mounting assembly:** implemented
+  the selected grating seated directly in the exact imperial MK05S, with a
+  native parametric 10 mm plate adapter.
+  The originally proposed fixed monolithic mount was superseded by the selected
+  MK05S design. Native mount/assembly heights are 10.5061/20.5061 mm. Two M4 taps
+  and two dowel bores attach it to the plate. At 1550 nm, 49.9° incidence gives
+  51.72795° diffraction; actual traced direction follows wavelength and incidence.
+  All 18 grating acceptance tests and the existing regressions passed; see
+  [API, source evidence, qualifications and rebuild](../grating.md). Selected grating:
   [Coherent® LightSmyth™ 1525–1565 nm, 1000 grooves/mm, 31.8 × 12.3 mm transmission diffraction grating](https://www.edmundoptics.com/p/ii-vi-lightsmytht-1525---1565nm-1000-groovesmm-318-x-123mm-transmission-diffraction-grating/44712/).
 - [x] **Fixed Polaris lens mounts:** add both
   [POLARIS-L05G](https://www.thorlabs.com/item/POLARIS-L05G) and

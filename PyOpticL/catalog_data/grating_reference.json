@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "part": "MK05S",
+  "step_sha256": "530ed2a20d8d81be649e457a1a6e0c4c82868f2f22b730888abcb0fdb34697fe",
+  "drawing_sha256": "34d7563801a1f24fe51cc29921e4a08b800cdc3df6ed8a8abe82b4875791bb09",
+  "drawing": "TTN193112-E0W revision A",
+  "normalization": {
+    "origin": [
+      -9.55,
+      -0.2,
+      -2.065
+    ],
+    "rotation": [
+      90.0,
+      -0.0,
+      -90.0
+    ]
+  },
+  "measurement_tolerance_mm": 0.01,
+  "source_solid_count": 25,
+  "source_volume_mm3": 1963.0367204237743,
+  "source_bounds_mm": [
+    -8.788400000000001,
+    -10.706100099999999,
+    -15.833265750660761,
+    11.430000099999999,
+    10.4775001,
+    0.2845403083907172
+  ],
+  "source_solid_volumes_mm3": [
+    641.4085356421814,
+    1.7671458676442513,
+    1.767145867644252,
+    40.79734010639489,
+    50.45129037133803,
+    7.069905378520978,
+    40.79734010639503,
+    50.451290371338,
+    2.2995228594358714,
+    2.2995228594358688,
+    2.299522859435867,
+    2.2995228594358723,
+    1050.7144166951598,
+    6.589629424167189,
+    1.5520526618698747,
+    1.55205266186988,
+    2.2995228594358634,
+    2.2995228594358617,
+    2.299522859435865,
+    2.2995228594358723,
+    17.36955946215759,
+    11.5551476000865,
+    4.61977583313515,
+    11.555147600086578,
+    4.619775833134844
+  ],
+  "source_mounting_holes": [
+    {
+      "name": "bottom_post",
+      "center_mm": [
+        1.43,
+        -10.7061,
+        -10.26642
+      ],
+      "axis": [
+        0,
+        -1,
+        0
+      ],
+      "diameter_mm": 2.8448,
+      "thread": "4-40 UNC",
+      "straight_start_mm": 0.254,
+      "straight_end_mm": 3.5865,
+      "trimmed_max_depth_mm": 3.80948,
+      "depth_note": "Conservative circumferential cylindrical extent; curved exit reaches 3.80948 mm. Farthest face extent is not the minimum full-rim depth."
+    },
+    {
+      "name": "side_post",
+      "center_mm": [
+        11.43,
+        -0.7061,
+        -10.26642
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "diameter_mm": 2.8448,
+      "thread": "4-40 UNC",
+      "straight_start_mm": 0.254,
+      "straight_end_mm": 3.5865,
+      "trimmed_max_depth_mm": 3.80948,
+      "depth_note": "Conservative circumferential cylindrical extent; curved exit reaches 3.80948 mm. Farthest face extent is not the minimum full-rim depth."
+    }
+  ],
+  "source_pocket": {
+    "bottom_y_mm": -6.35,
+    "top_y_mm": 6.3754,
+    "back_z_mm": -5.08,
+    "right_x_mm": 6.35
+  },
+  "adapter_center_top_mm": [
+    8.20142,
+    -10.98,
+    -10.5061
+  ],
+  "native_height_mm": 10.5061,
+  "assembly_height_mm": 20.5061,
+  "adapter": {
+    "size_mm": [
+      40,
+      50,
+      10
+    ],
+    "screw_xy_mm": [
+      [
+        0,
+        -20
+      ],
+      [
+        0,
+        20
+      ]
+    ],
+    "pin_xy_mm": [
+      [
+        14,
+        -5
+      ],
+      [
+        14,
+        5
+      ]
+    ],
+    "counterbore_diameter_mm": 7.5,
+    "counterbore_depth_mm": 4.4,
+    "post_clearance_diameter_mm": 3.1,
+    "post_counterbore_diameter_mm": 5.5,
+    "post_counterbore_depth_mm": 3.5,
+    "post_screw_length_mm": 9.525,
+    "post_engagement_mm": 3.025,
+    "post_straight_engagement_mm": 2.771
+  },
+  "grating": {
+    "part_number": "1336552",
+    "edmund_stock": "16-876",
+    "coherent_model": "T-1000C-31.8x12.3-94",
+    "size_mm": [
+      0.95,
+      31.8,
+      12.3
+    ],
+    "clear_aperture_mm": [
+      30.8,
+      11.3
+    ],
+    "grooves_per_mm": 1000,
+    "wavelength_band_nm": [
+      1525,
+      1565
+    ],
+    "nominal_incidence_deg": 49.9,
+    "product_url": "https://www.edmundoptics.com/p/ii-vi-lightsmytht-1525---1565nm-1000-groovesmm-318-x-123mm-transmission-diffraction-grating/44712/",
+    "datasheet_url": "https://www.coherent.com/content/dam/coherent/site/en/resources/datasheet/optics/diffraction-grating-t-1000c-series-ds.pdf",
+    "geometry_status": "Nominal parametric envelope from manufacturer dimensions; no exact grating STEP supplied. Grooves parallel to short edge.",
+    "datasheet_sha256": "77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e",
+    "datasheet_cache_path": "objects/77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e/source.pdf"
+  },
+  "units": "mm",
+  "source_step_units": "INCH; converted by STEP importer, cross-checked against drawing envelope",
+  "verification_status": "datum_verified",
+  "drawing_revision": "A",
+  "tool_access_native": [
+    {
+      "name": "lower tip/tilt hex",
+      "start_mm": [
+        -6.0198,
+        -8.1661,
+        -15.6942
+      ],
+      "direction": [
+        0,
+        0,
+        -1
+      ]
+    },
+    {
+      "name": "upper tip/tilt hex",
+      "start_mm": [
+        8.89,
+        6.7539,
+        -15.8433
+      ],
+      "direction": [
+        0,
+        0,
+        -1
+      ]
+    },
+    {
+      "name": "nylon lock hex",
+      "start_mm": [
+        0,
+        10.4875,
+        -2.54
+      ],
+      "direction": [
+        0,
+        1,
+        0
+      ]
+    }
+  ],
+  "tool_access_envelope_mm": {
+    "diameter": 2,
+    "length": 20,
+    "note": "Conservative shaft approach envelope, starting outside vendor head faces. The underside mount screw is fitted before plate installation."
+  },
+  "direct_seating": {
+    "native_glass_bounds_mm": [
+      -25.45,
+      -6.35,
+      -3.015,
+      6.35,
+      5.95,
+      -2.065
+    ],
+    "native_front_center_mm": [
+      -9.55,
+      -0.2,
+      -2.065
+    ],
+    "native_lock_depth_z_mm": -2.54,
+    "reference_lock_gap_mm": 0.55875,
+    "reference_pose_note": "User-selected direct seating in MK05S. Glass is centered under the native nylon locking screw along its thickness axis; bottom and right edge meet the pocket. All 25 vendor solids retain their reference pose. Advance the existing lock by 0.55875 mm nominally to reach the glass top edge; holding force is unvalidated.",
+    "published_mount_minimum_optic_thickness_mm": 2.54,
+    "selected_glass_thickness_mm": 0.95,
+    "compatibility_status": "User-specified direct mounting; CAD seating/clearance verified separately from manufactured retention."
+  }
+}
