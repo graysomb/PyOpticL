@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from math import atan2, cos, degrees, hypot, radians, sin
 from pprint import pformat
 
-from .model import document_from_dict, _finite
-from .registry import SYMBOLS, default_turn, incident_heading, parameter_values
+from .model import connection_length, document_from_dict, interface_turn, _finite
+from .registry import MIN_BEAM_TURN, SYMBOLS, default_turn, incident_heading, parameter_values, supports_beam_turn
 from .topology import Diagnostic, resolve_topology
 
 
@@ -25,11 +25,12 @@ class Compilation:
 def validate_schematic(document):
     diagnostics = []
     try:
-        document_from_dict(document.to_dict())
+        document = document_from_dict(document.to_dict())
     except ValueError as error:
         return [Diagnostic(str(error))]
     topology = resolve_topology(document)
     diagnostics.extend(topology.diagnostics)
+    constrained_nodes = {node_id for edge in document.connections for node_id in edge.turns}
     for node in document.nodes:
         symbol = SYMBOLS[node.kind]
         for name in node.parameters:
@@ -43,20 +44,35 @@ def validate_schematic(document):
                 diagnostics.append(Diagnostic(f"{node.reference}: invalid {spec.label}", node.id))
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
-        allowed = {"x", "y", "angle"} if symbol.role == "source" else {"distance"}
+        allowed = {"x", "y", "angle"} if symbol.role == "source" else set()
         if node.kind in ("mirror", "splitter"):
             allowed.add("turn")
         for name, value in node.physical.items():
-            if name not in allowed or not _finite(value):
+            if name == "distance":
+                diagnostics.append(Diagnostic(f"{node.reference}: legacy distance awaits an unambiguous incoming beam; connect the source to migrate it", node.id))
+            elif name not in allowed or not _finite(value):
                 diagnostics.append(Diagnostic(f"{node.reference}: invalid physical setting {name}", node.id))
-        if node.physical.get("distance", document.settings["spacing"]) <= 0:
-            diagnostics.append(Diagnostic(f"{node.reference}: physical distance must be positive", node.id))
-        turn = node.physical.get("turn", 90)
-        if node.kind == "mirror" and turn not in (-135, -90, -45, 45, 90, 135):
-            diagnostics.append(Diagnostic(f"{node.reference}: mirror turn must be ±45, ±90, or ±135 degrees", node.id))
-        if node.kind == "splitter" and turn not in (-90, 90):
-            diagnostics.append(Diagnostic(f"{node.reference}: cube reflected branch must turn ±90 degrees", node.id))
+        turn = node.physical.get("turn")
+        if (node.kind in ("mirror", "splitter") and node.id not in constrained_nodes and
+                turn is not None and not MIN_BEAM_TURN <= abs(turn) < 180):
+            diagnostics.append(Diagnostic(f"{node.reference}: absolute turn must be at least {MIN_BEAM_TURN:g}° and less than 180°; straight/grazing and retracing paths are unsupported", node.id))
 
+    constrained_turns = {}
+    for edge in document.connections:
+        if edge.length is not None and (not _finite(edge.length) or edge.length <= 0):
+            diagnostics.append(Diagnostic("Beam length must be a positive finite number in mm", connection_id=edge.id))
+        for node_id, turn in edge.turns.items():
+            node = document.node(node_id)
+            endpoint = edge.a if edge.a.node_id == node_id else edge.b
+            if not supports_beam_turn(node.kind, endpoint.port_id, topology.incident_ports.get(node_id)):
+                diagnostics.append(Diagnostic(f"{node.reference}: this interface cannot turn the beam; set angle constraints on a mirror or beamsplitter", node_id))
+            if not MIN_BEAM_TURN <= abs(turn) < 180:
+                diagnostics.append(Diagnostic(f"{node.reference}: absolute beam turn must be at least {MIN_BEAM_TURN:g}° and less than 180°; straight/grazing and retracing paths are unsupported", node_id))
+            constrained_turns.setdefault(node_id, []).append((edge.id, turn))
+    for node_id, constraints in constrained_turns.items():
+        if max(turn for _, turn in constraints) - min(turn for _, turn in constraints) > 1e-6:
+            node = document.node(node_id)
+            diagnostics.append(Diagnostic(f"{node.reference}: conflicting legacy angle constraints; set or clear the angle on this optical element", node_id))
     return diagnostics
 
 
@@ -68,6 +84,7 @@ def _number(value):
 def _placements(document, topology):
     nodes = {node.id: node for node in document.nodes}
     source = nodes[topology.source_id]
+    connections = {edge.id: edge for edge in document.connections}
     positions, order = {}, []
     queue = deque([(source.id, source.physical.get("x", 0), source.physical.get("y", 0), source.physical.get("angle", 0))])
     while queue:
@@ -75,13 +92,17 @@ def _placements(document, topology):
         node = nodes[node_id]
         angle = incoming
         incident_port = topology.incident_ports.get(node_id)
-        turn = node.physical.get("turn", default_turn(node.kind, incident_port))
+        turn = interface_turn(document, node, topology)
         if SYMBOLS[node.kind].role == "passive" and node.kind != "mirror":
             angle -= incident_heading(node.kind, incident_port)
         if node.kind == "mirror":
             leaving = incoming + turn
             angle = degrees(atan2(sin(radians(leaving)) - sin(radians(incoming)),
                                   cos(radians(leaving)) - cos(radians(incoming))))
+        if node.kind == "splitter":
+            # Rotating the splitting plane by delta rotates its reflection by
+            # 2*delta. Keep the existing cube preset/face mapping for the sign.
+            angle += (turn - (90 if turn > 0 else -90)) / 2
         if node.kind in ("fiber_source", "fiber_output", "stop"):
             angle = incoming + 180
         positions[node.reference] = tuple(map(_number, (x, y, angle)))
@@ -91,14 +112,13 @@ def _placements(document, topology):
             if node.kind == "mirror" or edge.interaction == "reflected":
                 heading += turn
             target = nodes[edge.target.node_id]
-            distance = (document.settings["open_length"] if target.kind == "output" else
-                        target.physical.get("distance", document.settings["spacing"]))
+            distance = connection_length(document, connections[edge.id])
             queue.append((target.id, x + distance * cos(radians(heading)),
                           y + distance * sin(radians(heading)), heading))
     return source, order, positions
 
 
-def _definition(node, topology):
+def _definition(document, node, topology):
     """Only registry-controlled identifiers become executable source."""
     p = f"PARAMETERS[{node.reference!r}]"
     mounted = node.preset == "mounted"
@@ -115,8 +135,8 @@ def _definition(node, topology):
     if node.kind == "splitter":
         factory = "Beamsplitter_Cube_on_Surface_Adapter" if node.preset == "surface_adapter" else "Beamsplitter_Cube"
         canonical_turn = default_turn(node.kind, topology.incident_ports.get(node.id))
-        turn = node.physical.get("turn", canonical_turn)
-        return f"optics.{factory}(rotate_cube={turn != canonical_turn!r}, **{p})"
+        turn = interface_turn(document, node, topology)
+        return f"optics.{factory}(rotate_cube={(turn > 0) != (canonical_turn > 0)!r}, **{p})"
     if node.kind == "iris":
         return f"thorlabs.Iris_IDA12(**{p})"
     if node.kind in ("fiber_source", "fiber_output"):
@@ -127,6 +147,10 @@ def _definition(node, topology):
 
 
 def compile_schematic(document):
+    try:
+        document = document_from_dict(document.to_dict())
+    except ValueError as error:
+        return Compilation("", [Diagnostic(str(error))])
     diagnostics = validate_schematic(document)
     if diagnostics:
         return Compilation("", diagnostics)
@@ -146,6 +170,9 @@ def compile_schematic(document):
     expected = [(nodes[edge.source.node_id].reference, edge.interaction,
                  None if nodes[edge.target.node_id].kind == "output" else nodes[edge.target.node_id].reference)
                 for edge in sorted(topology.edges.values(), key=lambda e: (nodes[e.source.node_id].reference, e.interaction))]
+    open_lengths = {(nodes[edge.source.node_id].reference, edge.interaction):
+                    connection_length(document, document.connection(edge.id))
+                    for edge in topology.edges.values() if nodes[edge.target.node_id].kind == "output"}
     parameters = {node.reference: parameter_values(node) for node in physical_nodes
                   if node.kind != "fiber_source"}
     sx = source.physical.get("x", 0)
@@ -167,6 +194,7 @@ def compile_schematic(document):
         "", f"PARAMETERS = {pformat(parameters, sort_dicts=True)}",
         "", f"SOURCE = {pformat(source_settings, sort_dicts=True)}",
         "", f"EXPECTED = {pformat(expected)}",
+        "", f"OPEN_LENGTHS = {pformat(open_lengths, sort_dicts=True)}",
         "", "", "def build_layout():",
         f"    layout = Layout({document.title!r})", "    objects = {}",
     ]
@@ -174,7 +202,7 @@ def compile_schematic(document):
         variable = f"part_{index + 1}"
         lines.extend([
             f"    # {node.reference!r}: {SYMBOLS[node.kind].title} ({node.preset})",
-            f"    {variable} = Component(label={node.reference!r}, definition={_definition(node, topology)})",
+            f"    {variable} = Component(label={node.reference!r}, definition={_definition(document, node, topology)})",
             "    x, y, angle = SOURCE['x'], SOURCE['y'], SOURCE['angle'] + 180" if node.kind == "fiber_source" else
             f"    x, y, angle = PLACEMENTS[{node.reference!r}]",
             f"    objects[{node.reference!r}] = layout.add({variable}, position=(x, y, 0), rotation=angle)",
@@ -188,7 +216,7 @@ def compile_schematic(document):
         "        position=(SOURCE['x'], SOURCE['y'], 0), rotation=SOURCE['angle'],",
         "    )",
         "    layout.recompute()",
-        f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r})",
+        f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r}, open_lengths=OPEN_LENGTHS)",
         "    return layout", "", "", "if __name__ == '__main__':", "    build_layout()", "",
     ])
     return Compilation("\n".join(lines), [], object_map, placements)

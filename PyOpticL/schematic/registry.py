@@ -31,6 +31,7 @@ SOURCE_PORT = {"beam": (40.0, 0.0)}
 TERMINAL_PORT = {"beam": (-40.0, 0.0)}
 TRANSMISSION = {"left": "right", "right": "left", "top": "bottom", "bottom": "top"}
 REFLECTION = {"left": "top", "top": "left", "right": "bottom", "bottom": "right"}
+MIN_BEAM_TURN = 0.001  # stay above the ray tracer's parallel-plane tolerance
 
 
 DIAMETER = Parameter("Diameter (mm)", 12.7, 0, exclusive=True)
@@ -95,6 +96,16 @@ def default_turn(kind, incident_port):
     incoming = incident_heading(kind, incident_port)
     outgoing = degrees(atan2(-oy, ox))
     return (outgoing - incoming + 180) % 360 - 180
+
+
+def supports_beam_turn(kind, port, incident_port=None):
+    """Only reflecting interfaces can change direction in the current library.
+
+    A splitter's incoming and reflected connections constrain its reflected
+    branch; its transmitted connection must continue straight through.
+    """
+    return kind == "mirror" or (kind == "splitter" and
+                               (incident_port is None or port != TRANSMISSION[incident_port]))
 
 
 def legacy_port(kind, name):

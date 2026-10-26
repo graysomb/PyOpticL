@@ -64,7 +64,7 @@ class ModelTests(unittest.TestCase):
         document = branched()
         document.nodes[1].rotation = 45
         document.nodes[1].parameters["focal_length"] = -75
-        document.nodes[1].physical["distance"] = 85
+        document.connections[0].length = 85
         document.connections[0].bends = [(80, 0), (80, -40)]
         with TemporaryDirectory() as directory:
             path = Path(directory) / "layout.pyopticl-schematic.json"
@@ -216,7 +216,7 @@ class CompilerTests(unittest.TestCase):
     def test_physical_overrides_and_parameters(self):
         document = chain("source", "lens", "stop")
         document.nodes[0].physical.update(x=10, y=20, angle=90)
-        document.nodes[1].physical["distance"] = 75
+        document.connections[0].length = 75
         document.nodes[1].parameters["focal_length"] = -100
         result = self.assert_valid(document)
         self.assertEqual(result.placements["L1"][:2], (10.0, 95.0))
@@ -293,10 +293,12 @@ class CompilerTests(unittest.TestCase):
         disconnected = chain("source", "stop")
         disconnected.add_node("stop")
         documents.append(disconnected)
-        for key, value in (("turn", 0), ("distance", 0)):
-            invalid = chain("source", "mirror", "stop")
-            invalid.nodes[1].physical[key] = value
-            documents.append(invalid)
+        invalid = chain("source", "mirror", "stop")
+        invalid.nodes[1].physical["turn"] = 0
+        documents.append(invalid)
+        invalid = chain("source", "mirror", "stop")
+        invalid.connections[0].length = 0
+        documents.append(invalid)
         for value in (0, 1, -0.1, 1.1):
             invalid = branched()
             invalid.nodes[2].parameters["ref_ratio"] = value

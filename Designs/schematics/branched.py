@@ -33,6 +33,8 @@ EXPECTED = [('BS1', 'reflected', 'D1'),
  ('M1', 'out', 'L1'),
  ('S1', 'out', 'M1')]
 
+OPEN_LENGTHS = {}
+
 
 def build_layout():
     layout = Layout('Branched optical example')
@@ -64,7 +66,7 @@ def build_layout():
         position=(SOURCE['x'], SOURCE['y'], 0), rotation=SOURCE['angle'],
     )
     layout.recompute()
-    check_trace(beam, objects, EXPECTED, source_reference='S1', splitters=['BS1'])
+    check_trace(beam, objects, EXPECTED, source_reference='S1', splitters=['BS1'], open_lengths=OPEN_LENGTHS)
     return layout
 
 

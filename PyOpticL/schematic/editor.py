@@ -5,9 +5,12 @@ from pathlib import Path
 
 from .compiler import compile_schematic
 from .geometry import apply_drawing_directions, route_connection, route_to, snap_angle, snap_point
-from .model import Connection, Endpoint, History, Schematic, load_schematic, new_id, save_schematic
+from .model import (
+    Connection, Endpoint, History, Schematic, connection_length, load_schematic,
+    interface_turn, migrate_legacy_lengths, new_id, save_schematic,
+)
 from .qt import Action, QtCore, QtGui, QtWidgets
-from .registry import SYMBOLS, default_turn, parameter_values
+from .registry import SYMBOLS, parameter_values
 from .topology import resolve_topology
 
 Qt = QtCore.Qt
@@ -203,6 +206,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 path.lineTo(tip - unit * 8 - perpendicular)
         self.setPath(path)
         self.setPen(QtGui.QPen(QtGui.QColor("#e79b36" if self.isSelected() else "#bd3c43"), 3 if self.isSelected() else 2))
+        description = f"Constrained length: {edge.length:g} mm" if edge.length is not None else f"Default length: {connection_length(self.editor.document, edge):g} mm"
+        self.setToolTip(f"{description}\nSelect to edit beam length; select an optic to constrain its angle; double-click to add a bend")
 
     def mouseDoubleClickEvent(self, event):
         position = pair(event.scenePos())
@@ -400,6 +405,7 @@ class SchematicEditor(QtWidgets.QWidget):
     def __init__(self, document=None, path=None, parent=None):
         super().__init__(parent)
         self.document = document or Schematic()
+        migrate_legacy_lengths(self.document)
         self.path = Path(path) if path else None
         self.history = History(self.document)
         self.setAttribute(Qt.WA_DeleteOnClose)
@@ -481,6 +487,7 @@ class SchematicEditor(QtWidgets.QWidget):
     def commit(self, rebuild=True, selected=None):
         if selected is None:
             selected = self.selected_nodes()
+        migrate_legacy_lengths(self.document)
         self.history.commit(self.document)
         self.messages.clear()
         if rebuild:
@@ -607,16 +614,20 @@ class SchematicEditor(QtWidgets.QWidget):
 
     def show_properties(self):
         self.clear_form()
+        selected = self.scene.selectedItems()
+        if len(selected) == 1 and isinstance(selected[0], ConnectionItem):
+            self.show_beam_properties(selected[0].connection)
+            return
         ids = self.selected_nodes()
         if len(ids) != 1:
             title = QtWidgets.QLineEdit(self.document.title)
             title.editingFinished.connect(lambda: self.set_title(title.text()))
             self.form.addRow("Schematic title", title)
-            for key, label in (("grid", "Drawing grid"), ("spacing", "Default distance (mm)"),
-                               ("open_length", "Open beam length (mm)")):
+            for key, label in (("grid", "Drawing grid"), ("spacing", "Default beam length (mm)"),
+                               ("open_length", "Default open beam length (mm)")):
                 self.number_field(label, self.document.settings[key],
                                   lambda value, key=key: self.change_setting(key, value), minimum=0.001)
-            self.note("Select one part to edit optical parameters. Drawing positions have no physical scale.")
+            self.note("Select an optical element for optical parameters and supported angle constraints, or a beam to constrain its length. Drawing positions have no physical scale.")
             return
         node = self.document.node(ids[0])
         symbol = SYMBOLS[node.kind]
@@ -638,22 +649,83 @@ class SchematicEditor(QtWidgets.QWidget):
             for key, label in (("x", "Source X (mm)"), ("y", "Source Y (mm)"), ("angle", "Source direction (deg)")):
                 self.number_field(label, node.physical.get(key, 0),
                                   lambda value, key=key: self.set_node_dict(node.id, "physical", key, value))
-        elif node.kind != "output":
-            self.number_field("From previous part (mm)", node.physical.get("distance", self.document.settings["spacing"]),
-                              lambda value: self.set_node_dict(node.id, "physical", "distance", value), minimum=0.001)
         if node.kind in ("mirror", "splitter"):
-            turns = (-135, -90, -45, 45, 90, 135) if node.kind == "mirror" else (-90, 90)
-            turn = QtWidgets.QComboBox()
-            turn.addItems([str(value) for value in turns])
-            value = node.physical.get("turn", default_turn(node.kind, self.scene.topology.incident_ports.get(node.id)))
-            if value not in turns:
-                turn.addItem(str(value))
-                turn.setCurrentIndex(turn.count() - 1)
-            else:
-                turn.setCurrentIndex(turns.index(value))
-            turn.currentTextChanged.connect(lambda value: self.set_node_dict(node.id, "physical", "turn", float(value)))
-            self.form.addRow("Reflected turn (deg)", turn)
-        self.note("Rotate with R. Drawing edits do not change physical layout.")
+            self.show_angle_property(node)
+        if "distance" in node.physical:
+            self.note(f"Legacy length {node.physical['distance']:g} mm will transfer to the incoming beam when source direction is resolved.")
+        self.note("Select a connecting beam to constrain its length. Rotate with R. Drawing edits do not change physical layout.")
+
+    def show_beam_properties(self, edge):
+        self.note("Beam connection")
+        a, b = self.document.node(edge.a.node_id), self.document.node(edge.b.node_id)
+        self.note(f"{a.reference}.{edge.a.port_id} ↔ {b.reference}.{edge.b.port_id}")
+        constrained = QtWidgets.QCheckBox("Constrain beam length")
+        constrained.setObjectName("beamLengthConstrained")
+        constrained.setChecked(edge.length is not None)
+        self.form.addRow(constrained)
+        length = self.number_field("Length (mm)", connection_length(self.document, edge),
+                                   lambda value: self.set_connection_length(edge.id, value)
+                                   if edge.length is not None else None, minimum=0.001)
+        length.setObjectName("beamLengthMm")
+        length.setEnabled(constrained.isChecked())
+
+        def toggle(checked):
+            length.setEnabled(checked)
+            self.set_connection_length(edge.id, length.value() if checked else None)
+            if not checked:
+                length.setValue(connection_length(self.document, edge))
+
+        constrained.toggled.connect(toggle)
+        self.note("Physical separation between the connected optical interaction points. Leave unconstrained to use the document default; drawn bends and spacing have no physical scale.")
+        self.note("Select a mirror or beamsplitter to enable or edit its angle constraint.")
+
+    def show_angle_property(self, node):
+        legacy = [edge.turns[node.id] for edge in self.document.connections if node.id in edge.turns]
+        constrained = QtWidgets.QCheckBox("Constrain angle")
+        constrained.setObjectName("opticAngleConstrained")
+        constrained.setChecked("turn" in node.physical or bool(legacy))
+        self.form.addRow(constrained)
+        label = "Reflected turn (deg)" if node.kind == "splitter" else "Turn (deg)"
+        angle = self.number_field(label, interface_turn(self.document, node, self.scene.topology),
+                                  lambda value: self.set_optic_turn(node.id, value)
+                                  if constrained.isChecked() else None,
+                                  minimum=-179.999999, maximum=179.999999)
+        angle.setObjectName("opticAngleDeg")
+        angle.setEnabled(constrained.isChecked())
+        angle.setToolTip("Signed direction change in degrees; absolute value must be at least 0.001° and less than 180°.")
+
+        def toggle(checked):
+            angle.setEnabled(checked)
+            self.set_optic_turn(node.id, angle.value() if checked else None)
+            if not checked:
+                angle.setValue(interface_turn(self.document, node, self.scene.topology))
+
+        constrained.toggled.connect(toggle)
+        if legacy:
+            angle.editingFinished.connect(lambda: self.set_optic_turn(node.id, angle.value())
+                                          if constrained.isChecked() else None)
+        if legacy and max(legacy) - min(legacy) > 1e-6:
+            self.note("This optic has conflicting angles from an older drawing. Enter the desired angle here, or turn the constraint off, to resolve them.")
+        self.note("Turn is the change in beam direction at this optic. Positive is counterclockwise; negative is clockwise. 90° is a right-angle bend. Leave unconstrained to use the resolved port's default turn. Drawn bends do not set this angle.")
+        if node.kind == "splitter":
+            self.note("The angle controls the reflected branch; transmission continues straight.")
+
+    def set_optic_turn(self, node_id, value):
+        node = self.document.node(node_id)
+        # Older angle constraints were stored on adjacent beams. Editing the
+        # optic consolidates them into one setting, including conflicting ones.
+        for edge in self.document.connections:
+            edge.turns.pop(node_id, None)
+        if value is None:
+            node.physical.pop("turn", None)
+        else:
+            node.physical["turn"] = value
+        self.commit(rebuild=False)
+
+    def set_connection_length(self, connection_id, value):
+        self.document.connection(connection_id).length = value
+        self.scene.connections[connection_id].refresh()
+        self.commit(rebuild=False)
 
     def set_title(self, value):
         self.document.title = value or "Optical schematic"
@@ -692,7 +764,7 @@ class SchematicEditor(QtWidgets.QWidget):
         value = item.data(Qt.UserRole)
         if value:
             node_id, edge_id = value
-            target = self.scene.symbols.get(node_id) or self.scene.connections.get(edge_id)
+            target = self.scene.connections.get(edge_id) or self.scene.symbols.get(node_id)
             if target is not None:
                 self.scene.clearSelection()
                 target.setSelected(True)

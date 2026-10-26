@@ -25,7 +25,9 @@
         0
       ],
       "rotation": 0,
-      "physical": {}
+      "physical": {
+        "turn": 90.0
+      }
     },
     {
       "id": "L1",
@@ -51,7 +53,9 @@
         -320
       ],
       "rotation": 270,
-      "physical": {}
+      "physical": {
+        "turn": 90.0
+      }
     },
     {
       "id": "FO1",
@@ -91,7 +95,9 @@
         "node_id": "S1",
         "port_id": "beam"
       },
-      "bends": []
+      "bends": [],
+      "length": null,
+      "turns": {}
     },
     {
       "id": "M1-L1",
@@ -103,7 +109,9 @@
         "node_id": "L1",
         "port_id": "A"
       },
-      "bends": []
+      "bends": [],
+      "length": null,
+      "turns": {}
     },
     {
       "id": "L1-BS1",
@@ -115,7 +123,9 @@
         "node_id": "BS1",
         "port_id": "left"
       },
-      "bends": []
+      "bends": [],
+      "length": null,
+      "turns": {}
     },
     {
       "id": "BS1-FO1",
@@ -127,7 +137,9 @@
         "node_id": "FO1",
         "port_id": "beam"
       },
-      "bends": []
+      "bends": [],
+      "length": null,
+      "turns": {}
     },
     {
       "id": "BS1-D1",
@@ -139,7 +151,9 @@
         "node_id": "D1",
         "port_id": "beam"
       },
-      "bends": []
+      "bends": [],
+      "length": null,
+      "turns": {}
     }
   ],
   "settings": {
@@ -150,5 +164,5 @@
     "spacing": 50,
     "open_length": 50
   },
-  "version": 2
+  "version": 3
 }

@@ -84,6 +84,8 @@ def apply_drawing_directions(document):
         if node.kind in ("source", "fiber_source") and (node.id, "out") in outgoing:
             node.physical["angle"] = outgoing[(node.id, "out")]
         if node.kind in ("mirror", "splitter") and node.id in incoming:
+            if "turn" in node.physical or any(node.id in edge.turns for edge in document.connections):
+                continue  # Explicit angle constraints take priority over drawing hints.
             port = "reflected" if node.kind == "splitter" else "out"
             if (node.id, port) in outgoing:
                 turn = (outgoing[(node.id, port)] - incoming[node.id] + 180) % 360 - 180

@@ -247,7 +247,7 @@ class EditorTests(unittest.TestCase):
         self.assertFalse(self.editor.validate().ok)
 
     def test_turn_inspector_displays_the_resolved_default(self):
-        for incident, expected in (("A", "90"), ("B", "-90")):
+        for incident, expected in (("A", 90), ("B", -90)):
             document = chain("source", "mirror", "stop")
             mirror = document.nodes[1]
             document.connections[0].b = Endpoint(mirror.id, incident)
@@ -257,12 +257,169 @@ class EditorTests(unittest.TestCase):
             self.editor.restore()
             self.editor.scene.symbols[mirror.id].setSelected(True)
             self.app.processEvents()
-            fields = [widget for widget in self.editor.properties.findChildren(QtWidgets.QComboBox)
-                      if widget.isVisible() and self.editor.form.labelForField(widget) is not None and
-                      self.editor.form.labelForField(widget).text() == "Reflected turn (deg)"]
+            fields = [widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                      if widget.isVisible() and widget.objectName() == "opticAngleDeg"]
             self.assertEqual(len(fields), 1)
-            self.assertEqual(fields[0].currentText(), expected)
+            self.assertEqual(fields[0].value(), expected)
+            self.assertFalse(fields[0].isEnabled())
             self.assertNotIn("turn", mirror.physical)
+
+    def test_selecting_beam_edits_optional_length_and_undo_redo(self):
+        edge = self.editor.document.connections[0]
+        QtTest.QTest.mouseClick(self.editor.view.viewport(), QtCore.Qt.LeftButton,
+                                pos=self.editor.view.mapFromScene(QtCore.QPointF(80, 0)))
+        self.app.processEvents()
+        checkbox = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                        if widget.objectName() == "beamLengthConstrained" and widget.isVisible())
+        length = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                      if widget.objectName() == "beamLengthMm" and widget.isVisible())
+        self.assertFalse(checkbox.isChecked())
+        self.assertFalse(length.isEnabled())
+        self.assertEqual(length.value(), 50)
+        checkbox.setChecked(True)
+        length.setValue(75)
+        self.assertEqual(edge.length, 75)
+        self.assertTrue(self.editor.scene.connections[edge.id].isSelected())
+        self.assertIn("75 mm", self.editor.scene.connections[edge.id].toolTip())
+        self.assertEqual(compile_schematic(self.editor.document).placements["L1"][:2], (75, 0))
+        self.assertNotIn("distance", self.editor.document.nodes[1].physical)
+        checkbox.setChecked(False)
+        self.assertIsNone(edge.length)
+        self.assertFalse(length.isEnabled())
+        self.assertEqual(length.value(), 50)
+        self.editor.undo()
+        self.assertEqual(self.editor.document.connection(edge.id).length, 75)
+        self.editor.redo()
+        self.assertIsNone(self.editor.document.connection(edge.id).length)
+
+    def test_component_inspector_has_no_distance_field(self):
+        node = self.editor.document.nodes[1]
+        self.editor.scene.symbols[node.id].setSelected(True)
+        self.app.processEvents()
+        labels = [self.editor.form.itemAt(index).widget().text() for index in range(self.editor.form.count())
+                  if isinstance(self.editor.form.itemAt(index).widget(), QtWidgets.QLabel)]
+        self.assertNotIn("From previous part (mm)", labels)
+        self.assertTrue(any("connecting beam" in label for label in labels))
+        self.assertFalse(any(widget.isVisible() and widget.objectName() == "opticAngleConstrained"
+                             for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)))
+
+    def test_optic_angle_inspector_edits_clears_and_undoes(self):
+        document = chain("source", "mirror", "stop")
+        mirror = document.nodes[1]
+        self.editor.document = document
+        self.editor.history = self.editor.history.__class__(document)
+        self.editor.restore()
+        self.editor.scene.symbols[mirror.id].setSelected(True)
+        self.app.processEvents()
+        checkbox = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                        if widget.objectName() == "opticAngleConstrained" and widget.isVisible())
+        angle = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                     if widget.objectName() == "opticAngleDeg" and widget.isVisible())
+        self.assertFalse(checkbox.isChecked())
+        self.assertFalse(angle.isEnabled())
+        self.assertEqual(angle.value(), 90)
+        checkbox.setChecked(True)
+        angle.setValue(-62.5)
+        self.assertEqual(mirror.physical["turn"], -62.5)
+        self.assertTrue(compile_schematic(document).ok)
+        self.assertTrue(all(not edge.turns for edge in document.connections))
+        self.assertTrue(self.editor.scene.symbols[mirror.id].isSelected())
+        checkbox.setChecked(False)
+        self.assertNotIn("turn", mirror.physical)
+        self.assertEqual(angle.value(), 90)
+        self.editor.undo()
+        self.assertEqual(self.editor.document.node(mirror.id).physical["turn"], -62.5)
+        self.editor.redo()
+        self.assertNotIn("turn", self.editor.document.node(mirror.id).physical)
+
+    def test_beam_inspector_has_length_controls_but_no_angle_controls(self):
+        for edge in self.editor.document.connections:
+            self.editor.scene.clearSelection()
+            self.editor.scene.connections[edge.id].setSelected(True)
+            self.app.processEvents()
+            controls = [widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox) if widget.isVisible()]
+            self.assertEqual([control.objectName() for control in controls], ["beamLengthConstrained"])
+
+    def test_each_mirror_has_its_own_angle_control(self):
+        document = chain("source", "mirror", "mirror", "stop")
+        self.editor.document = document
+        self.editor.history = self.editor.history.__class__(document)
+        self.editor.restore()
+        for node, value in zip(document.nodes[1:3], (60, -30)):
+            self.editor.scene.clearSelection()
+            self.editor.scene.symbols[node.id].setSelected(True)
+            self.app.processEvents()
+            control = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                           if widget.objectName() == "opticAngleConstrained" and widget.isVisible())
+            angle = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                         if widget.objectName() == "opticAngleDeg" and widget.isVisible())
+            control.setChecked(True)
+            angle.setValue(value)
+        self.assertEqual([node.physical["turn"] for node in document.nodes[1:3]], [60, -30])
+        self.assertTrue(compile_schematic(document).ok)
+
+    def test_legacy_angle_diagnostic_selects_optic_and_edit_resolves_conflict(self):
+        document = chain("source", "mirror", "stop")
+        mirror = document.nodes[1]
+        for edge, angle in zip(document.connections, (60, -60)):
+            edge.turns[mirror.id] = angle
+        self.editor.document = document
+        self.editor.history = self.editor.history.__class__(document)
+        self.editor.restore()
+        self.assertFalse(self.editor.validate().ok)
+        item = next(self.editor.messages.item(index) for index in range(self.editor.messages.count())
+                    if "conflicting" in self.editor.messages.item(index).text())
+        self.editor.focus_diagnostic(item)
+        self.assertTrue(self.editor.scene.symbols[mirror.id].isSelected())
+        self.app.processEvents()
+        angle = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                     if widget.objectName() == "opticAngleDeg" and widget.isVisible())
+        angle.setValue(37.5)
+        self.assertEqual(mirror.physical["turn"], 37.5)
+        self.assertTrue(all(not edge.turns for edge in document.connections))
+        self.assertTrue(self.editor.validate().ok)
+
+    def test_splitter_angle_and_legacy_toggle_are_edited_on_the_optic(self):
+        cube = self.editor.document.nodes[2]
+        self.editor.document.connections[1].turns[cube.id] = -62.5
+        self.editor.commit()
+        self.editor.scene.symbols[cube.id].setSelected(True)
+        self.app.processEvents()
+        control = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox)
+                       if widget.objectName() == "opticAngleConstrained" and widget.isVisible())
+        angle = next(widget for widget in self.editor.properties.findChildren(QtWidgets.QDoubleSpinBox)
+                     if widget.objectName() == "opticAngleDeg" and widget.isVisible())
+        self.assertTrue(control.isChecked())
+        self.assertEqual(angle.value(), -62.5)
+        control.setChecked(False)
+        self.assertFalse(angle.isEnabled())
+        self.assertNotIn("turn", cube.physical)
+        self.assertTrue(all(cube.id not in edge.turns for edge in self.editor.document.connections))
+        control.setChecked(True)
+        angle.setValue(117.25)
+        self.assertEqual(cube.physical["turn"], 117.25)
+        self.assertTrue(self.editor.validate().ok)
+
+    def test_completing_legacy_drawing_migrates_length_as_one_undoable_edit(self):
+        document = chain("lens", "stop")
+        lens = document.nodes[0]
+        lens.physical["distance"] = 75
+        self.editor.document = document
+        self.editor.history = self.editor.history.__class__(document)
+        self.editor.restore()
+        self.editor.add_symbol("source", (-160, 0))
+        source = self.editor.document.nodes[-1]
+        self.assertEqual(self.editor.document.node(lens.id).physical["distance"], 75)
+        self.assertTrue(self.editor.connect_ports(source.id, "beam", lens.id, "A"))
+        self.editor.commit()
+        self.assertNotIn("distance", self.editor.document.node(lens.id).physical)
+        self.assertEqual(self.editor.document.connections[-1].length, 75)
+        self.editor.undo()
+        self.assertEqual(self.editor.document.node(lens.id).physical["distance"], 75)
+        self.assertEqual(len(self.editor.document.connections), 1)
+        self.editor.redo()
+        self.assertNotIn("distance", self.editor.document.node(lens.id).physical)
+        self.assertEqual(self.editor.document.connections[-1].length, 75)
 
 
 if __name__ == "__main__":

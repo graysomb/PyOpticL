@@ -119,6 +119,43 @@ class FreeCADSchematicTests(unittest.TestCase):
                     connect(document, cube, document.add_node("stop"), port)
                 self.build(document)
 
+    def test_beam_lengths_control_component_positions(self):
+        document = chain("source", "lens", "stop")
+        document.connections[0].length = 75
+        document.connections[1].length = 90
+        layout = self.build(document)
+        objects = {child.Label: child for child in layout.get_object().Children}
+        self.assertAlmostEqual(objects["L1"].Placement.Base.x, 75)
+        self.assertAlmostEqual(objects["D1"].Placement.Base.x, 165)
+
+    def test_independent_open_branch_lengths(self):
+        document = chain("source", "splitter")
+        cube = document.nodes[-1]
+        for port, length in (("right", 80), ("top", 120)):
+            connect(document, cube, document.add_node("output"), port)
+            document.connections[-1].length = length
+        layout = self.build(document)
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        lengths = sorted(segment.Distance.Value for segment in beam.BeamSegments if segment.EndObject is None)
+        self.assertEqual(lengths, [80, 120])
+
+    def test_continuous_turn_at_mirror(self):
+        for turn in (-62.5, 117.25):
+            document = chain("source", "mirror", "stop")
+            document.nodes[1].physical["turn"] = turn
+            self.build(document)
+
+    def test_continuous_splitter_turn_from_every_face(self):
+        for face in TRANSMISSION:
+            for turn in (-62.5, 117.25):
+                document = chain("source", "splitter")
+                cube = document.nodes[-1]
+                document.connections[0].b = Endpoint(cube.id, face)
+                cube.physical["turn"] = turn
+                for port in (TRANSMISSION[face], REFLECTION[face]):
+                    connect(document, cube, document.add_node("stop"), port)
+                self.build(document)
+
 
 def run():
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(FreeCADSchematicTests)

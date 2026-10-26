@@ -86,17 +86,37 @@ not execute the macro or modify an existing CAD layout.
 - Move parts on the drawing grid, rotate with **R**, and use the grid/angle snap
   controls for 45° or 90° drawing. Double-click a connection to add an editable
   bend. Select a part, connection, or bend and press **Delete** to remove it.
-- Select a part to edit its optical parameters, compatible part preset, physical
-  distance, and mirror/splitter turn. Drawing positions and lengths have no
+- Select a beam connection, enable **Constrain beam length**, and enter its
+  **Length (mm)** in the inspector. The constraint belongs to the beam between
+  the two optical interaction points, independently of connection click order.
+  Uncheck it to use the document's default beam length (or default open beam
+  length for an open output). Splitter branches can have independent lengths.
+- Select a mirror or beamsplitter, enable **Constrain angle** in the element's
+  inspector, and enter **Turn (deg)** or **Reflected turn (deg)**. Positive
+  turns counterclockwise and negative clockwise in the physical XY plane;
+  +90° is a right-angle bend, rather than a 90° incidence angle. Fractional
+  angles are supported (absolute value at least 0.001° and less than 180°).
+  The angle belongs to the optical element and stays with it when connections
+  change. Uncheck the constraint to restore the resolved port's default turn.
+  Transmission stays straight, and single-ended fiber couplers
+  have no direction change to constrain. This controls routing geometry;
+  the current cube model does not simulate refraction through its outer faces.
+- Select a part to edit its optical parameters, compatible part preset, and
+  supported angle constraint. Existing angles from the earlier beam-based
+  controls can also be edited or cleared here.
+  Drawing positions and lengths have no
   physical scale. **Apply Drawing Directions** explicitly copies drawing
-  tangents into physical routing hints; later drawing edits leave them alone.
+  tangents into physical routing hints while preserving explicit angle
+  constraints; later drawing edits leave them alone.
   Default mirror/splitter turns follow the resolved incident port. Explicit
   physical turn overrides remain unchanged when connections are edited.
 - Save editable drawings as `.pyopticl-schematic.json`. Undo/redo includes parts,
   connections, settings, and properties. Incomplete drawings can be saved.
-  Version 1 drawings load through an in-memory migration that preserves existing
+  Version 1/2 drawings load through an in-memory migration that preserves existing
   port locations, bends, references, and physical settings. Files are written in
-  version 2 format only when saved; opening a drawing does not rewrite it.
+  version 3 format only when saved; opening a drawing does not rewrite it.
+  Old component distances transfer to their incoming beams. An unfinished
+  drawing retains unresolved old distances until source direction is known.
 - **Validate** checks topology and physical origin overlaps. Every branch must
   end in a fiber output, beam stop, or explicit open output. Export is blocked
   until errors are resolved; click a message to locate the affected part.
@@ -145,6 +165,7 @@ its own documents and preserves existing designs.
 
 The portable connection API uses unordered endpoints, for example
 `Connection(id, Endpoint(lens_id, "B"), Endpoint(source_id, "beam"))`.
+Set `connection.length = 75` for a 75 mm constraint, or `None` to use the default.
 `resolve_topology(schematic)` returns source-oriented connections, incident
 ports, interaction roles, and diagnostics without modifying the document.
 Source/fiber-source symbols remain emitters; receiver, stop, and open-output

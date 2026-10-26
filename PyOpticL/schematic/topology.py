@@ -46,7 +46,7 @@ def resolve_topology(document):
     result = ResolvedTopology()
     diagnostics = result.diagnostics
     try:
-        document_from_dict(document.to_dict())
+        document_from_dict(document.to_dict(), migrate_lengths=False)
     except ValueError as error:
         diagnostics.append(Diagnostic(str(error)))
         return result
