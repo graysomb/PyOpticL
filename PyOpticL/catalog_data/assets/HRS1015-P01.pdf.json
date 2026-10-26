@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "HRS1015-P01",
+  "product_url": "https://www.thorlabs.com/item/HRS1015-P01",
+  "asset_url": null,
+  "vendor_filename": "HRS1015-P01-CAD-PDF.pdf",
+  "document_id": "TTN048987-E0W",
+  "revision": "B",
+  "retrieved_at": "2026-10-26T20:31:45.465347+00:00",
+  "sha256": "81347b717a05d12e644b87b56c247c15b7046b7982ec217fa0610eccd0cd9e3f",
+  "kind": "pdf",
+  "cache_path": "objects/81347b717a05d12e644b87b56c247c15b7046b7982ec217fa0610eccd0cd9e3f/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

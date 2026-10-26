@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "XR25C",
+  "product_url": "https://www.thorlabs.com/item/XR25C",
+  "asset_url": null,
+  "vendor_filename": "XR25C-CAD-PDF.pdf",
+  "document_id": "XR25C-E0W",
+  "revision": "E",
+  "retrieved_at": "2026-10-23T20:18:21.108080+00:00",
+  "sha256": "6cb377cac57191b523d5beb6a717ce450777184a6e21de69b72683b819ab34f5",
+  "kind": "pdf",
+  "cache_path": "objects/6cb377cac57191b523d5beb6a717ce450777184a6e21de69b72683b819ab34f5/source.pdf",
+  "units": "mm and inches",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

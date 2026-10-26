@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "vendor": "optosigma",
+  "part_number": "MHV-25.4L-R",
+  "product_url": "https://www.optosigma.com/us_en/opto-mechanical-components-2/mirror-mounts/precision-grade-stainless-steel-mirror-mounts/25-4-mm-top-adjust-mirror-mount-clear-edge-aperture-stainless-steel-front-loading-2-locking-hex-adjusters.html",
+  "asset_url": null,
+  "vendor_filename": "MHV__1_ (1).pdf",
+  "document_id": "MHV",
+  "revision": "MHV_E2505",
+  "retrieved_at": "2026-10-26T18:11:10.963650+00:00",
+  "sha256": "e1369445825472b58894d045f8f7313f1088ee93deca540f28cfab0b759e42ad",
+  "kind": "pdf",
+  "cache_path": "objects/e1369445825472b58894d045f8f7313f1088ee93deca540f28cfab0b759e42ad/source.pdf",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape",
+  "acquisition_note": "Downloaded from the exact SKU page Resources & Downloads control; STEP unpacked from vendor ZIP."
+}

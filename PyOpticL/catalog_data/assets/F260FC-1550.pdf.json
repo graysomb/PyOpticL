@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "F260FC-1550",
+  "product_url": "https://www.thorlabs.com/item/F260FC-1550",
+  "asset_url": null,
+  "vendor_filename": "F260FC-1550-CAD-PDF.PDF",
+  "document_id": "7524-E0W",
+  "revision": "D",
+  "retrieved_at": "2026-10-23T20:17:03.226227+00:00",
+  "sha256": "f2e3ca9c48b20155b6082ebbfa6233b87ecdda2eb00ae142864d04fde5ab2f5c",
+  "kind": "pdf",
+  "cache_path": "objects/f2e3ca9c48b20155b6082ebbfa6233b87ecdda2eb00ae142864d04fde5ab2f5c/source.pdf",
+  "units": "mm and inches",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

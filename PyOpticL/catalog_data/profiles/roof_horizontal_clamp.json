@@ -1,0 +1,128 @@
+[
+  [
+    {
+      "poles": [
+        [
+          10.16,
+          0.0,
+          -12.7
+        ],
+        [
+          -10.16,
+          0.0,
+          -12.7
+        ]
+      ],
+      "multiplicities": [
+        2,
+        2
+      ],
+      "knots": [
+        -15.24,
+        5.08
+      ],
+      "periodic": false,
+      "degree": 1,
+      "weights": [
+        1.0,
+        1.0
+      ],
+      "first": -15.24,
+      "last": 5.08,
+      "orientation": "Reversed"
+    },
+    {
+      "poles": [
+        [
+          -10.16,
+          0.0,
+          -12.7
+        ],
+        [
+          -10.16,
+          -10.16,
+          -12.7
+        ]
+      ],
+      "multiplicities": [
+        2,
+        2
+      ],
+      "knots": [
+        -5.08,
+        5.08
+      ],
+      "periodic": false,
+      "degree": 1,
+      "weights": [
+        1.0,
+        1.0
+      ],
+      "first": -5.08,
+      "last": 5.08,
+      "orientation": "Reversed"
+    },
+    {
+      "poles": [
+        [
+          -10.16,
+          -10.16,
+          -12.7
+        ],
+        [
+          10.16,
+          -10.16,
+          -12.7
+        ]
+      ],
+      "multiplicities": [
+        2,
+        2
+      ],
+      "knots": [
+        -5.08,
+        15.24
+      ],
+      "periodic": false,
+      "degree": 1,
+      "weights": [
+        1.0,
+        1.0
+      ],
+      "first": -5.08,
+      "last": 15.24,
+      "orientation": "Reversed"
+    },
+    {
+      "poles": [
+        [
+          10.16,
+          -10.16,
+          -12.7
+        ],
+        [
+          10.16,
+          -1.7763568394002505e-15,
+          -12.7
+        ]
+      ],
+      "multiplicities": [
+        2,
+        2
+      ],
+      "knots": [
+        -5.08,
+        5.079999999999998
+      ],
+      "periodic": false,
+      "degree": 1,
+      "weights": [
+        1.0,
+        1.0
+      ],
+      "first": -5.08,
+      "last": 5.079999999999998,
+      "orientation": "Reversed"
+    }
+  ]
+]

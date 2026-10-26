@@ -1,0 +1,154 @@
+{
+  "POLARIS-K05VS2": {
+    "seat_frame": "mounting_face",
+    "screws": [
+      "post"
+    ],
+    "dowels": [
+      "dowel_round",
+      "dowel_slot"
+    ],
+    "mount_clearance_diameter_mm": 4.6228,
+    "optical_height_mm": 12.7,
+    "dowel": {
+      "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
+      "plate_diameter_mm": 2.01,
+      "plate_diameter_limits_mm": [
+        2.0065999999999997,
+        2.02184
+      ],
+      "plate_depth_mm": 4.444999999999999,
+      "plate_depth_tolerance_mm": [
+        0,
+        0.0508
+      ],
+      "mount_depth_mm": 1.905,
+      "pin_projection_mm": 0.5550000000000006,
+      "slot_arc_centers_native": [
+        [
+          4.50457,
+          -12.7,
+          8.96484065558
+        ],
+        [
+          5.49543,
+          -12.7,
+          8.96484065558
+        ]
+      ],
+      "note": "Two pins at native X=-5,+5. Slotted mount feature uses one round mating pin hole at the slot center."
+    },
+    "source": "POLARIS-K05VS2 drawing revision C, notes 1 and 2; pinned STEP cylindrical/planar faces",
+    "step_sha256": "aef29c1f76d51e0cd03fe568bc1e315162525c2e8f160302eb7586bca7709708",
+    "drawing_sha256": "8ebe14d1faeb8703994d75937e0bde07f3aaf4c4d05bc444675c6382039cdf7a",
+    "native_seat": [
+      0,
+      -12.7,
+      8.96484065558
+    ],
+    "native_holes": [
+      {
+        "name": "post",
+        "center": [
+          0,
+          -12.7,
+          8.96484065558
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.6228,
+        "depth": null,
+        "thread": null
+      },
+      {
+        "name": "dowel_round",
+        "center": [
+          -5,
+          -12.7,
+          8.96484065558
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.91,
+        "thread": null
+      },
+      {
+        "name": "dowel_slot",
+        "center": [
+          5,
+          -12.7,
+          8.96484065558
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 2.00914,
+        "depth": 1.905,
+        "thread": null
+      }
+    ]
+  },
+  "KA05TA": {
+    "seat_frame": "mounting_face",
+    "screws": [
+      "post_bottom"
+    ],
+    "dowels": [],
+    "mount_clearance_diameter_mm": 4.6228,
+    "optical_height_mm": 12.7,
+    "excluded_interfaces": {
+      "post_side": "Alternative side mounting face at 90 degrees; not attached to the horizontal plate."
+    },
+    "source": "KA05TA drawing revision A and pinned STEP; no mating dowel pattern documented",
+    "step_sha256": "88338506ce40be1764b8f4c017614fdcc4ffbb7ecf0cd776db4cb289844546ec",
+    "drawing_sha256": "eda3469ba45ba6f1fa4bc5bdf13ab99054081bee3377a83d74f6b638b028f587",
+    "native_seat": [
+      9.09394,
+      1.97817,
+      18.68338
+    ],
+    "native_holes": [
+      {
+        "name": "post_bottom",
+        "center": [
+          9.09394,
+          1.97817,
+          18.68338
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.6228,
+        "depth": null,
+        "thread": null
+      },
+      {
+        "name": "post_side",
+        "center": [
+          -3.60606,
+          14.67817,
+          18.68338
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "diameter": 4.6228,
+        "depth": null,
+        "thread": null
+      }
+    ]
+  }
+}

@@ -33,6 +33,8 @@ Design optical systems in Python and automatically generate modular CAD models o
 [Quick Start](https://github.com/UMassIonTrappers/PyOpticL/wiki/Quick-Start) •
 [Discord](https://discord.gg/vV4NP6rXmp)
 
+[Lab catalog and component contracts](docs/lab-catalog.md) · [Reference measurement report](docs/reference-measurements.md)
+
 </div>
 
 <!-- <img height="100" alt="PyOpticL_logo" src="https://github.com/user-attachments/assets/6abdeee1-0d27-4417-b13f-469ae00388c7" /> -->

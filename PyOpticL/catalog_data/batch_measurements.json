@@ -1,0 +1,667 @@
+{
+  "units": "mm",
+  "comparison_tolerance_mm": 0.01,
+  "comparison_tolerance_deg": 0.01,
+  "parts": {
+    "POLARIS-L05G": {
+      "step_sha256": "8318b18cc1c38310475b5c9f54eddf69f144b947d86bb87155ab5850dd887d4a",
+      "drawing_sha256": "87d462a37eb1f1625f1c8fb90de273f5add1998ae3806dc291dae6e34c04f5d8",
+      "native_optical_height_mm": 12.7,
+      "origin": [
+        13.28850354,
+        18.43958737,
+        26.57025165
+      ],
+      "mounting_face": [
+        13.28850354,
+        5.73958737,
+        18.57025165
+      ],
+      "native_holes": [
+        {
+          "name": "post",
+          "center": [
+            13.28850354,
+            5.73958737,
+            18.57025165
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.699,
+          "depth": null,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              13.28850354,
+              5.73958737,
+              15.91595165
+            ],
+            [
+              13.28850354,
+              5.73958737,
+              21.22455165
+            ]
+          ]
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            18.28850354,
+            5.73958737,
+            18.57025165
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null
+        },
+        {
+          "name": "dowel_slot",
+          "center": [
+            8.28850354,
+            5.73958737,
+            18.57025165
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              8.783933540000001,
+              5.73958737,
+              18.57025165
+            ],
+            [
+              7.793073540000001,
+              5.73958737,
+              18.57025165
+            ]
+          ]
+        }
+      ],
+      "source": "https://www.thorlabs.com/item/POLARIS-L05G; pinned engineering drawing and measured STEP",
+      "solid_count": 1,
+      "volume_mm3": 2073.4243772708073
+    },
+    "POLARIS-L1G": {
+      "step_sha256": "363ab43223650ca4a61f10727a32c89ecdab429103a79362037cc9d36a0f4fa2",
+      "drawing_sha256": "7d76fd869904cb34b7747c95dc6f8d1bc4406103d319a08d1db494f03bfc6465",
+      "native_optical_height_mm": 19.05,
+      "origin": [
+        25.49044907,
+        20.48974434,
+        35.81099828
+      ],
+      "mounting_face": [
+        25.49044907,
+        1.43974434,
+        27.81099828
+      ],
+      "native_holes": [
+        {
+          "name": "post",
+          "center": [
+            25.49044907,
+            1.43974434,
+            27.81099828
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.699,
+          "depth": null,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              25.49044907,
+              1.43974434,
+              25.15669828
+            ],
+            [
+              25.49044907,
+              1.43974434,
+              30.46529828
+            ]
+          ]
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            30.49044907,
+            1.43974434,
+            27.81099828
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null
+        },
+        {
+          "name": "dowel_slot",
+          "center": [
+            20.49044907,
+            1.43974434,
+            27.81099828
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              20.98587907,
+              1.43974434,
+              27.81099828
+            ],
+            [
+              19.99501907,
+              1.43974434,
+              27.81099828
+            ]
+          ]
+        }
+      ],
+      "source": "https://www.thorlabs.com/item/POLARIS-L1G; pinned engineering drawing and measured STEP",
+      "solid_count": 1,
+      "volume_mm3": 2516.0459935777644
+    },
+    "POLARIS-K1VS2": {
+      "step_sha256": "45daa0030a7a8a226187c51684a2d81563c520aa358956d3ade124f546b2545e",
+      "drawing_sha256": "6f142fe88e9eebe0a1b69a30af6d1bffb5e2897570ebabfe6ce91ead7a6242ac",
+      "native_optical_height_mm": 25.4,
+      "origin": [
+        0,
+        0,
+        -58.94908707
+      ],
+      "mounting_face": [
+        0,
+        -25.4,
+        -49.9330045317
+      ],
+      "native_holes": [
+        {
+          "name": "post",
+          "center": [
+            0,
+            -25.4,
+            -49.9330045317
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.699,
+          "depth": null,
+          "thread": null
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            -5.0038,
+            -25.4,
+            -49.9330045317
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null
+        },
+        {
+          "name": "dowel_slot",
+          "center": [
+            5.0038,
+            -25.4,
+            -49.9330045317
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              4.50837,
+              -25.4,
+              -49.9330045317
+            ],
+            [
+              5.49923,
+              -25.4,
+              -49.9330045317
+            ]
+          ]
+        }
+      ],
+      "source": "https://www.thorlabs.com/item/POLARIS-K1VS2; pinned engineering drawing and measured STEP",
+      "solid_count": 26,
+      "volume_mm3": 29933.99323845762
+    },
+    "POLARIS-K05T6": {
+      "step_sha256": "1fbb7a5ff1f027a9c755291b0729c4685b416d012e32fdb7bd590a5c5f6ad911",
+      "drawing_sha256": "e78c7d2113dd073c7fca782a2f4c93e5d5824c210c143dfbce271e7fc1219aa9",
+      "native_optical_height_mm": 12.7,
+      "origin": [
+        -1.778,
+        1.778,
+        4.826
+      ],
+      "mounting_face": [
+        -1.778,
+        -10.922,
+        -11.7023545243
+      ],
+      "native_holes": [
+        {
+          "name": "post",
+          "center": [
+            -1.778,
+            -10.922,
+            -11.7023545243
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.6228,
+          "depth": null,
+          "thread": null
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            3.222,
+            -10.922,
+            -11.7023545243
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null
+        },
+        {
+          "name": "dowel_slot",
+          "center": [
+            -6.778,
+            -10.922,
+            -11.7023545243
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.905,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              -6.28257,
+              -10.922,
+              -11.7023545243
+            ],
+            [
+              -7.27343,
+              -10.922,
+              -11.7023545243
+            ]
+          ]
+        }
+      ],
+      "source": "https://www.thorlabs.com/item/POLARIS-K05T6; pinned engineering drawing and measured STEP",
+      "solid_count": 31,
+      "volume_mm3": 5453.13235469519
+    },
+    "MHV-12.7L-R": {
+      "step_sha256": "be1bbf3df5c5a01cb0c497b7f6bb5a1fb72c8485ca27bc835c5088c22bebd422",
+      "drawing_sha256": "e1369445825472b58894d045f8f7313f1088ee93deca540f28cfab0b759e42ad",
+      "native_optical_height_mm": 12.7,
+      "origin": [
+        7,
+        0,
+        0
+      ],
+      "mounting_face": [
+        3.5,
+        0,
+        -12.7
+      ],
+      "native_holes": [
+        {
+          "name": "screw_left",
+          "center": [
+            -8.5,
+            -5.675,
+            -12.7
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 4.5,
+          "depth": null,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              -8.5,
+              -6.35,
+              -12.7
+            ],
+            [
+              -8.5,
+              -5,
+              -12.7
+            ]
+          ]
+        },
+        {
+          "name": "screw_right",
+          "center": [
+            -8.5,
+            5.675,
+            -12.7
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 4.5,
+          "depth": null,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              -8.5,
+              5,
+              -12.7
+            ],
+            [
+              -8.5,
+              6.35,
+              -12.7
+            ]
+          ]
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            3.5,
+            -5,
+            -12.7
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 2,
+          "depth": 1.5,
+          "thread": null
+        },
+        {
+          "name": "dowel_slot",
+          "center": [
+            3.5,
+            5,
+            -12.7
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 2,
+          "depth": 1.5,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              3.5,
+              4.5,
+              -12.7
+            ],
+            [
+              3.5,
+              5.5,
+              -12.7
+            ]
+          ]
+        }
+      ],
+      "source": "https://www.optosigma.com/us_en/opto-mechanical-components-2/mirror-mounts/precision-grade-stainless-steel-mirror-mounts/12-7-mm-top-adjust-mirror-mount-clear-edge-aperture-stainless-steel-high-stability-front-loading-2-locking-hex-adjusters.html; pinned engineering drawing and measured STEP",
+      "solid_count": 9,
+      "volume_mm3": 8597.027347700641
+    },
+    "MHV-25.4L-R": {
+      "step_sha256": "cdfdb75b4db4d55ea550674ecb454fb739aca1498fb6e39cffd1bb28b3815e81",
+      "drawing_sha256": "e1369445825472b58894d045f8f7313f1088ee93deca540f28cfab0b759e42ad",
+      "native_optical_height_mm": 25.4,
+      "origin": [
+        2,
+        -10,
+        0.4
+      ],
+      "mounting_face": [
+        2,
+        -6,
+        -25
+      ],
+      "native_holes": [
+        {
+          "name": "screw_left",
+          "center": [
+            -10.6,
+            9.5,
+            -25
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 4.5,
+          "depth": null,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              -10.7,
+              9.5,
+              -25
+            ],
+            [
+              -10.5,
+              9.5,
+              -25
+            ]
+          ]
+        },
+        {
+          "name": "screw_middle",
+          "center": [
+            2,
+            9.5,
+            -25
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 4.5,
+          "depth": null,
+          "thread": null
+        },
+        {
+          "name": "screw_right",
+          "center": [
+            14.6,
+            9.5,
+            -25
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 4.5,
+          "depth": null,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              14.5,
+              9.5,
+              -25
+            ],
+            [
+              14.7,
+              9.5,
+              -25
+            ]
+          ]
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            -10.5,
+            -6,
+            -25
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 2,
+          "depth": 3,
+          "thread": null
+        },
+        {
+          "name": "dowel_slot",
+          "center": [
+            14.5,
+            -6,
+            -25
+          ],
+          "axis": [
+            0,
+            0,
+            1
+          ],
+          "diameter": 2,
+          "depth": 3,
+          "thread": null,
+          "slot_arc_centers_native": [
+            [
+              14,
+              -6,
+              -25
+            ],
+            [
+              15,
+              -6,
+              -25
+            ]
+          ]
+        }
+      ],
+      "source": "https://www.optosigma.com/us_en/opto-mechanical-components-2/mirror-mounts/precision-grade-stainless-steel-mirror-mounts/25-4-mm-top-adjust-mirror-mount-clear-edge-aperture-stainless-steel-front-loading-2-locking-hex-adjusters.html; pinned engineering drawing and measured STEP",
+      "solid_count": 7,
+      "volume_mm3": 19670.625543535298
+    },
+    "FBR": {
+      "step_sha256": "913755158e43a2b803703ac76e13af0024d244a66f5cfd9668d2b20cfc0c9d72",
+      "drawing_sha256": "06e65a1af2332bebd3e53313fb01ca9a3896c344c00e6ffe3fd1230a3d37eeb5",
+      "native_optical_height_mm": 14.3002,
+      "origin": [
+        0,
+        0,
+        -1.3716
+      ],
+      "mounting_face": [
+        0,
+        -14.3002,
+        -0.0127
+      ],
+      "native_holes": [],
+      "source": "https://www.thorlabs.com/item/FBR; pinned engineering drawing and measured STEP",
+      "solid_count": 7,
+      "volume_mm3": 2520.9338700669173
+    },
+    "VA100": {
+      "step_sha256": "ecb5c011ed5a343f98ac24343e2ca31bc9598b1ad8fcde4558bf45a088dce81d",
+      "drawing_sha256": "48a7383d33ee2817f9ba0ded74c801c63ba85f5465a5e621f024bb83f93c111a",
+      "native_optical_height_mm": 17.78,
+      "origin": [
+        0,
+        -1.6383,
+        4.6101
+      ],
+      "mounting_face": [
+        0,
+        -19.4183,
+        4.826
+      ],
+      "native_holes": [
+        {
+          "name": "post",
+          "center": [
+            0,
+            -19.4183,
+            4.826
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 3.4544,
+          "depth": 6.35,
+          "thread": "8-32 UNC"
+        }
+      ],
+      "source": "https://www.thorlabs.com/item/VA100; pinned engineering drawing and measured STEP",
+      "solid_count": 46,
+      "volume_mm3": 15754.854101177209
+    }
+  },
+  "notes": [
+    "Native datums measured independently from pinned vendor STEP, dimensions cross-checked against pinned drawings.",
+    "MHV working optic plates include small nominal pose deviations below 0.01 mm / 0.01 degree; preserve the source poses.",
+    "FBR supplied pins are 1/8 inch; receiving-plate clearance is a custom selection, not a vendor fit specification."
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "POLARIS-K05VS2",
+  "product_url": "https://www.thorlabs.com/item/POLARIS-K05VS2",
+  "asset_url": null,
+  "vendor_filename": "POLARIS-K05VS2-CAD-PDF.pdf",
+  "document_id": "POLARIS-K05VS2-E0W",
+  "revision": "C",
+  "retrieved_at": "2026-10-23T20:18:21.348227+00:00",
+  "sha256": "8ebe14d1faeb8703994d75937e0bde07f3aaf4c4d05bc444675c6382039cdf7a",
+  "kind": "pdf",
+  "cache_path": "objects/8ebe14d1faeb8703994d75937e0bde07f3aaf4c4d05bc444675c6382039cdf7a/source.pdf",
+  "units": "mm and inches",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

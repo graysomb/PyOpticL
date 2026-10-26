@@ -1,0 +1,768 @@
+{
+  "units": "mm, degrees",
+  "linear_threshold_mm": 0.01,
+  "angular_threshold_deg": 0.01,
+  "vendor": {
+    "POLARIS-K05VS2": {
+      "sha256": "aef29c1f76d51e0cd03fe568bc1e315162525c2e8f160302eb7586bca7709708",
+      "solid_count": 32,
+      "volume_mm3": 6090.245455257129,
+      "bounds_mm": [
+        -17.780000000012354,
+        -17.78000000001235,
+        -5.33180132709731,
+        16.25599999998845,
+        22.224999999987126,
+        15.949006189652776
+      ]
+    },
+    "KA05TA": {
+      "sha256": "88338506ce40be1764b8f4c017614fdcc4ffbb7ecf0cd776db4cb289844546ec",
+      "solid_count": 24,
+      "volume_mm3": 4777.915858971635,
+      "bounds_mm": [
+        -3.606057597653259,
+        1.9781727457823757,
+        2.3991896203352105,
+        21.84026632680852,
+        27.42449667024519,
+        33.09001461489272
+      ]
+    },
+    "AD1109F": {
+      "sha256": "f9c5c07505b4e9ddc113cc313e78da788c7d5e609b7e0ea0305d2786dbd11b0f",
+      "solid_count": 1,
+      "volume_mm3": 977.8381079208048,
+      "bounds_mm": [
+        -7.792819899403123,
+        -6.921500000000001,
+        -7.363838622531256,
+        7.792819899403123,
+        6.921500000000001,
+        7.303776494806654
+      ]
+    },
+    "F260FC-1550": {
+      "sha256": "7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda",
+      "solid_count": 3,
+      "volume_mm3": 1142.7340036246508,
+      "bounds_mm": [
+        -5.5,
+        -5.5,
+        -14.173200000000003,
+        5.5,
+        5.500000000000001,
+        9.550400000000002
+      ]
+    },
+    "ELL16": {
+      "sha256": "6943f8afc88081751275eb216dc62acb0e5805320eb7064bda564cb96fe92da3",
+      "solid_count": 271,
+      "volume_mm3": 18648.712006135407,
+      "bounds_mm": [
+        -18.400667404970697,
+        -11.648762920001001,
+        -18.400667404970697,
+        35.00000000000039,
+        10.950001879999077,
+        18.400667404970697
+      ]
+    },
+    "XR25C": {
+      "sha256": "d50c9c59e33138ecd2ea6dc5b76552760ef3684b7ee063603d502f7237b91259",
+      "solid_count": 61,
+      "volume_mm3": 143875.2585167163,
+      "bounds_mm": [
+        -55.000000000000036,
+        -7.112,
+        -40.40554937965919,
+        136.43359999999998,
+        15.888018800000065,
+        38.0
+      ]
+    }
+  },
+  "datums": {
+    "POLARIS-K05VS2": {
+      "datums": {
+        "optic_seat": [
+          0,
+          0,
+          2.159
+        ],
+        "mounting_face": [
+          0,
+          -12.7,
+          8.96484065558
+        ]
+      },
+      "holes": [
+        {
+          "name": "post",
+          "center": [
+            0,
+            -12.7,
+            8.96484065558
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.6228,
+          "depth": null,
+          "thread": null
+        },
+        {
+          "name": "dowel_round",
+          "center": [
+            -5,
+            -12.7,
+            8.96484065558
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.00914,
+          "depth": 1.91,
+          "thread": null
+        }
+      ]
+    },
+    "KA05TA": {
+      "datums": {
+        "adapter_seat": [
+          9.09394,
+          14.67817,
+          2.39919
+        ],
+        "mounting_face": [
+          9.09394,
+          1.97817,
+          18.68338
+        ]
+      },
+      "holes": [
+        {
+          "name": "post_bottom",
+          "center": [
+            9.09394,
+            1.97817,
+            18.68338
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.6228,
+          "depth": null,
+          "thread": null
+        },
+        {
+          "name": "post_side",
+          "center": [
+            -3.60606,
+            14.67817,
+            18.68338
+          ],
+          "axis": [
+            1,
+            0,
+            0
+          ],
+          "diameter": 4.6228,
+          "depth": null,
+          "thread": null
+        }
+      ]
+    },
+    "AD1109F": {
+      "datums": {
+        "collimator_seat": [
+          0,
+          0,
+          0.762
+        ],
+        "mount_seat": [
+          0,
+          0,
+          -3.937
+        ],
+        "mount_thread_end": [
+          0,
+          0,
+          -7.112
+        ],
+        "collimator_opening": [
+          0,
+          0,
+          7.112
+        ]
+      },
+      "holes": []
+    },
+    "F260FC-1550": {
+      "datums": {
+        "optical_front": [
+          0,
+          0,
+          9.5504
+        ],
+        "fiber_end": [
+          0,
+          0,
+          -14.1732
+        ],
+        "thread_end": [
+          0,
+          0,
+          6.5532
+        ]
+      },
+      "holes": []
+    },
+    "ELL16": {
+      "datums": {
+        "mounting_face": [
+          0,
+          -8.648762920001,
+          0
+        ],
+        "optical_axis": [
+          0,
+          0,
+          0
+        ]
+      },
+      "holes": [
+        {
+          "name": "cage_-15_-15",
+          "center": [
+            -15,
+            -8.648762920001,
+            -15
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.2606,
+          "depth": null,
+          "thread": "4-40 UNC"
+        },
+        {
+          "name": "cage_-15_15",
+          "center": [
+            -15,
+            -8.648762920001,
+            15
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.2606,
+          "depth": null,
+          "thread": "4-40 UNC"
+        },
+        {
+          "name": "cage_15_-15",
+          "center": [
+            15,
+            -8.648762920001,
+            -15
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.2606,
+          "depth": null,
+          "thread": "4-40 UNC"
+        },
+        {
+          "name": "cage_15_15",
+          "center": [
+            15,
+            -8.648762920001,
+            15
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 2.2606,
+          "depth": null,
+          "thread": "4-40 UNC"
+        }
+      ]
+    },
+    "XR25C": {
+      "datums": {
+        "mounting_face": [
+          0,
+          -7.112,
+          0
+        ],
+        "payload": [
+          0,
+          15.888,
+          0
+        ]
+      },
+      "holes": [
+        {
+          "name": "payload_0",
+          "center": [
+            44.45,
+            15.888,
+            -25.4001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_1",
+          "center": [
+            38.1,
+            15.888,
+            12.6999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_2",
+          "center": [
+            38.1,
+            15.888,
+            -12.7001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_3",
+          "center": [
+            44.45,
+            15.888,
+            25.3999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_4",
+          "center": [
+            -44.45,
+            15.888,
+            -0.0001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_5",
+          "center": [
+            -44.45,
+            15.888,
+            -25.4001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_6",
+          "center": [
+            -12.7,
+            15.888,
+            -12.7001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_7",
+          "center": [
+            -38.1,
+            15.888,
+            12.6999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_8",
+          "center": [
+            -38.1,
+            15.888,
+            -12.7001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_9",
+          "center": [
+            -12.7,
+            15.888,
+            12.6999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_10",
+          "center": [
+            12.7,
+            15.888,
+            12.6999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_11",
+          "center": [
+            12.7,
+            15.888,
+            -12.7001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_12",
+          "center": [
+            -44.45,
+            15.888,
+            25.3999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_13",
+          "center": [
+            -25.4,
+            15.888,
+            25.3999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_14",
+          "center": [
+            25.4,
+            15.888,
+            25.3999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_15",
+          "center": [
+            -25.4,
+            15.888,
+            -0.0001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_16",
+          "center": [
+            25.4,
+            15.888,
+            -0.0001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_17",
+          "center": [
+            -25.4,
+            15.888,
+            -25.4001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_18",
+          "center": [
+            25.4,
+            15.888,
+            -25.4001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_19",
+          "center": [
+            -0.0,
+            15.888,
+            -25.4001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_20",
+          "center": [
+            -0.0,
+            15.888,
+            25.3999
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        },
+        {
+          "name": "payload_21",
+          "center": [
+            -0.0,
+            15.888,
+            -0.0001
+          ],
+          "axis": [
+            0,
+            -1,
+            0
+          ],
+          "diameter": 6.35,
+          "depth": 7.6,
+          "thread": "1/4-20 UNC"
+        }
+      ]
+    }
+  },
+  "custom": {
+    "pbs-clamp": {
+      "volume_mm3": 1293.664159874576,
+      "thickness_mm": 5,
+      "bottom_z": 44.45,
+      "optical_reference": [
+        0,
+        0,
+        50.8
+      ]
+    },
+    "pbs-holder": {
+      "volume_mm3": 25807.83001775809,
+      "seat_z": 44.45,
+      "bottom_z": 25.4,
+      "tap_center": [
+        -14.5215728752538,
+        9.5215728752538
+      ],
+      "tap_drill_diameter": 2.5,
+      "tap_drill_depth": 5
+    },
+    "rotation-holder": {
+      "volume_mm3": 10431.408062438646,
+      "base_z": 25.4,
+      "base_thickness": 7,
+      "wall_faces_y": [
+        -28.1,
+        -25.1
+      ],
+      "cage_slot_x": [
+        -15,
+        15
+      ],
+      "cage_slot_center_z": [
+        35.8,
+        65.8
+      ],
+      "mounting_slot_x": [
+        -25.25,
+        25.25
+      ],
+      "dowel_x": [
+        -10,
+        0,
+        10
+      ],
+      "dowel_y": -38.1,
+      "optical_reference": [
+        0,
+        -38.1,
+        50.8
+      ]
+    }
+  },
+  "source_files": {
+    "../Data/HOM Mount/HOM setup.step": "cb5cc1e4edbcafb95df6d83aa7c3a60cb54545501e82ceaa5c1722965422bddf",
+    "../Data/HOM Mount/just base.step": "37fc0094867aec7ecb851a0b3935f8242437d59aa5a165ef08c8714b350855e6",
+    "../Data/SPDC Mach Zhender V2/OutMount_BeamPathR_Machine (1).step": "52a132864a74aaaf137137cfc01b9f29b8ff091558b0b250d27778bbd12df8ef"
+  },
+  "spdc_support": {
+    "status": "not_verified_compatible",
+    "source": "Data/SPDC Mach Zhender V2/OutMount_BeamPathR_Machine (1).step",
+    "measured_row_x_mm": 11.56,
+    "row_y_mm": [
+      -18.6,
+      -31.0,
+      -43.400000000000006,
+      -55.800000000000004,
+      -68.2,
+      -80.6,
+      -93.0,
+      -105.4,
+      -117.80000000000001,
+      -130.20000000000002,
+      -142.6,
+      -155.0,
+      -167.4
+    ],
+    "top_z_mm": 25.4,
+    "bore_diameter_mm": 5.1054,
+    "KA05TA_mount_clearance_mm": 4.6228,
+    "note": "Support row bore is larger than KA05TA M4/#8 clearance. STEP does not establish thread designation or a suitable fastening stack. Do not declare direct compatibility or add this support to the coupling preset."
+  },
+  "coupling_qualification": {
+    "status": "nominal_datum_verified",
+    "convention": "User requested distance from thread end; align F260FC-1550 M11 thread-end plane with AD1109F opening",
+    "nominal_engagement_mm": 2.9972,
+    "source_face_native_z_mm": 6.5532,
+    "barrel_front_native_z_mm": 9.5504,
+    "note": "Nominal thread-end placement; no claim of bottoming against the internal adapter shoulder."
+  }
+}

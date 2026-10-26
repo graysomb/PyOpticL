@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "vendor": "optosigma",
+  "part_number": "MHV-12.7L-R",
+  "product_url": "https://www.optosigma.com/us_en/opto-mechanical-components-2/mirror-mounts/precision-grade-stainless-steel-mirror-mounts/12-7-mm-top-adjust-mirror-mount-clear-edge-aperture-stainless-steel-high-stability-front-loading-2-locking-hex-adjusters.html",
+  "asset_url": null,
+  "vendor_filename": "MHV-12.7L-R_STP.stp",
+  "document_id": "MHV",
+  "revision": null,
+  "retrieved_at": "2026-10-26T18:11:10.954993+00:00",
+  "sha256": "be1bbf3df5c5a01cb0c497b7f6bb5a1fb72c8485ca27bc835c5088c22bebd422",
+  "kind": "step",
+  "cache_path": "objects/be1bbf3df5c5a01cb0c497b7f6bb5a1fb72c8485ca27bc835c5088c22bebd422/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape",
+  "acquisition_note": "Downloaded from the exact SKU page Resources & Downloads control; STEP unpacked from vendor ZIP."
+}

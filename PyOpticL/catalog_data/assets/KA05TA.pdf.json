@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KA05TA",
+  "product_url": "https://www.thorlabs.com/item/KA05TA",
+  "asset_url": null,
+  "vendor_filename": "KA05TA-CAD-PDF.pdf",
+  "document_id": "KA05TA-E0W",
+  "revision": "A",
+  "retrieved_at": "2026-10-23T20:20:38.313353+00:00",
+  "sha256": "eda3469ba45ba6f1fa4bc5bdf13ab99054081bee3377a83d74f6b638b028f587",
+  "kind": "pdf",
+  "cache_path": "objects/eda3469ba45ba6f1fa4bc5bdf13ab99054081bee3377a83d74f6b638b028f587/source.pdf",
+  "units": "mm and inches",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

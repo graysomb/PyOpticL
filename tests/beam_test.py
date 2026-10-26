@@ -1,4 +1,5 @@
-from PyOpticL import optomech
+import FreeCAD as App
+from PyOpticL.library import optics
 from PyOpticL.beam_path import BeamPath
 from PyOpticL.layout import Component, Layout
 from PyOpticL.utils import Dimension as dim
@@ -20,7 +21,7 @@ beam_path = example_layout.add(
 beam_path.add(
     Component(
         label="Mirror 1",
-        definition=optomech.circular_mirror(
+        definition=optics.Circular_Mirror(
             diameter=dim(1, "in"),
             thickness=dim(5, "mm"),
         ),
@@ -33,7 +34,7 @@ beam_path.add(
 beam_path.add(
     Component(
         label="Mirror 2",
-        definition=optomech.circular_sampler(
+        definition=optics.Circular_Sampler(
             ref_ratio=0.25,
             diameter=dim(1, "in"),
             thickness=dim(5, "mm"),

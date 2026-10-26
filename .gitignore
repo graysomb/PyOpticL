@@ -7,3 +7,6 @@ PyOpticL/Designs/Cavity/*
 PyOpticL/Designs/Cavity
 PyOpticL/models/**/*.stl
 !PyOpticL/models/isomet-1205c/*.stl
+# Generated local CAD demonstrations and macOS metadata
+artifacts/
+.DS_Store

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "POLARIS-K05VS2",
+  "product_url": "https://www.thorlabs.com/item/POLARIS-K05VS2",
+  "asset_url": null,
+  "vendor_filename": "POLARIS-K05VS2-Step.step",
+  "document_id": "POLARIS-K05VS2-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-23T20:18:21.520752+00:00",
+  "sha256": "aef29c1f76d51e0cd03fe568bc1e315162525c2e8f160302eb7586bca7709708",
+  "kind": "step",
+  "cache_path": "objects/aef29c1f76d51e0cd03fe568bc1e315162525c2e8f160302eb7586bca7709708/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

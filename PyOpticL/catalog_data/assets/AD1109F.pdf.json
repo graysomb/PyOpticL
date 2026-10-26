@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "AD1109F",
+  "product_url": "https://www.thorlabs.com/item/AD1109F",
+  "asset_url": null,
+  "vendor_filename": "AD1109F-CAD-PDF.pdf",
+  "document_id": "13080-E0W",
+  "revision": "B",
+  "retrieved_at": "2026-10-23T20:17:03.258206+00:00",
+  "sha256": "77c2305ec752c5ee630ab19f8b45e0ad9d2b30b2c6be5ce6acf74b2fb3c48a25",
+  "kind": "pdf",
+  "cache_path": "objects/77c2305ec752c5ee630ab19f8b45e0ad9d2b30b2c6be5ce6acf74b2fb3c48a25/source.pdf",
+  "units": "mm and inches",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KA05TA",
+  "product_url": "https://www.thorlabs.com/item/KA05TA",
+  "asset_url": null,
+  "vendor_filename": "KA05TA-Step.step",
+  "document_id": "KA05TA-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-23T20:17:03.512549+00:00",
+  "sha256": "88338506ce40be1764b8f4c017614fdcc4ffbb7ecf0cd776db4cb289844546ec",
+  "kind": "step",
+  "cache_path": "objects/88338506ce40be1764b8f4c017614fdcc4ffbb7ecf0cd776db4cb289844546ec/source.step",
+  "units": "mm",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}
