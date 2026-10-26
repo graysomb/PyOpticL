@@ -6,12 +6,13 @@ Creates and closes its own test documents; existing designs are preserved.
 """
 
 import math
+from pathlib import Path
 import unittest
 import FreeCAD as App
 
 from PyOpticL.bounds import BoundsUnavailable
 from PyOpticL.layout import Component
-from PyOpticL.schematic import Connection, Endpoint, Schematic, compile_schematic
+from PyOpticL.schematic import Connection, Endpoint, PathLengthConstraint, Schematic, compile_schematic, load_schematic
 from PyOpticL.schematic.bounds import BoundsProvider
 from PyOpticL.schematic.model import new_id
 from PyOpticL.schematic.parts import part_spec
@@ -204,12 +205,206 @@ class FreeCADSchematicTests(unittest.TestCase):
                 self.assertEqual(document.to_dict()["connections"], before["connections"])
                 self.build(document)  # generated check_trace must verify every intended interaction
 
+    def optimize_with_real_bounds(self, document, box):
+        from PyOpticL.schematic.bounds import resolve_layout_bounds
+        from PyOpticL.schematic.parts import folding_part_spec
+        from PyOpticL.schematic.optimization import (
+            OptimizationOptions,
+            build_problem,
+            optimize_layout,
+            apply_optimization,
+        )
+
+        provider = BoundsProvider()
+        radii, errors = resolve_layout_bounds(document, provider)
+        self.assertFalse(errors, errors)
+        options = OptimizationOptions(starts=2, iterations=3000, folding_preset="bare")
+        folding_radius = None
+        if any(edge.allow_folding for edge in document.connections):
+            bounds = provider.get(folding_part_spec(options))
+            self.assertIsNone(bounds.error, bounds.error)
+            folding_radius = bounds.circle.radius_mm
+        problem = build_problem(document, radii, box, options, folding_radius=folding_radius)
+        result = optimize_layout(problem)
+        self.assertEqual(result.status, "feasible", result.violations)
+        apply_optimization(document, problem, result)
+        return result
+
+    def test_folded_path_keeps_chord_and_actual_cad_trace_length(self):
+        from PyOpticL.schematic.optimization import PackingBox
+
+        document = chain("source", "output")
+        source, output = document.nodes
+        source.physical.update(x=0, y=0)
+        output.physical.update(x=80, y=0)
+        document.connections[0].length = 80
+        document.connections[0].allow_folding = True
+        document.path_constraints.append(PathLengthConstraint("total", source.id, output.id, 120))
+        result = self.optimize_with_real_bounds(document, PackingBox(-20, -60, 140, 130))
+        self.assertEqual(len(result.layout.graph.generated), 1)
+        layout = self.build(document)
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        self.assertAlmostEqual(sum(segment.Distance.Value for segment in beam.BeamSegments), 120, delta=1e-6)
+        open_segment = next(segment for segment in beam.BeamSegments if segment.EndObject is None)
+        end = (
+            open_segment.Proxy.get_global_position()
+            + open_segment.Distance.Value * open_segment.Proxy.get_global_direction()
+        )
+        self.assertAlmostEqual(end[0], 80, delta=1e-6)
+        self.assertAlmostEqual(end[1], 0, delta=1e-6)
+
+    def test_folded_splitter_branch_preserves_ninety_degree_trace(self):
+        from PyOpticL.schematic.optimization import PackingBox
+
+        document = chain("source", "splitter")
+        source, cube = document.nodes
+        source.physical.update(x=0, y=0, angle=0)
+        cube.physical.update(x=50, y=0, turn=90)
+        document.connections[0].length = 50
+        straight = document.add_node("output")
+        straight.physical.update(x=150, y=0)
+        connect(document, cube, straight, "right")
+        document.connections[-1].length = 100
+        reflected = document.add_node("output")
+        reflected.physical.update(x=130, y=80)
+        connect(document, cube, reflected, "top")
+        document.connections[-1].allow_folding = True
+        document.path_constraints.append(PathLengthConstraint("reflected", cube.id, reflected.id, 160))
+        self.optimize_with_real_bounds(document, PackingBox(-20, -20, 220, 150))
+        layout = self.build(document)
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        incoming = next(
+            segment
+            for segment in beam.BeamSegments
+            if segment.EndObject is not None and segment.EndObject.Label == cube.reference
+        )
+        folded = next(
+            segment
+            for segment in beam.BeamSegments
+            if segment.StartObject is not None
+            and segment.StartObject.Label == cube.reference
+            and segment.EndObject is not None
+        )
+        tail = next(segment for segment in beam.BeamSegments if segment.StartObject == folded.EndObject)
+        self.assertAlmostEqual(folded.Distance.Value + tail.Distance.Value, 160, delta=1e-6)
+        a, b = incoming.Proxy.get_global_direction(), folded.Proxy.get_global_direction()
+        turn = math.degrees(math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]))
+        self.assertAlmostEqual(turn, 90, delta=1e-6)
+
+    def test_bypassed_folding_mirror_is_absent_from_exported_cad(self):
+        from PyOpticL.schematic.optimization import PackingBox
+
+        document = chain("source", "mirror", "output")
+        source, mirror, output = document.nodes
+        mirror.preset, mirror.mirror_role = "bare", "folding"
+        source.physical.update(x=0, y=0)
+        output.physical.update(x=100, y=0)
+        document.path_constraints.append(PathLengthConstraint("total", source.id, output.id, 100))
+        result = self.optimize_with_real_bounds(document, PackingBox(-15, -30, 150, 100))
+        self.assertIn(mirror.id, result.layout.graph.bypassed)
+        layout = self.build(document)
+        self.assertFalse(any(child.Label == mirror.reference for child in layout.get_object().Children))
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        self.assertAlmostEqual(sum(segment.Distance.Value for segment in beam.BeamSegments), 100, delta=1e-6)
+
+    def test_path_length_between_splitter_branches_without_optimization(self):
+        document = branched()
+        a, b = document.nodes[-2:]
+        document.path_constraints.append(PathLengthConstraint("cross-branch", a.id, b.id, 240))
+        layout = self.build(document)
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        branches = [
+            segment
+            for segment in beam.BeamSegments
+            if segment.EndObject is not None and segment.EndObject.Label in (a.reference, b.reference)
+        ]
+        self.assertEqual(len(branches), 2)
+        self.assertAlmostEqual(sum(segment.Distance.Value for segment in branches), 240, delta=1e-6)
+
+    def test_generated_example_files_build_and_reach_path_targets(self):
+        from PyOpticL.schematic.effective import effective_document
+        from PyOpticL.schematic.optimization import OptimizationOptions
+        from PyOpticL.schematic.paths import path_length
+
+        paths = sorted(
+            (Path(__file__).resolve().parents[1] / "Designs/schematics/optimization").glob(
+                "*-after.pyopticl-schematic.json"
+            )
+        )
+        self.assertEqual(len(paths), 5)
+        for path in paths:
+            with self.subTest(example=path.stem):
+                example_document = App.newDocument("SchematicExampleTrace")
+                try:
+                    document = load_schematic(path)
+                    compiled = compile_schematic(document)
+                    self.assertTrue(compiled.ok, compiled.diagnostics)
+                    physical = effective_document(
+                        document,
+                        compiled.geometry.graph,
+                        OptimizationOptions(**document.optimization["options"]),
+                    )
+                    topology = resolve_topology(physical)
+                    layout = self.build(document)
+                    beam = next(
+                        child for child in layout.get_object().Children if hasattr(child, "BeamSegments")
+                    )
+                    distances = {}
+                    for edge in topology.edges.values():
+                        source, target = physical.node(edge.source.node_id), physical.node(
+                            edge.target.node_id
+                        )
+                        a, b = compiled.geometry.positions[source.id], compiled.geometry.positions[target.id]
+                        dx, dy = b[0] - a[0], b[1] - a[1]
+                        matches = []
+                        for segment in beam.BeamSegments:
+                            if (segment.StartObject is None) != (source.id == topology.source_id):
+                                continue
+                            if (
+                                segment.StartObject is not None
+                                and segment.StartObject.Label != source.reference
+                            ):
+                                continue
+                            if (segment.EndObject is None) != (target.kind == "output"):
+                                continue
+                            if segment.EndObject is not None and segment.EndObject.Label != target.reference:
+                                continue
+                            direction = segment.Proxy.get_global_direction()
+                            angle = abs(
+                                math.degrees(
+                                    math.atan2(
+                                        dx * direction[1] - dy * direction[0],
+                                        dx * direction[0] + dy * direction[1],
+                                    )
+                                )
+                            )
+                            if angle <= 1e-6:
+                                matches.append(segment)
+                        self.assertEqual(len(matches), 1, edge.id)
+                        segment = matches[0]
+                        distances[edge.id] = segment.Distance.Value
+                        start = segment.Proxy.get_global_position()
+                        end = start + segment.Distance.Value * segment.Proxy.get_global_direction()
+                        self.assertLessEqual(math.hypot(start[0] - a[0], start[1] - a[1]), 1e-6)
+                        self.assertLessEqual(math.hypot(end[0] - b[0], end[1] - b[1]), 1e-6)
+                    for constraint in document.path_constraints:
+                        self.assertAlmostEqual(
+                            path_length(physical, constraint.component_a, constraint.component_b, distances),
+                            constraint.length_mm,
+                            delta=1e-6,
+                        )
+                finally:
+                    App.closeDocument(example_document.Name)
+                    App.setActiveDocument(self.cad.Name)
+
     def test_xy_circle_uses_local_bare_mirror_and_full_mounted_assembly(self):
         from PyOpticL.library import optics, thorlabs
 
         bare = Component("BareBounds", optics.Circular_Mirror())
         self.assertAlmostEqual(bare.get_xy_bounding_circle().radius_mm, math.hypot(6, 6.35), places=5)
-        mounted = Component("MountedBounds", optics.Circular_Mirror(mount_definition=thorlabs.Mirror_Mount_K05S1()))
+        mounted = Component(
+            "MountedBounds", optics.Circular_Mirror(mount_definition=thorlabs.Mirror_Mount_K05S1())
+        )
         full = mounted.get_xy_bounding_circle()
         self.assertGreater(full.radius_mm, mounted.get_xy_bounding_circle(include_children=False).radius_mm)
         mounted.get_object().BasePlacement = App.Placement(App.Vector(100, 200, 300), App.Rotation(App.Vector(0, 0, 1), 37))

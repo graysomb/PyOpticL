@@ -133,14 +133,28 @@ not execute the macro or modify an existing CAD layout.
   physical turn overrides remain unchanged when connections are edited.
 - Save editable drawings as `.pyopticl-schematic.json`. Undo/redo includes parts,
   connections, settings, and properties. Incomplete drawings can be saved.
-  Version 1–3 drawings load through an in-memory migration that preserves existing
+  Version 1–4 drawings load through an in-memory migration that preserves existing
   port locations, bends, references, and physical settings. Files are written in
-  version 4 format only when saved; opening a drawing does not rewrite it.
+  version 5 format only when saved; opening a drawing does not rewrite it.
+  Older drawings start with no path constraints, folding disabled, and Turning
+  mirror roles. Older applied optimizations remain saved but are stale until
+  rerun or cleared.
   Old component distances transfer to their incoming beams. An unfinished
   drawing retains unresolved old distances until source direction is known.
 - **Validate** checks topology and physical origin overlaps. Every branch must
   end in a fiber output, beam stop, or explicit open output. Export is blocked
   until errors are resolved; click a message to locate the affected part.
+
+Use **Path lengths…** to constrain the total geometric beam length between any
+two connected components. Selecting two symbols prefills the endpoints. The
+dialog lists target and current lengths, satisfaction status, and highlights the
+unique route, including routes between splitter branches. Length is measured
+between optical origins without refractive-index weighting. These constraints
+also work with ordinary Python generation: free beam lengths adjust while
+explicit lengths, positions, and the current routing angles remain fixed.
+Conflicting or disconnected constraints block generation and optimization;
+unfinished drawings remain saveable. References can be renamed without losing
+constraints, and deleting an endpoint removes its constraints in the same edit.
 
 Use **Optimize physical layout…** to fit the physical system into a rectangular
 region in millimetres. Adjust X/Y, width/height, the assembly clearance (default
@@ -161,21 +175,79 @@ The packing model uses conservative full-assembly circles and a constant beam
 width; it does not propagate Gaussian beam envelopes or perform a CAD collision
 test.
 
+Enable **Allow folding** on individual beams to let optimization add mirrors.
+The beam's length constraint continues to mean **endpoint separation**, while a
+path-length constraint controls the total routed length through inserted mirrors.
+The inspector displays both measurements and the added mirrors' references and
+physical positions. For example, an 80 mm endpoint separation and a 120 mm total
+path can be satisfied by folding; an 80 mm separation and 80 mm path cannot have
+a nonzero fold.
+
+Each schematic mirror has a **Turning** (default) or **Folding** role. Turning
+mirrors are always retained; their angle controls work as before. Folding mirrors
+may be omitted unless protected by a position constraint, angle constraint,
+incident explicit beam length, or use as a path-constraint endpoint. The inspector
+explains protection. Omitted mirrors keep their drawing symbols and have no
+current physical position. Adding a constraint makes the applied result stale
+and protects that mirror on the next run.
+
+The optimizer's added-mirror controls default to mounted 12.7 mm mirrors, at most
+four per original beam and eight overall. Bare mirrors allow other diameters.
+Their complete assembly bounds must resolve before Run. The bounded search
+relaxes candidates in 200-iteration batches, prioritizes stressed permitted spans,
+and tries offsets on both sides. It retains two candidates per active folding
+count, including infeasible intermediate layouts. All candidates share each
+start's 5,000-iteration budget and 20 projection passes per iteration. A folding
+mirror becomes eligible for removal above the configured **interior arm angle**
+(default 110°; 180° is straight), with 10° insertion/removal hysteresis and a
+200-iteration cooldown. Removal preserves every hard constraint. Feasible results
+are ranked by fewest active Folding mirrors, then normalized spring energy.
+
 **Apply** is enabled only after reconstructing exact optical geometry and checking
 all constraints and clearances to 1e-6 mm / 1e-6 degrees. It is one undoable edit,
 preserves the topological drawing, and stores free values separately from hard
 constraints. The inspectors show these effective values with their constraint
 checkboxes still unchecked. Export uses the applied source pose, lengths, turns,
 and part orientations and retains the generated script's runtime trace check.
+Generated mirrors and bypassed schematic mirrors belong to the applied physical
+graph: the preview and export identify additions and omissions, while the
+schematic drawing and explicit constraints remain unchanged. Export uses the
+actual final open-beam segment lengths.
 **Cancel** closes without changing the schematic. **Clear optimized layout**
 restores deterministic generation without removing constraints.
 
-Part, topology, constraint, default-length, packing, or geometry-setting changes
+Part, topology, constraint, folding permission, mirror role, default-length,
+packing, search, or geometry-setting changes
 make an applied solution stale and block export until it is rerun or cleared.
 Stale results survive save/load and undo/redo. Drawing edits, reference renames,
 and display settings preserve a solution. If the search budget expires, the dialog
 reports **No feasible layout found** and its largest remaining violations; this is
 not a proof that the requested packing is impossible.
+
+Reproducible optimizer examples include a [pinned Turning mirror](Designs/schematics/optimization/pinned-mirror.png),
+a [folded splitter system](Designs/schematics/optimization/splitter-fold.png),
+[two automatically added mirrors](Designs/schematics/optimization/adaptive-multiple-folds.png),
+[removal of a Folding mirror](Designs/schematics/optimization/adaptive-remove-fold.png),
+and a [constrained +90° splitter with an added branch mirror](Designs/schematics/optimization/adaptive-splitter-90.png).
+Each comparison shows the unchanged topological drawing and physical layouts
+before and after packing. Editable `*-before.pyopticl-schematic.json` and
+`*-after.pyopticl-schematic.json` files, generated Python, and
+[verification results](Designs/schematics/optimization/verification.json) are in
+the same folder. Before files retain the target rectangle, ready for **Run**.
+The pinned-mirror draft intentionally fails its output position constraints;
+its after file satisfies them. The splitter example explicitly constrains BS1's
+reflected turn to +90°; both branch directions are checked from optimized and
+exported coordinates. The adaptive examples also independently measure their
+total paths from exported coordinates and check constrained endpoint separations.
+These examples use analytical bounds of the bare primitive models. The separate
+[native FreeCAD report](Designs/schematics/optimization/native-verification.json)
+records 25 passing integration tests, including real assembly bounds and CAD
+traces of all five saved examples. Those checks measure actual segment lengths
+and interaction coordinates, including the two added mirrors and constrained
+splitter branch. Reproduce the solver and actual Qt Run/Apply/undo/redo checks
+with `QT_QPA_PLATFORM=offscreen python Designs/schematics/optimization/generate.py --render`.
+Inside a FreeCAD-capable environment, add `--cad` to resolve actual geometry and
+execute each exported layout's runtime trace check.
 
 Open [the branched example](Designs/schematics/branched.pyopticl-schematic.json)
 to try a mirror, lens, beamsplitter, fiber output, and beam stop. Its
@@ -229,6 +301,13 @@ envelopes do not affect the result.
 The portable connection API uses unordered endpoints, for example
 `Connection(id, Endpoint(lens_id, "B"), Endpoint(source_id, "beam"))`.
 Set `connection.length = 75` for a 75 mm constraint, or `None` to use the default.
+Set `connection.allow_folding = True` to permit physical mirror insertion, and
+`mirror.mirror_role = "folding"` to make a schematic mirror eligible for removal.
+Add `PathLengthConstraint(id, component_a_id, component_b_id, length_mm)` to
+`schematic.path_constraints` for a hard total routed length. The pure numerical
+API is `optimize_layout(problem, options=None, progress=None, cancelled=None)`;
+`build_problem` consumes pre-resolved part radii and the added-mirror radius,
+and callbacks run on the calling worker thread without CAD operations.
 `resolve_topology(schematic)` returns source-oriented connections, incident
 ports, interaction roles, and diagnostics without modifying the document.
 Source/fiber-source symbols remain emitters; receiver, stop, and open-output

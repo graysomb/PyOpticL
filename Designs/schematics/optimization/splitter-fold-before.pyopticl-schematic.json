@@ -1,0 +1,235 @@
+{
+  "title": "splitter-fold",
+  "nodes": [
+    {
+      "id": "splitter-fold-S1",
+      "reference": "S1",
+      "kind": "source",
+      "preset": "beam",
+      "parameters": {},
+      "position": [
+        -320,
+        0
+      ],
+      "rotation": 0,
+      "physical": {
+        "x": 0,
+        "y": 0,
+        "angle": 0
+      },
+      "mirror_role": "turning"
+    },
+    {
+      "id": "splitter-fold-M1",
+      "reference": "M1",
+      "kind": "mirror",
+      "preset": "bare",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "splitter-fold-BS1",
+      "reference": "BS1",
+      "kind": "splitter",
+      "preset": "bare",
+      "parameters": {},
+      "position": [
+        0,
+        -160
+      ],
+      "rotation": -90,
+      "physical": {
+        "turn": 90
+      },
+      "mirror_role": "turning"
+    },
+    {
+      "id": "splitter-fold-M2",
+      "reference": "M2",
+      "kind": "mirror",
+      "preset": "bare",
+      "parameters": {},
+      "position": [
+        0,
+        -320
+      ],
+      "rotation": -90,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "splitter-fold-O1",
+      "reference": "O1",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        -160,
+        -320
+      ],
+      "rotation": 180,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "splitter-fold-M3",
+      "reference": "M3",
+      "kind": "mirror",
+      "preset": "bare",
+      "parameters": {},
+      "position": [
+        -160,
+        -160
+      ],
+      "rotation": 180,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "splitter-fold-O2",
+      "reference": "O2",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        -160,
+        -40
+      ],
+      "rotation": 90,
+      "physical": {},
+      "mirror_role": "turning"
+    }
+  ],
+  "connections": [
+    {
+      "id": "splitter-fold-S1-M1",
+      "a": {
+        "node_id": "splitter-fold-S1",
+        "port_id": "beam"
+      },
+      "b": {
+        "node_id": "splitter-fold-M1",
+        "port_id": "A"
+      },
+      "bends": [],
+      "length": 50,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "splitter-fold-M1-BS1",
+      "a": {
+        "node_id": "splitter-fold-M1",
+        "port_id": "B"
+      },
+      "b": {
+        "node_id": "splitter-fold-BS1",
+        "port_id": "left"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "splitter-fold-BS1-M2",
+      "a": {
+        "node_id": "splitter-fold-BS1",
+        "port_id": "right"
+      },
+      "b": {
+        "node_id": "splitter-fold-M2",
+        "port_id": "A"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "splitter-fold-M2-O1",
+      "a": {
+        "node_id": "splitter-fold-M2",
+        "port_id": "B"
+      },
+      "b": {
+        "node_id": "splitter-fold-O1",
+        "port_id": "beam"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "splitter-fold-BS1-M3",
+      "a": {
+        "node_id": "splitter-fold-BS1",
+        "port_id": "top"
+      },
+      "b": {
+        "node_id": "splitter-fold-M3",
+        "port_id": "A"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "splitter-fold-M3-O2",
+      "a": {
+        "node_id": "splitter-fold-M3",
+        "port_id": "B"
+      },
+      "b": {
+        "node_id": "splitter-fold-O2",
+        "port_id": "beam"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 50,
+    "show_bounds": false,
+    "bounds_scale": 4.0
+  },
+  "version": 5,
+  "optimization": {
+    "box": {
+      "x": -10,
+      "y": -10,
+      "width": 110,
+      "height": 85
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 8,
+      "iterations": 5000,
+      "projection_passes": 20,
+      "folding_preset": "mounted",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    }
+  },
+  "optimized_layout": null,
+  "path_constraints": []
+}

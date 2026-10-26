@@ -8,6 +8,7 @@ This planar linear solve deliberately does not change any routing angles.
 from math import cos, radians, sin, sqrt
 
 from .model import connection_length
+from .paths import component_path
 from .topology import Diagnostic
 
 POSITION_TOLERANCE = 1e-6  # mm; includes rounding to six decimals in the inspector
@@ -67,37 +68,54 @@ def resolve_position_lengths(document, topology, headings):
                     target_offset[axis] += direction[axis] * lengths[edge.id]
             paths[edge.target.node_id] = target_offset, target_rows
 
-    basis, pinned = [], []
-    for node in sorted(document.nodes, key=lambda node: node.reference):
+    equations, diagnostics = [], []
+    for node in sorted(document.nodes, key=lambda node: node.id):
         if node.id == source.id:
             continue
         offset, rows = paths[node.id]
         for axis, key in enumerate(("x", "y")):
             if key not in node.physical:
                 continue
-            pinned.append(node)
-            row, target = rows[axis][:], node.physical[key] - offset[axis]
-            # Reorthogonalization keeps dependent/redundant pins stable.
-            for _ in range(2):
-                for previous, value in basis:
-                    scale = _dot(row, previous)
-                    row = [a - scale * b for a, b in zip(row, previous)]
-                    target -= scale * value
-            norm = sqrt(_dot(row, row))
-            if norm < 1e-10:
-                if abs(target) > POSITION_TOLERANCE:
-                    return lengths, [Diagnostic(
-                        f"{node.reference}: position {key.upper()}={node.physical[key]:g} mm conflicts with other pinned positions, constrained lengths, or routing angles", node.id)]
+            diagnostic = Diagnostic(
+                f"{node.reference}: position {key.upper()}={node.physical[key]:g} mm conflicts with other pinned positions, constrained lengths, or routing angles", node.id)
+            equations.append((rows[axis][:], node.physical[key] - offset[axis], diagnostic))
+            diagnostics.append(diagnostic)
+    for constraint in sorted(document.path_constraints, key=lambda item: item.id):
+        diagnostic = Diagnostic("Total path length conflicts with positions, beam lengths, or other path constraints",
+                                constraint.component_a, constraint_id=constraint.id)
+        try:
+            route = component_path(document, constraint.component_a, constraint.component_b)
+        except ValueError as error:
+            return lengths, [Diagnostic(str(error), constraint.component_a, constraint_id=constraint.id)]
+        row, target = [0.0] * len(free), constraint.length_mm
+        for edge_id in route:
+            if edge_id in free:
+                row[free[edge_id]] += 1
             else:
-                basis.append(([value / norm for value in row], target / norm))
-
+                target -= lengths[edge_id]
+        equations.append((row, target, diagnostic))
+        diagnostics.append(diagnostic)
+    basis = []
+    for row, target, diagnostic in equations:
+        # Reorthogonalization keeps redundant pins and overlapping paths stable.
+        for _ in range(2):
+            for previous, value in basis:
+                scale = _dot(row, previous)
+                row = [a - scale * b for a, b in zip(row, previous)]
+                target -= scale * value
+        norm = sqrt(_dot(row, row))
+        if norm < 1e-10:
+            if abs(target) > POSITION_TOLERANCE:
+                return lengths, [diagnostic]
+        else:
+            basis.append(([value / norm for value in row], target / norm))
     if not basis:
         return lengths, []
     defaults = [lengths[edge_id] for edge_id in free]
     fitted = _fit_lengths(defaults, basis)
     if fitted is None:
         return lengths, [Diagnostic(
-            f"{node.reference}: position constraints could not be satisfied with positive beam lengths and current routing angles; adjust positions, beam lengths, or optic turns", node.id)
-            for node in {node.id: node for node in pinned}.values()]
+            "Constraints could not be satisfied with positive beam lengths and current routing angles: " + item.message,
+            item.node_id, constraint_id=item.constraint_id) for item in diagnostics]
     lengths.update({edge_id: round(fitted[index], 9) for edge_id, index in free.items()})
     return lengths, []

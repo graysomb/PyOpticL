@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from math import atan2, cos, degrees, radians, sin
 
 from .model import connection_length, interface_turn
+from .effective import EffectiveGraph
 from .registry import SYMBOLS, incident_heading
 
 
@@ -19,6 +20,7 @@ class PhysicalLayout:
     lengths: dict
     turns: dict
     source_direction: float
+    graph: EffectiveGraph | None = None
 
     def snapshot(self, source_id):
         return {

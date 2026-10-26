@@ -13,6 +13,7 @@ class Diagnostic:
     node_id: str | None = None
     connection_id: str | None = None
     severity: str = "error"
+    constraint_id: str | None = None
 
 
 @dataclass(frozen=True)

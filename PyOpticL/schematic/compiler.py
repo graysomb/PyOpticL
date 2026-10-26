@@ -8,6 +8,7 @@ from .constraints import POSITION_TOLERANCE, resolve_position_lengths
 from .model import connection_length, document_from_dict, _finite
 from .parts import part_spec
 from .physical import PhysicalLayout, physical_layout
+from .paths import component_path, path_length
 from .registry import MIN_BEAM_TURN, SYMBOLS, parameter_values, supports_beam_turn
 from .topology import Diagnostic, resolve_topology
 
@@ -20,6 +21,8 @@ class Compilation:
     placements: dict = field(default_factory=dict)
     lengths: dict[str, float] = field(default_factory=dict)
     geometry: PhysicalLayout | None = None
+    path_lengths: dict[str, float] = field(default_factory=dict)
+    routed_lengths: dict[str, float] = field(default_factory=dict)
 
     @property
     def ok(self):
@@ -34,6 +37,11 @@ def validate_schematic(document):
         return [Diagnostic(str(error))]
     topology = resolve_topology(document)
     diagnostics.extend(topology.diagnostics)
+    for constraint in document.path_constraints:
+        try:
+            component_path(document, constraint.component_a, constraint.component_b)
+        except ValueError as error:
+            diagnostics.append(Diagnostic(str(error), constraint.component_a, constraint_id=constraint.id))
     constrained_nodes = {node_id for edge in document.connections for node_id in edge.turns}
     for node in document.nodes:
         symbol = SYMBOLS[node.kind]
@@ -106,6 +114,7 @@ def compile_schematic(document):
     diagnostics = validate_schematic(document)
     if diagnostics:
         return Compilation("", diagnostics)
+    original = document
     topology = resolve_topology(document)
     source, order, placements, headings = _placements(document, topology)
     lengths = {edge.id: connection_length(document, edge) for edge in document.connections}
@@ -116,10 +125,16 @@ def compile_schematic(document):
             geometry = optimized_physical_layout(document, topology)
         except ValueError as error:
             return Compilation("", [Diagnostic(str(error))])
+        from .effective import effective_document
+        from .optimization import OptimizationOptions
+        document = effective_document(original, geometry.graph, OptimizationOptions(**original.optimization["options"]))
+        topology = resolve_topology(document)
+        source = document.node(topology.source_id)
+        order = [document.node(node_id) for node_id in topology.order]
         lengths = geometry.lengths
     else:
-        if any(node.id != source.id and ("x" in node.physical or "y" in node.physical)
-               for node in document.nodes):
+        if document.path_constraints or any(node.id != source.id and ("x" in node.physical or "y" in node.physical)
+                                            for node in document.nodes):
             lengths, position_errors = resolve_position_lengths(document, topology, headings)
             if position_errors:
                 return Compilation("", position_errors, placements=placements)
@@ -171,6 +186,14 @@ def compile_schematic(document):
         "", "", "def build_layout():",
         f"    layout = Layout({document.title!r})", "    objects = {}",
     ]
+    if geometry.graph is not None and geometry.graph.edits:
+        added = sorted(nodes[item.id].reference for item in geometry.graph.generated)
+        omitted = sorted(original.node(node_id).reference for node_id in geometry.graph.bypassed)
+        lines[4:4] = [
+            "# Optimizer-added Folding mirrors: " + (", ".join(map(repr, added)) or "none"),
+            "# Schematic mirrors omitted by optimization: " + (", ".join(map(repr, omitted)) or "none"),
+            "",
+        ]
     for index, node in enumerate(physical_nodes):
         variable = f"part_{index + 1}"
         lines.extend([
@@ -192,4 +215,14 @@ def compile_schematic(document):
         f"    check_trace(beam, objects, EXPECTED, source_reference={source.reference!r}, splitters={splitters!r}, open_lengths=OPEN_LENGTHS)",
         "    return layout", "", "", "if __name__ == '__main__':", "    build_layout()", "",
     ])
-    return Compilation("\n".join(lines), [], object_map, placements, lengths, geometry)
+    measured_paths = {item.id: path_length(document, item.component_a, item.component_b, geometry.lengths)
+                      for item in document.path_constraints}
+    logical_lengths, routed_lengths = {}, {}
+    for edge in original.connections:
+        if edge.a.node_id in geometry.positions and edge.b.node_id in geometry.positions:
+            a, b = geometry.positions[edge.a.node_id], geometry.positions[edge.b.node_id]
+            logical_lengths[edge.id] = hypot(b[0]-a[0], b[1]-a[1])
+            routed_lengths[edge.id] = path_length(document, edge.a.node_id, edge.b.node_id, geometry.lengths)
+    if original.optimized_layout is None:
+        logical_lengths = lengths
+    return Compilation("\n".join(lines), [], object_map, placements, logical_lengths, geometry, measured_paths, routed_lengths)

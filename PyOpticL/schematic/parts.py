@@ -67,3 +67,11 @@ def part_spec(document, node, topology, turns=None):
     if node.kind in ("source", "output"):
         return None
     raise ValueError(f"Unknown physical symbol: {node.kind}")
+
+
+def folding_part_spec(options):
+    """Use the normal mirror registry for generated-part bounds and export."""
+    from .model import Node
+    node = Node("folding-prototype", "FM", "mirror", options.folding_preset,
+                parameters={"diameter": options.folding_diameter_mm}, mirror_role="folding")
+    return part_spec(None, node, None)

@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from .registry import SYMBOLS, default_turn, legacy_port
 
-VERSION = 4
+VERSION = 5
 
 
 def new_id():
@@ -28,6 +28,7 @@ class Node:
     position: tuple[float, float] = (0, 0)
     rotation: float = 0
     physical: dict = field(default_factory=dict)
+    mirror_role: str = "turning"
 
 
 @dataclass(frozen=True, order=True)
@@ -46,6 +47,15 @@ class Connection:
     bends: list = field(default_factory=list)
     length: float | None = None  # physical separation in mm; None uses the document default
     turns: dict[str, float] = field(default_factory=dict)  # legacy beam angles; new edits use Node.physical["turn"]
+    allow_folding: bool = False
+
+
+@dataclass
+class PathLengthConstraint:
+    id: str
+    component_a: str
+    component_b: str
+    length_mm: float
 
 
 @dataclass
@@ -61,6 +71,7 @@ class Schematic:
     version: int = VERSION
     optimization: dict | None = None
     optimized_layout: dict | None = None
+    path_constraints: list[PathLengthConstraint] = field(default_factory=list)
 
     def node(self, node_id):
         return next(node for node in self.nodes if node.id == node_id)
@@ -84,6 +95,8 @@ class Schematic:
         self.nodes[:] = [node for node in self.nodes if node.id not in ids]
         self.connections[:] = [edge for edge in self.connections
                                if edge.a.node_id not in ids and edge.b.node_id not in ids]
+        self.path_constraints[:] = [constraint for constraint in self.path_constraints
+                                    if constraint.component_a not in ids and constraint.component_b not in ids]
 
     def duplicate_nodes(self, ids):
         copies = []
@@ -95,6 +108,7 @@ class Schematic:
                 node.parameters = deepcopy(original.parameters)
                 node.physical = deepcopy(original.physical)
                 node.rotation = original.rotation
+                node.mirror_role = original.mirror_role
                 copies.append(node)
         return copies
 
@@ -113,8 +127,8 @@ def _point(value):
 def document_from_dict(data, *, migrate_lengths=True):
     """Reject malformed files before they can reach Qt or the compiler."""
     try:
-        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] not in (1, 2, 3, VERSION):
-            raise ValueError("Unsupported schematic version (expected version 1, 2, 3, or 4)")
+        if not isinstance(data, dict) or type(data.get("version")) is not int or data["version"] not in (1, 2, 3, 4, VERSION):
+            raise ValueError("Unsupported schematic version (expected version 1, 2, 3, 4, or 5)")
         if not isinstance(data.get("title"), str):
             raise ValueError("Schematic title must be text")
         if not isinstance(data.get("nodes"), list) or not isinstance(data.get("connections"), list):
@@ -135,6 +149,10 @@ def document_from_dict(data, *, migrate_lengths=True):
         ids, references = set(), set()
         for value in data["nodes"]:
             node = Node(**deepcopy(value))
+            if data["version"] < 5:
+                node.mirror_role = "turning"
+            if node.mirror_role not in ("turning", "folding") or (node.kind != "mirror" and node.mirror_role != "turning"):
+                raise ValueError("Only mirrors can have the Folding role")
             if not all(isinstance(x, str) and x for x in (node.id, node.reference, node.kind, node.preset)):
                 raise ValueError("Component identifiers must be nonempty text")
             if node.id in ids or node.reference in references:
@@ -182,8 +200,31 @@ def document_from_dict(data, *, migrate_lengths=True):
                     isinstance(key, str) and key in (edge.a.node_id, edge.b.node_id) and _finite(turn)
                     for key, turn in edge.turns.items()):
                 raise ValueError("Beam turns must map connected component IDs to finite angles")
+            edge.allow_folding = value.get("allow_folding", False) if data["version"] >= 5 else False
+            if type(edge.allow_folding) is not bool:
+                raise ValueError("Allow folding must be true or false")
             edge.bends = [tuple(p) for p in edge.bends]
             document.connections.append(edge)
+        values = data.get("path_constraints", []) if data["version"] >= 5 else []
+        if not isinstance(values, list):
+            raise ValueError("Path constraints must be a list")
+        constraint_ids, pairs = set(), set()
+        for value in values:
+            constraint = PathLengthConstraint(**deepcopy(value))
+            if not isinstance(constraint.id, str) or not constraint.id or constraint.id in constraint_ids:
+                raise ValueError("Path constraint identities must be unique nonempty text")
+            if (not isinstance(constraint.component_a, str) or not isinstance(constraint.component_b, str)
+                    or constraint.component_a not in ids or constraint.component_b not in ids
+                    or constraint.component_a == constraint.component_b):
+                raise ValueError("Path constraint needs two existing, different components")
+            if not _finite(constraint.length_mm) or constraint.length_mm <= 0:
+                raise ValueError("Total path length must be a positive finite number")
+            pair = tuple(sorted((constraint.component_a, constraint.component_b)))
+            if pair in pairs:
+                raise ValueError("Only one path constraint is allowed per component pair")
+            pairs.add(pair)
+            constraint_ids.add(constraint.id)
+            document.path_constraints.append(constraint)
         if migrate_lengths:
             migrate_legacy_lengths(document)
         if data["version"] >= 4:
@@ -192,6 +233,11 @@ def document_from_dict(data, *, migrate_lengths=True):
             document.optimization = deepcopy(data.get("optimization"))
             document.optimized_layout = deepcopy(data.get("optimized_layout"))
             validate_saved_optimization(document.optimization, document.optimized_layout)
+            if data["version"] < 5 and document.optimized_layout is not None:
+                # Keep the old snapshot for history/save, but require revalidation
+                # under the new physical graph and path-constraint semantics.
+                for key in ("graph", "input_version", "folding_radius"):
+                    document.optimized_layout.pop(key, None)
         return document
     except (TypeError, KeyError, AttributeError, StopIteration) as error:
         raise ValueError(f"Malformed schematic: {error}") from error

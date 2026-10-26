@@ -5,7 +5,7 @@ assembly disks and constant-radius beam capsules; beam crossings are allowed.
 Every accepted result is reconstructed through physical_layout before validation.
 """
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from copy import deepcopy
 import hashlib
 import json
@@ -15,6 +15,8 @@ from statistics import median
 from time import monotonic
 
 from .model import connection_length, document_from_dict, interface_turn
+from .paths import component_path
+from .effective import EffectiveGraph, identity_graph, effective_document, parse_graph_edits, replay_graph
 from .physical import PhysicalLayout, physical_layout, wrap_angle
 from .registry import MIN_BEAM_TURN
 from .topology import resolve_topology
@@ -47,6 +49,11 @@ class OptimizationOptions:
     starts: int = 8
     iterations: int = 5000
     projection_passes: int = 20
+    folding_preset: str = "mounted"
+    folding_diameter_mm: float = 12.7
+    max_added_mirrors: int = 8
+    max_folds_per_beam: int = 4
+    removal_angle_deg: float = 110
 
     def __post_init__(self):
         if not _finite(self.clearance_mm) or self.clearance_mm < 0:
@@ -59,6 +66,17 @@ class OptimizationOptions:
                 raise ValueError(
                     f"{key} must be an integer" + ("" if key == "seed" else " greater than zero")
                 )
+        if self.folding_preset not in ("mounted", "bare"):
+            raise ValueError("Folding mirror preset must be mounted or bare")
+        if not _finite(self.folding_diameter_mm) or self.folding_diameter_mm <= 0:
+            raise ValueError("Folding mirror diameter must be positive")
+        if self.folding_preset == "mounted" and self.folding_diameter_mm != 12.7:
+            raise ValueError("Mounted folding mirrors require a 12.7 mm diameter")
+        for key in ("max_added_mirrors", "max_folds_per_beam"):
+            if type(getattr(self, key)) is not int or getattr(self, key) < 0:
+                raise ValueError(f"{key} must be a nonnegative integer")
+        if not _finite(self.removal_angle_deg) or not 0 < self.removal_angle_deg < 180:
+            raise ValueError("Folding removal angle must be between 0 and 180 degrees")
         if self.starts > 8:
             raise ValueError("At most 8 starts are supported")
 
@@ -91,6 +109,24 @@ class TurnConstraint:
 
 
 @dataclass(frozen=True)
+class PathProjection:
+    id: str
+    edges: tuple[int, ...]
+    target: float
+    a: int
+    b: int
+
+
+@dataclass(frozen=True)
+class SeparationConstraint:
+    id: str
+    a: int
+    b: int
+    target: float
+    edges: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
 class OptimizationProblem:
     nodes: tuple[LayoutNode, ...]
     edges: tuple[LayoutEdge, ...]
@@ -102,6 +138,12 @@ class OptimizationProblem:
     options: OptimizationOptions
     document_json: str
     fingerprint: str
+    path_lengths: tuple[PathProjection, ...] = ()
+    separations: tuple[SeparationConstraint, ...] = ()
+    graph: EffectiveGraph | None = None
+    source_json: str = ""
+    source_radii: tuple[tuple[str, float], ...] = ()
+    folding_radius: float | None = None
 
 
 @dataclass(frozen=True)
@@ -112,6 +154,7 @@ class Violation:
     unit: str = "mm"
     node_ids: tuple[str, ...] = ()
     connection_ids: tuple[str, ...] = ()
+    constraint_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -122,6 +165,7 @@ class OptimizationProgress:
     positions: tuple[tuple[float, float], ...]
     violations: tuple[Violation, ...]
     feasible: bool = False
+    problem: OptimizationProblem | None = None
 
 
 @dataclass(frozen=True)
@@ -132,6 +176,7 @@ class OptimizationResult:
     violations: tuple[Violation, ...]
     iterations: int
     starts: int
+    problem: OptimizationProblem | None = None
 
 
 def geometry_settings():
@@ -148,7 +193,7 @@ def configuration(box, options):
     return {"box": asdict(box), "options": asdict(options)}
 
 
-def input_fingerprint(document, config, radii, geometry=None):
+def input_fingerprint(document, config, radii, geometry=None, folding_radius=None):
     # References, canvas geometry and display settings deliberately do not enter.
     from .parts import part_spec
 
@@ -163,6 +208,7 @@ def input_fingerprint(document, config, radii, geometry=None):
                 "preset": node.preset,
                 "parameters": node.parameters,
                 "physical": node.physical,
+                "mirror_role": node.mirror_role,
                 "part_specification": asdict(spec) if spec is not None else None,
             }
         )
@@ -172,6 +218,7 @@ def input_fingerprint(document, config, radii, geometry=None):
             "ends": sorted([(e.a.node_id, e.a.port_id), (e.b.node_id, e.b.port_id)]),
             "length": e.length,
             "turns": e.turns,
+            "allow_folding": e.allow_folding,
         }
         for e in document.connections
     ]
@@ -180,6 +227,10 @@ def input_fingerprint(document, config, radii, geometry=None):
         "edges": sorted(edges, key=lambda e: e["id"]),
         "defaults": {key: document.settings[key] for key in ("spacing", "open_length")},
         "packing": config,
+        "path_constraints": sorted(
+            [asdict(item) for item in document.path_constraints], key=lambda item: item["id"]
+        ),
+        "folding_radius": folding_radius,
         "radii": radii,
         "geometry": geometry_settings() if geometry is None else geometry,
     }
@@ -196,12 +247,19 @@ def validate_saved_optimization(config, saved):
             OptimizationOptions(**config["options"])
         if saved is None:
             return
-        if (
-            config is None
-            or not isinstance(saved, dict)
-            or set(saved) != {"fingerprint", "geometry", "radii"}
-        ):
+        if config is None or not isinstance(saved, dict):
             raise ValueError("Invalid optimized layout")
+        legacy_keys = {"fingerprint", "geometry", "radii"}
+        current_keys = legacy_keys | {"graph", "input_version", "folding_radius"}
+        if set(saved) not in (legacy_keys, current_keys):
+            raise ValueError("Invalid optimized layout")
+        if set(saved) == current_keys:
+            if type(saved["input_version"]) is not int or saved["input_version"] != 5:
+                raise ValueError("Invalid optimized layout input version")
+            parse_graph_edits(saved["graph"])
+            radius = saved["folding_radius"]
+            if radius is not None and (not _finite(radius) or radius <= 0):
+                raise ValueError("Invalid folding mirror bounds")
         digest = saved["fingerprint"]
         if (
             not isinstance(digest, str)
@@ -236,12 +294,8 @@ def validate_saved_optimization(config, saved):
         raise ValueError(f"Invalid optimized layout: {error}") from error
 
 
-def build_problem(document, radii, box=None, options=None):
-    """Build a snapshot after resolving every physical part's bounds on the GUI thread.
-
-    This uses structural validation, never the fixed-angle placement solver.
-    radii maps physical node IDs to complete assembly radii in millimetres.
-    """
+def build_problem(document, radii, box=None, options=None, folding_radius=None):
+    """Build an immutable snapshot after GUI-thread CAD bounds resolution."""
     from .compiler import validate_schematic
 
     document = document_from_dict(document.to_dict())
@@ -249,62 +303,154 @@ def build_problem(document, radii, box=None, options=None):
     if errors:
         raise ValueError("\n".join(e.message for e in errors))
     options = options or OptimizationOptions()
-    topology = resolve_topology(document)
-    order = topology.order
-    indices = {node_id: i for i, node_id in enumerate(order)}
-    nodes = []
-    for node_id in order:
-        n = document.node(node_id)
-        radius = None if n.kind in ("source", "output") else radii.get(node_id)
-        if n.kind not in ("source", "output") and (not _finite(radius) or radius < 0):
+    for node in document.nodes:
+        if node.kind not in ("source", "output") and (not _finite(radii.get(node.id)) or radii[node.id] < 0):
             raise ValueError(
-                f"{n.reference}: complete physical bounds unavailable. Refresh bounds or select a modeled part/preset."
+                f"{node.reference}: complete physical bounds unavailable. Refresh bounds or select a modeled part/preset."
             )
-        nodes.append(LayoutNode(n.id, n.reference, radius, n.physical.get("x"), n.physical.get("y")))
-    edges = []
-    incoming = {}
-    angles = []
-    for node_id in order:
-        for edge in topology.outgoing[node_id]:
-            a, b = indices[node_id], indices[edge.target.node_id]
-            original = document.connection(edge.id)
-            preferred = connection_length(document, original)
-            if nodes[a].radius is not None and nodes[b].radius is not None:
-                preferred = max(preferred, nodes[a].radius + nodes[b].radius + options.clearance_mm)
-            edges.append(LayoutEdge(edge.id, a, b, original.length, preferred))
-            incoming[b] = a
-            if a in incoming:
-                node = document.node(node_id)
-                reflecting = node.kind == "mirror" or edge.interaction == "reflected"
-                constrained = "turn" in node.physical or any(node_id in e.turns for e in document.connections)
-                turn = (
-                    (interface_turn(document, node, topology) if constrained else None) if reflecting else 0.0
-                )
-                angles.append(TurnConstraint(incoming[a], a, b, edge.id, turn))
-    source = document.node(topology.source_id)
+    needs_folding_bounds = (
+        any(edge.allow_folding for edge in document.connections)
+        and options.max_added_mirrors
+        and options.max_folds_per_beam
+    )
+    if needs_folding_bounds and (not _finite(folding_radius) or folding_radius <= 0):
+        raise ValueError(
+            "Complete folding mirror bounds unavailable. Refresh bounds or choose a modeled folding mirror preset."
+        )
+    topology = resolve_topology(document)
     initial = physical_layout(document, topology)
-    # Reuse a valid prior solution as a warm start, even for a changed rectangle.
     if document.optimized_layout:
         try:
-            initial = optimized_physical_layout(document, topology)
+            previous = optimized_physical_layout(document, topology)
+            if not previous.graph.edits:
+                initial = previous
         except ValueError:
             pass
-    if box is None:
-        box = initial_box(document, radii, initial)
+    box = box or initial_box(document, radii, initial)
+    radii = {node.id: radii[node.id] for node in document.nodes if node.kind not in ("source", "output")}
     clean = deepcopy(document.to_dict())
     clean["optimized_layout"] = clean["optimization"] = None
-    radii = {n.id: n.radius for n in nodes if n.radius is not None}
+    source_json = json.dumps(clean, sort_keys=True)
+    fingerprint = input_fingerprint(
+        document, configuration(box, options), radii, folding_radius=folding_radius
+    )
+    return _numeric_problem(
+        document,
+        radii,
+        box,
+        options,
+        identity_graph(document),
+        initial.positions,
+        source_json,
+        fingerprint,
+        folding_radius,
+    )
+
+
+def _numeric_problem(
+    document, radii, box, options, graph, positions, source_json, fingerprint, folding_radius
+):
+    derived = effective_document(document, graph, options)
+    topology = resolve_topology(derived)
+    if not topology.ok:
+        raise ValueError(
+            "Invalid effective topology: " + "; ".join(item.message for item in topology.diagnostics)
+        )
+    indices = {node_id: i for i, node_id in enumerate(topology.order)}
+    nodes = []
+    generated = {mirror.id for mirror in graph.generated}
+    for node_id in topology.order:
+        node = derived.node(node_id)
+        radius = (
+            None
+            if node.kind in ("source", "output")
+            else (folding_radius if node_id in generated else radii[node_id])
+        )
+        if node_id in generated and (not _finite(radius) or radius <= 0):
+            raise ValueError("Folding mirror bounds unavailable")
+        nodes.append(
+            LayoutNode(node.id, node.reference, radius, node.physical.get("x"), node.physical.get("y"))
+        )
+    preferred = {}
+    for edge in document.connections:
+        length = connection_length(document, edge)
+        a, b = radii.get(edge.a.node_id), radii.get(edge.b.node_id)
+        if a is not None and b is not None:
+            length = max(length, a + b + options.clearance_mm)
+        preferred[edge.id] = length
+    edges, angles, incoming = [], [], {}
+    for node_id in topology.order:
+        for edge in topology.outgoing[node_id]:
+            a, b = indices[node_id], indices[edge.target.node_id]
+            length = derived.connection(edge.id).length
+            target = sum(weight * preferred[key] for key, weight in graph.segment(edge.id).shares)
+            edges.append(LayoutEdge(edge.id, a, b, length, target))
+            incoming[b] = a
+            if a in incoming:
+                node = derived.node(node_id)
+                reflecting = node.kind == "mirror" or edge.interaction == "reflected"
+                constrained = "turn" in node.physical
+                turn = (
+                    (interface_turn(derived, node, topology) if constrained else None) if reflecting else 0.0
+                )
+                angles.append(TurnConstraint(incoming[a], a, b, edge.id, turn))
+    edge_indices = {edge.id: i for i, edge in enumerate(edges)}
+    path_lengths = tuple(
+        PathProjection(
+            item.id,
+            tuple(edge_indices[key] for key in component_path(derived, item.component_a, item.component_b)),
+            item.length_mm,
+            indices[item.component_a],
+            indices[item.component_b],
+        )
+        for item in document.path_constraints
+    )
+    separations = tuple(
+        SeparationConstraint(
+            edge.id,
+            indices[edge.a.node_id],
+            indices[edge.b.node_id],
+            edge.length,
+            tuple(edge_indices[key] for key in component_path(derived, edge.a.node_id, edge.b.node_id)),
+        )
+        for edge in document.connections
+        if edge.length is not None and edge.id not in edge_indices
+    )
+    source = derived.node(topology.source_id)
+    initial = physical_layout(derived, topology)
     return OptimizationProblem(
         tuple(nodes),
         tuple(edges),
         tuple(angles),
-        tuple(initial.positions[n.id] for n in nodes),
+        tuple(tuple(positions.get(node.id, initial.positions[node.id])) for node in nodes),
         indices[source.id],
         source.physical.get("angle"),
         box,
         options,
-        json.dumps(clean, sort_keys=True),
-        input_fingerprint(document, configuration(box, options), radii),
+        json.dumps(derived.to_dict(), sort_keys=True),
+        fingerprint,
+        path_lengths,
+        separations,
+        graph,
+        source_json,
+        tuple(sorted(radii.items())),
+        folding_radius,
+    )
+
+
+def candidate_problem(root, graph, positions):
+    """Worker-safe topology snapshot construction: no CAD or settings access."""
+    source = document_from_dict(json.loads(root.source_json))
+    return _numeric_problem(
+        source,
+        dict(root.source_radii),
+        root.box,
+        root.options,
+        graph,
+        positions,
+        root.source_json,
+        root.fingerprint,
+        root.folding_radius,
     )
 
 
@@ -376,6 +522,21 @@ def _correct(positions, mobility, indices, gradients, residual, strength=1):
             positions[i][axis] += factor * mobility[i][axis] * g[axis]
 
 
+def path_value_gradients(problem, positions, constraint):
+    value, gradients = 0.0, {}
+    for index in constraint.edges:
+        edge = problem.edges[index]
+        a, b = positions[edge.a], positions[edge.b]
+        nx, ny, distance = _direction(b[0] - a[0], b[1] - a[1], edge.a + edge.b)
+        value += distance
+        for i, sign in ((edge.a, -1), (edge.b, 1)):
+            gradient = gradients.setdefault(i, [0.0, 0.0])
+            gradient[0] += sign * nx
+            gradient[1] += sign * ny
+    indices = tuple(sorted(gradients))
+    return value, indices, tuple(tuple(gradients[i]) for i in indices)
+
+
 def project_constraints(problem, positions, collision_strength=1, mobility=None):
     """One in-place projection pass. Pinned axes always have zero mobility."""
     mobility = mobility or _mobility(problem)
@@ -385,6 +546,19 @@ def project_constraints(problem, positions, collision_strength=1, mobility=None)
         target = edge.fixed_length if edge.fixed_length is not None else 0.001
         if edge.fixed_length is not None or distance < target:
             _correct(positions, mobility, (edge.a, edge.b), ((-nx, -ny), (nx, ny)), distance - target)
+    for constraint in problem.separations:
+        a, b = positions[constraint.a], positions[constraint.b]
+        nx, ny, distance = _direction(b[0] - a[0], b[1] - a[1], constraint.a + constraint.b)
+        _correct(
+            positions,
+            mobility,
+            (constraint.a, constraint.b),
+            ((-nx, -ny), (nx, ny)),
+            distance - constraint.target,
+        )
+    for constraint in problem.path_lengths:
+        value, indices, gradients = path_value_gradients(problem, positions, constraint)
+        _correct(positions, mobility, indices, gradients, value - constraint.target)
     for angle in problem.angles:
         a, b, c = (positions[i] for i in (angle.incoming, angle.node, angle.outgoing))
         value = signed_turn(a, b, c)
@@ -487,7 +661,7 @@ def layout_violations(problem, positions):
         return nonfinite
     result = []
 
-    def add(kind, message, residual, node_indices=(), edges=(), unit="mm"):
+    def add(kind, message, residual, node_indices=(), edges=(), unit="mm", constraints=()):
         tolerance = ANGULAR_TOLERANCE if unit == "°" else LINEAR_TOLERANCE
         if residual > tolerance:
             result.append(
@@ -498,6 +672,7 @@ def layout_violations(problem, positions):
                     unit,
                     tuple(problem.nodes[i].id for i in node_indices),
                     tuple(edges),
+                    tuple(constraints),
                 )
             )
 
@@ -560,6 +735,25 @@ def layout_violations(problem, positions):
         if edge.a == problem.source_index and problem.source_direction is not None:
             error = abs(wrap_angle(degrees(atan2(b[1] - a[1], b[0] - a[0])) - problem.source_direction))
             add("source_direction", "Source direction", error, (edge.a,), (edge.id,), "°")
+    for constraint in problem.separations:
+        a, b = positions[constraint.a], positions[constraint.b]
+        add(
+            "separation",
+            "Constrained beam endpoint separation",
+            abs(hypot(b[0] - a[0], b[1] - a[1]) - constraint.target),
+            (constraint.a, constraint.b),
+            tuple(problem.edges[i].id for i in constraint.edges),
+        )
+    for constraint in problem.path_lengths:
+        value, _, _ = path_value_gradients(problem, positions, constraint)
+        add(
+            "path_length",
+            "Total path length",
+            abs(value - constraint.target),
+            (constraint.a, constraint.b),
+            tuple(problem.edges[i].id for i in constraint.edges),
+            constraints=(constraint.id,),
+        )
     for constraint in problem.angles:
         a, b, c = (positions[i] for i in (constraint.incoming, constraint.node, constraint.outgoing))
         value = signed_turn(a, b, c)
@@ -643,12 +837,14 @@ def reconstruct_candidate(problem, positions, document=None, topology=None):
         if problem.source_direction is not None
         else degrees(atan2(b[1] - a[1], b[0] - a[0]))
     )
-    layout = physical_layout(document, topology, lengths, turns, (*a, direction))
+    layout = replace(
+        physical_layout(document, topology, lengths, turns, (*a, direction)), graph=problem.graph
+    )
     exact = tuple(layout.positions[n.id] for n in problem.nodes)
     return layout, exact, layout_violations(problem, exact)
 
 
-def optimize_layout(problem, options=None, progress=None, cancelled=None):
+def _optimize_fixed(problem, options=None, progress=None, cancelled=None):
     """Pure numerical search. Callbacks run in the calling worker thread.
 
     A cancelled search never offers Apply, even if an earlier start was feasible.
@@ -717,7 +913,9 @@ def optimize_layout(problem, options=None, progress=None, cancelled=None):
         feasible_streak = 0
         for iteration in range(options.iterations):
             if cancelled():
-                return OptimizationResult("cancelled", None, closest, closest_violations, count, start + 1)
+                return OptimizationResult(
+                    "cancelled", None, closest, closest_violations, count, start + 1, problem
+                )
             count += 1
             before = [p[:] for p in positions]
             force = forces(problem, positions)
@@ -738,7 +936,7 @@ def optimize_layout(problem, options=None, progress=None, cancelled=None):
             for _ in range(options.projection_passes):
                 if cancelled():
                     return OptimizationResult(
-                        "cancelled", None, closest, closest_violations, count, start + 1
+                        "cancelled", None, closest, closest_violations, count, start + 1, problem
                     )
                 project_constraints(problem, positions, ramp, mobility)
             velocity = [[(p[a] - old[a]) * 0.5 for a in (0, 1)] for p, old in zip(positions, before)]
@@ -756,7 +954,9 @@ def optimize_layout(problem, options=None, progress=None, cancelled=None):
             now = monotonic()
             if progress and (now - last_update >= 0.1 or iteration == options.iterations - 1):
                 progress(
-                    OptimizationProgress(start + 1, iteration + 1, count, exact, violations, not violations)
+                    OptimizationProgress(
+                        start + 1, iteration + 1, count, exact, violations, not violations, problem
+                    )
                 )
                 last_update = now
             if feasible_streak >= 40:
@@ -765,11 +965,77 @@ def optimize_layout(problem, options=None, progress=None, cancelled=None):
         if best is not None and best_score < 1e-12:
             break
     if cancelled():
-        return OptimizationResult("cancelled", None, closest, closest_violations, count, start + 1)
+        return OptimizationResult("cancelled", None, closest, closest_violations, count, start + 1, problem)
     if best is not None:
         positions = tuple(best.positions[n.id] for n in problem.nodes)
-        return OptimizationResult("feasible", best, positions, (), count, start + 1)
-    return OptimizationResult("no_feasible_layout", None, closest, closest_violations, count, start + 1)
+        return OptimizationResult("feasible", best, positions, (), count, start + 1, problem)
+    return OptimizationResult(
+        "no_feasible_layout", None, closest, closest_violations, count, start + 1, problem
+    )
+
+
+def optimize_layout(problem, options=None, progress=None, cancelled=None):
+    """Optimize geometry and permitted topology; CAD-independent and cancellable."""
+    options = options or problem.options
+    if options != problem.options:
+        if (
+            options.clearance_mm,
+            options.beam_diameter_mm,
+            options.folding_preset,
+            options.folding_diameter_mm,
+        ) != (
+            problem.options.clearance_mm,
+            problem.options.beam_diameter_mm,
+            problem.options.folding_preset,
+            problem.options.folding_diameter_mm,
+        ):
+            raise ValueError("Packing or part settings changed; build a new problem snapshot")
+        problem = replace(problem, options=options)
+    source = document_from_dict(json.loads(problem.source_json or problem.document_json))
+    from .effective import folding_protection
+
+    adaptive = (
+        any(edge.allow_folding for edge in source.connections)
+        and options.max_added_mirrors > 0
+        and options.max_folds_per_beam > 0
+    ) or any(node.kind == "mirror" and folding_protection(source, node.id) is None for node in source.nodes)
+    if adaptive:
+        from .folding import adaptive_layout
+
+        return adaptive_layout(problem, progress, cancelled)
+    return _optimize_fixed(problem, progress=progress, cancelled=cancelled)
+
+
+def _saved_candidate(document, saved, config):
+    options = OptimizationOptions(**config["options"])
+    if set(saved["radii"]) != {node.id for node in document.nodes if node.kind not in ("source", "output")}:
+        raise ValueError("Optimized layout has incomplete physical bounds; rerun or clear it")
+    graph = replay_graph(document, saved["graph"], options)
+    derived = effective_document(document, graph, options)
+    topology = resolve_topology(derived)
+    geometry = saved["geometry"]
+    turns = {node.id for node in derived.nodes if node.kind in ("mirror", "splitter")}
+    if set(geometry["lengths"]) != set(topology.edges) or set(geometry["turns"]) != turns:
+        raise ValueError("Optimized layout has incomplete optical geometry; rerun or clear it")
+    layout = replace(physical_layout(derived, topology, **geometry), graph=graph)
+    clean = deepcopy(document.to_dict())
+    clean["optimized_layout"] = clean["optimization"] = None
+    source_json = json.dumps(clean, sort_keys=True)
+    problem = _numeric_problem(
+        document_from_dict(clean),
+        saved["radii"],
+        PackingBox(**config["box"]),
+        options,
+        graph,
+        layout.positions,
+        source_json,
+        saved["fingerprint"],
+        saved["folding_radius"],
+    )
+    violations = layout_violations(problem, tuple(layout.positions[node.id] for node in problem.nodes))
+    if violations:
+        raise ValueError("Saved optimized layout failed verification: " + violations[0].message)
+    return layout
 
 
 def optimized_physical_layout(document, topology=None):
@@ -777,44 +1043,42 @@ def optimized_physical_layout(document, topology=None):
     if saved is None:
         return None
     validate_saved_optimization(document.optimization, saved)
-    if input_fingerprint(document, document.optimization, saved["radii"]) != saved["fingerprint"]:
+    if saved.get("input_version") != 5:
+        raise ValueError(
+            "Optimized layout is stale after the format upgrade. Rerun Optimize physical layout or Clear optimized layout."
+        )
+    if (
+        input_fingerprint(
+            document, document.optimization, saved["radii"], folding_radius=saved["folding_radius"]
+        )
+        != saved["fingerprint"]
+    ):
         raise ValueError(
             "Optimized layout is stale. Rerun Optimize physical layout or Clear optimized layout before export."
         )
-    topology = topology or resolve_topology(document)
-    geometry = saved["geometry"]
-    expected_turns = {n.id for n in document.nodes if n.kind in ("mirror", "splitter")}
-    if set(geometry["lengths"]) != set(topology.edges) or set(geometry["turns"]) != expected_turns:
-        raise ValueError("Optimized layout has incomplete optical geometry; rerun or clear it")
-    layout = physical_layout(document, topology, **geometry)
-    # Storage is untrusted: reconstruct and verify the recorded solution as well.
-    clean = deepcopy(document.to_dict())
-    clean["optimized_layout"] = clean["optimization"] = None
-    problem = build_problem(
-        document_from_dict(clean),
-        saved["radii"],
-        PackingBox(**document.optimization["box"]),
-        OptimizationOptions(**document.optimization["options"]),
-    )
-    violations = layout_violations(problem, tuple(layout.positions[n.id] for n in problem.nodes))
-    if violations:
-        raise ValueError("Saved optimized layout failed verification: " + violations[0].message)
-    return layout
+    return _saved_candidate(document, saved, document.optimization)
 
 
 def apply_optimization(document, problem, result):
     if result.status != "feasible" or result.layout is None:
         raise ValueError("Only a verified feasible layout can be applied")
     config = configuration(problem.box, problem.options)
-    radii = {n.id: n.radius for n in problem.nodes if n.radius is not None}
-    if input_fingerprint(document, config, radii) != problem.fingerprint:
+    radii = dict(problem.source_radii)
+    if (
+        input_fingerprint(document, config, radii, folding_radius=problem.folding_radius)
+        != problem.fingerprint
+    ):
         raise ValueError("Schematic changed during optimization. Run the optimizer again.")
-    geometry = result.layout.snapshot(problem.nodes[problem.source_index].id)
-    layout = physical_layout(document, resolve_topology(document), **geometry)
-    violations = layout_violations(problem, tuple(layout.positions[n.id] for n in problem.nodes))
-    if violations:
-        raise ValueError("Result failed final verification: " + violations[0].message)
-    saved = {"fingerprint": problem.fingerprint, "geometry": geometry, "radii": radii}
+    graph = result.layout.graph or identity_graph(document)
+    saved = {
+        "fingerprint": problem.fingerprint,
+        "geometry": result.layout.snapshot(problem.nodes[problem.source_index].id),
+        "radii": radii,
+        "graph": graph.to_dict(),
+        "input_version": 5,
+        "folding_radius": problem.folding_radius,
+    }
     validate_saved_optimization(config, saved)
+    _saved_candidate(document, saved, config)
     document.optimization = config
     document.optimized_layout = saved

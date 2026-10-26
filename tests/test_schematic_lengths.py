@@ -97,7 +97,7 @@ class BeamLengthTests(unittest.TestCase):
             original = deepcopy(data)
             migrated = document_from_dict(data)
             self.assertEqual(data, original, "Migration must not mutate the original file data")
-            self.assertEqual(migrated.version, 4)
+            self.assertEqual(migrated.version, 5)
             self.assertEqual([edge.length for edge in migrated.connections], [75, 120])
             self.assertEqual(migrated.nodes[1].physical, {"turn": -90})
             self.assertEqual(compile_schematic(migrated).placements["D1"][:2], (75, -120))

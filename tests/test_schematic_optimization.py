@@ -4,6 +4,7 @@ import ast
 from copy import deepcopy
 from dataclasses import replace
 import math
+import runpy
 from pathlib import Path
 import subprocess
 import sys
@@ -225,6 +226,44 @@ class OptimizationSearchTests(unittest.TestCase):
         apply_optimization(d, p, r)
         self.assertTrue(compile_schematic(d).ok)
 
+    def test_splitter_example_keeps_explicit_right_angle_when_packed(self):
+        example = runpy.run_path(
+            str(Path(__file__).resolve().parents[1] / "Designs/schematics/optimization/generate.py")
+        )
+        document, box, options = list(example["fixtures"]())[1]
+        cube = next(node for node in document.nodes if node.kind == "splitter")
+        self.assertEqual(cube.physical.get("turn"), 90, "The example must explicitly constrain the cube")
+        from PyOpticL.schematic.bounds import BoundsProvider, resolve_layout_bounds
+
+        radii, errors = resolve_layout_bounds(document, BoundsProvider(example["primitive_circle"]))
+        self.assertFalse(errors)
+        p = build_problem(document, radii, box, options)
+        result = optimize_layout(p)
+        self.assertEqual(result.status, "feasible", result.violations)
+        self.assertFalse(layout_violations(p, result.positions))
+        checks = example["verify_interfaces"](document, result.layout.positions)
+        cube_checks = [check for check in checks if check["reference"] == cube.reference]
+        self.assertEqual({check["constraint_deg"] for check in cube_checks}, {0, 90})
+        for check in cube_checks:
+            self.assertAlmostEqual(check["measured_turn_deg"], check["constraint_deg"], delta=1e-6)
+        apply_optimization(document, p, result)
+        compiled = compile_schematic(document)
+        self.assertTrue(compiled.ok, compiled.diagnostics)
+        assignments = {
+            node.targets[0].id: ast.literal_eval(node.value)
+            for node in ast.parse(compiled.source).body
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+        }
+        exported = dict(result.layout.positions)
+        for node in document.nodes:
+            if node.reference in assignments["PLACEMENTS"]:
+                exported[node.id] = assignments["PLACEMENTS"][node.reference][:2]
+        example["verify_interfaces"](document, exported)
+        # A saved 'feasible' label cannot bypass final constraint verification.
+        changed_layout = replace(result.layout, turns={**result.layout.turns, cube.id: 45})
+        with self.assertRaises(ValueError):
+            apply_optimization(document, p, replace(result, layout=changed_layout))
+
     def test_unconstrained_source_direction_moves_between_pinned_points(self):
         d = chain("source", "output")
         d.nodes[0].physical.update(x=10, y=10)
@@ -310,7 +349,7 @@ class OptimizationStorageTests(unittest.TestCase):
             path = Path(directory) / "optimized.json"
             save_schematic(restored, path)
             self.assertEqual(load_schematic(path).to_dict(), restored.to_dict())
-        for version in (1, 2, 3):
+        for version in (1, 2, 3, 4):
             old = chain("source", "output").to_dict()
             old["version"] = version
             if version == 1:
@@ -325,7 +364,7 @@ class OptimizationStorageTests(unittest.TestCase):
                     }
                 ]
             loaded = document_from_dict(old)
-            self.assertEqual(loaded.version, 4)
+            self.assertEqual(loaded.version, 5)
             self.assertIsNone(loaded.optimized_layout)
 
     def test_drawing_reference_and_display_edits_preserve_solution(self):

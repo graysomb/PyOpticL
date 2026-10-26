@@ -1,0 +1,156 @@
+{
+  "title": "adaptive-remove-fold",
+  "nodes": [
+    {
+      "id": "adaptive-remove-fold-S1",
+      "reference": "S1",
+      "kind": "source",
+      "preset": "beam",
+      "parameters": {},
+      "position": [
+        -160,
+        0
+      ],
+      "rotation": 0,
+      "physical": {
+        "x": 0,
+        "y": 0
+      },
+      "mirror_role": "turning"
+    },
+    {
+      "id": "adaptive-remove-fold-M1",
+      "reference": "M1",
+      "kind": "mirror",
+      "preset": "bare",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "folding"
+    },
+    {
+      "id": "adaptive-remove-fold-O1",
+      "reference": "O1",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        0,
+        -160
+      ],
+      "rotation": -90,
+      "physical": {
+        "x": 100,
+        "y": 0
+      },
+      "mirror_role": "turning"
+    }
+  ],
+  "connections": [
+    {
+      "id": "adaptive-remove-fold-S1-M1",
+      "a": {
+        "node_id": "adaptive-remove-fold-S1",
+        "port_id": "beam"
+      },
+      "b": {
+        "node_id": "adaptive-remove-fold-M1",
+        "port_id": "A"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "adaptive-remove-fold-M1-O1",
+      "a": {
+        "node_id": "adaptive-remove-fold-M1",
+        "port_id": "B"
+      },
+      "b": {
+        "node_id": "adaptive-remove-fold-O1",
+        "port_id": "beam"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 50,
+    "show_bounds": false,
+    "bounds_scale": 4.0
+  },
+  "version": 5,
+  "optimization": {
+    "box": {
+      "x": -15,
+      "y": -30,
+      "width": 150,
+      "height": 100
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 1,
+      "iterations": 1500,
+      "projection_passes": 20,
+      "folding_preset": "bare",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    }
+  },
+  "optimized_layout": {
+    "fingerprint": "cce564aa3938dcce2f431758527521b83b9203746d154ef5c639e569531ae9bb",
+    "geometry": {
+      "source_pose": [
+        0,
+        0,
+        0.0
+      ],
+      "lengths": {
+        "cd22d4c4-4469-5c14-ae25-4f5c9f9a3e66": 100.0
+      },
+      "turns": {}
+    },
+    "radii": {
+      "adaptive-remove-fold-M1": 8.736274949885678
+    },
+    "graph": {
+      "edits": [
+        {
+          "action": "remove",
+          "node_id": "adaptive-remove-fold-M1",
+          "segment_ids": [
+            "adaptive-remove-fold-S1-M1",
+            "adaptive-remove-fold-M1-O1"
+          ]
+        }
+      ]
+    },
+    "input_version": 5,
+    "folding_radius": null
+  },
+  "path_constraints": [
+    {
+      "id": "straight-path",
+      "component_a": "adaptive-remove-fold-S1",
+      "component_b": "adaptive-remove-fold-O1",
+      "length_mm": 100
+    }
+  ]
+}

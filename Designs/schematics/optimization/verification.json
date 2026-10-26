@@ -1,0 +1,839 @@
+[
+  {
+    "example": "pinned-mirror",
+    "box_mm": {
+      "x": -10,
+      "y": -10,
+      "width": 110,
+      "height": 52
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 8,
+      "iterations": 5000,
+      "projection_passes": 20,
+      "folding_preset": "mounted",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    },
+    "bounds_source": "analytical bare primitive shape bounding boxes (not evaluated in FreeCAD)",
+    "radii_mm": {
+      "M1": 8.736274949885678
+    },
+    "before_export_ok": false,
+    "before_diagnostics": [
+      "O1: position X=80 mm conflicts with other pinned positions, constrained lengths, or routing angles"
+    ],
+    "before_violations": [
+      {
+        "kind": "position",
+        "message": "O1: pinned X coordinate",
+        "residual": 30.0,
+        "unit": "mm",
+        "node_ids": [
+          "pinned-mirror-O1"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      },
+      {
+        "kind": "position",
+        "message": "O1: pinned Y coordinate",
+        "residual": 10.0,
+        "unit": "mm",
+        "node_ids": [
+          "pinned-mirror-O1"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      },
+      {
+        "kind": "boundary",
+        "message": "O1: outside rectangle margin",
+        "residual": 9.5,
+        "unit": "mm",
+        "node_ids": [
+          "pinned-mirror-O1"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      }
+    ],
+    "after_status": "feasible",
+    "after_violations": [],
+    "iterations": 40,
+    "starts": 1,
+    "before_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "M1": [
+        50.0,
+        0.0
+      ],
+      "O1": [
+        50.0,
+        50.0
+      ]
+    },
+    "after_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "M1": [
+        50.0,
+        0.0
+      ],
+      "O1": [
+        80.0,
+        40.0
+      ]
+    },
+    "after_turns_deg": {
+      "M1": 53.13010235415598
+    },
+    "interface_angle_checks": [
+      {
+        "reference": "M1",
+        "connection_id": "pinned-mirror-M1-O1",
+        "constraint_deg": null,
+        "measured_turn_deg": 53.13010235415598
+      }
+    ],
+    "exported_interface_angle_checks": [
+      {
+        "reference": "M1",
+        "connection_id": "pinned-mirror-M1-O1",
+        "constraint_deg": null,
+        "measured_turn_deg": 53.130102353999995
+      }
+    ],
+    "analytical_export_reflection_and_open_lengths_verified": true,
+    "path_length_checks": [],
+    "beam_separation_checks": [
+      {
+        "id": "pinned-mirror-S1-M1",
+        "target_mm": 50,
+        "exported_mm": 50.0,
+        "routed_mm": 50
+      }
+    ],
+    "original_beam_endpoint_separations_mm": {
+      "pinned-mirror-S1-M1": 50.0,
+      "pinned-mirror-M1-O1": 50.0
+    },
+    "original_beam_routed_lengths_mm": {
+      "pinned-mirror-S1-M1": 50,
+      "pinned-mirror-M1-O1": 50.0
+    },
+    "added_mirrors": [],
+    "omitted_mirrors": [],
+    "retained_turning_mirrors": [
+      "M1"
+    ],
+    "drawing_and_constraints_unchanged": true,
+    "seeded_repeatability_verified": true,
+    "save_load_export_verified": true,
+    "qt_run_apply_undo_redo_verified": true,
+    "freecad_runtime_trace_verified": false
+  },
+  {
+    "example": "splitter-fold",
+    "box_mm": {
+      "x": -10,
+      "y": -10,
+      "width": 110,
+      "height": 85
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 8,
+      "iterations": 5000,
+      "projection_passes": 20,
+      "folding_preset": "mounted",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    },
+    "bounds_source": "analytical bare primitive shape bounding boxes (not evaluated in FreeCAD)",
+    "radii_mm": {
+      "M1": 8.736274949885678,
+      "BS1": 8.980256121069152,
+      "M2": 8.736274949885678,
+      "M3": 8.736274949885678
+    },
+    "before_export_ok": true,
+    "before_diagnostics": [],
+    "before_violations": [
+      {
+        "kind": "boundary",
+        "message": "M2: outside rectangle margin",
+        "residual": 34.73627494988568,
+        "unit": "mm",
+        "node_ids": [
+          "splitter-fold-M2"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      },
+      {
+        "kind": "boundary",
+        "message": "O1: outside rectangle margin",
+        "residual": 26.5,
+        "unit": "mm",
+        "node_ids": [
+          "splitter-fold-O1"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      }
+    ],
+    "after_status": "feasible",
+    "after_violations": [],
+    "iterations": 6004,
+    "starts": 8,
+    "before_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "M1": [
+        50.0,
+        0.0
+      ],
+      "BS1": [
+        50.0,
+        50.0
+      ],
+      "M2": [
+        50.0,
+        100.0
+      ],
+      "M3": [
+        0.0,
+        50.00000000000001
+      ],
+      "O1": [
+        0.0,
+        100.0
+      ],
+      "O2": [
+        -9.184850993605149e-15,
+        7.105427357601002e-15
+      ]
+    },
+    "after_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "M1": [
+        50.0,
+        0.0
+      ],
+      "BS1": [
+        70.1380317527538,
+        32.6395164240689
+      ],
+      "M2": [
+        90.25773729912656,
+        65.24932991979263
+      ],
+      "M3": [
+        26.624647729823543,
+        59.48654129228542
+      ],
+      "O1": [
+        98.50000007004411,
+        14.95317774977405
+      ],
+      "O2": [
+        22.14111122035829,
+        9.27943699658644
+      ]
+    },
+    "after_turns_deg": {
+      "M1": 58.3261133140506,
+      "BS1": 90,
+      "M2": -139.0195101954483,
+      "M3": 116.57086173774044
+    },
+    "interface_angle_checks": [
+      {
+        "reference": "M1",
+        "connection_id": "splitter-fold-M1-BS1",
+        "constraint_deg": null,
+        "measured_turn_deg": 58.3261133140506
+      },
+      {
+        "reference": "BS1",
+        "connection_id": "splitter-fold-BS1-M2",
+        "constraint_deg": 0,
+        "measured_turn_deg": 4.432527743033066e-15
+      },
+      {
+        "reference": "BS1",
+        "connection_id": "splitter-fold-BS1-M3",
+        "constraint_deg": 90,
+        "measured_turn_deg": 90.00000000000001
+      },
+      {
+        "reference": "M2",
+        "connection_id": "splitter-fold-M2-O1",
+        "constraint_deg": null,
+        "measured_turn_deg": -139.0195101954483
+      },
+      {
+        "reference": "M3",
+        "connection_id": "splitter-fold-M3-O2",
+        "constraint_deg": null,
+        "measured_turn_deg": 116.57086173774047
+      }
+    ],
+    "exported_interface_angle_checks": [
+      {
+        "reference": "M1",
+        "connection_id": "splitter-fold-M1-BS1",
+        "constraint_deg": null,
+        "measured_turn_deg": 58.326113313683514
+      },
+      {
+        "reference": "BS1",
+        "connection_id": "splitter-fold-BS1-M2",
+        "constraint_deg": 0,
+        "measured_turn_deg": 1.0583723793119404e-09
+      },
+      {
+        "reference": "BS1",
+        "connection_id": "splitter-fold-BS1-M3",
+        "constraint_deg": 90,
+        "measured_turn_deg": 90.00000000061462
+      },
+      {
+        "reference": "M2",
+        "connection_id": "splitter-fold-M2-O1",
+        "constraint_deg": null,
+        "measured_turn_deg": -139.0195101967419
+      },
+      {
+        "reference": "M3",
+        "connection_id": "splitter-fold-M3-O2",
+        "constraint_deg": null,
+        "measured_turn_deg": 116.57086173770189
+      }
+    ],
+    "analytical_export_reflection_and_open_lengths_verified": true,
+    "path_length_checks": [],
+    "beam_separation_checks": [
+      {
+        "id": "splitter-fold-S1-M1",
+        "target_mm": 50,
+        "exported_mm": 50.0,
+        "routed_mm": 50
+      }
+    ],
+    "original_beam_endpoint_separations_mm": {
+      "splitter-fold-S1-M1": 50.0,
+      "splitter-fold-M1-BS1": 38.352031957537584,
+      "splitter-fold-BS1-M2": 38.31713047056927,
+      "splitter-fold-M2-O1": 50.96702677903154,
+      "splitter-fold-BS1-M3": 51.129026329489584,
+      "splitter-fold-M3-O2": 50.406898549612265
+    },
+    "original_beam_routed_lengths_mm": {
+      "splitter-fold-S1-M1": 50,
+      "splitter-fold-M1-BS1": 38.352031957537584,
+      "splitter-fold-BS1-M2": 38.31713047056927,
+      "splitter-fold-M2-O1": 50.967026779031535,
+      "splitter-fold-BS1-M3": 51.129026329489584,
+      "splitter-fold-M3-O2": 50.406898549612265
+    },
+    "added_mirrors": [],
+    "omitted_mirrors": [],
+    "retained_turning_mirrors": [
+      "M1",
+      "M2",
+      "M3"
+    ],
+    "drawing_and_constraints_unchanged": true,
+    "seeded_repeatability_verified": true,
+    "save_load_export_verified": true,
+    "qt_run_apply_undo_redo_verified": true,
+    "freecad_runtime_trace_verified": false
+  },
+  {
+    "example": "adaptive-multiple-folds",
+    "box_mm": {
+      "x": -15,
+      "y": -15,
+      "width": 130,
+      "height": 110
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 2,
+      "iterations": 3000,
+      "projection_passes": 20,
+      "folding_preset": "bare",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    },
+    "bounds_source": "analytical bare primitive shape bounding boxes (not evaluated in FreeCAD)",
+    "radii_mm": {},
+    "before_export_ok": false,
+    "before_diagnostics": [
+      "Total path length conflicts with positions, beam lengths, or other path constraints"
+    ],
+    "before_violations": [
+      {
+        "kind": "path_length",
+        "message": "Total path length",
+        "residual": 80.0,
+        "unit": "mm",
+        "node_ids": [
+          "adaptive-multiple-folds-S1",
+          "adaptive-multiple-folds-O1"
+        ],
+        "connection_ids": [
+          "adaptive-multiple-folds-S1-O1"
+        ],
+        "constraint_ids": [
+          "long-path"
+        ]
+      }
+    ],
+    "after_status": "feasible",
+    "after_violations": [],
+    "iterations": 2400,
+    "starts": 2,
+    "before_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "O1": [
+        100.0,
+        0.0
+      ]
+    },
+    "after_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "FM2": [
+        51.454019804089775,
+        0.0
+      ],
+      "FM1": [
+        45.76102507421526,
+        52.64929951847655
+      ],
+      "O1": [
+        99.99999999999999,
+        -3.552713678800501e-14
+      ]
+    },
+    "after_turns_deg": {
+      "FM1": -140.31938515404417,
+      "FM2": 96.17144285336268
+    },
+    "interface_angle_checks": [
+      {
+        "reference": "FM1",
+        "connection_id": "612e94be-9ab1-5d87-9043-bcde17b97cc6/out",
+        "constraint_deg": null,
+        "measured_turn_deg": -140.31938515404417
+      },
+      {
+        "reference": "FM2",
+        "connection_id": "f646117f-26a9-5767-b1bf-3aa86e0cec61/out",
+        "constraint_deg": null,
+        "measured_turn_deg": 96.17144285336268
+      }
+    ],
+    "exported_interface_angle_checks": [
+      {
+        "reference": "FM1",
+        "connection_id": "612e94be-9ab1-5d87-9043-bcde17b97cc6/out",
+        "constraint_deg": null,
+        "measured_turn_deg": -140.3193851555531
+      },
+      {
+        "reference": "FM2",
+        "connection_id": "f646117f-26a9-5767-b1bf-3aa86e0cec61/out",
+        "constraint_deg": null,
+        "measured_turn_deg": 96.17144285355307
+      }
+    ],
+    "analytical_export_reflection_and_open_lengths_verified": true,
+    "path_length_checks": [
+      {
+        "id": "long-path",
+        "route": [
+          "f646117f-26a9-5767-b1bf-3aa86e0cec61/in",
+          "f646117f-26a9-5767-b1bf-3aa86e0cec61/out",
+          "612e94be-9ab1-5d87-9043-bcde17b97cc6/out"
+        ],
+        "target_mm": 180,
+        "optimized_mm": 179.99999999999997,
+        "exported_mm": 179.99999999944987
+      }
+    ],
+    "beam_separation_checks": [
+      {
+        "id": "adaptive-multiple-folds-S1-O1",
+        "target_mm": 100,
+        "exported_mm": 99.99999999857312,
+        "routed_mm": 179.99999999999997
+      }
+    ],
+    "original_beam_endpoint_separations_mm": {
+      "adaptive-multiple-folds-S1-O1": 99.99999999999999
+    },
+    "original_beam_routed_lengths_mm": {
+      "adaptive-multiple-folds-S1-O1": 179.99999999999997
+    },
+    "added_mirrors": [
+      "FM1",
+      "FM2"
+    ],
+    "omitted_mirrors": [],
+    "retained_turning_mirrors": [],
+    "drawing_and_constraints_unchanged": true,
+    "seeded_repeatability_verified": true,
+    "save_load_export_verified": true,
+    "qt_run_apply_undo_redo_verified": true,
+    "freecad_runtime_trace_verified": false
+  },
+  {
+    "example": "adaptive-remove-fold",
+    "box_mm": {
+      "x": -15,
+      "y": -30,
+      "width": 150,
+      "height": 100
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 1,
+      "iterations": 1500,
+      "projection_passes": 20,
+      "folding_preset": "bare",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    },
+    "bounds_source": "analytical bare primitive shape bounding boxes (not evaluated in FreeCAD)",
+    "radii_mm": {
+      "M1": 8.736274949885678
+    },
+    "before_export_ok": false,
+    "before_diagnostics": [
+      "Constraints could not be satisfied with positive beam lengths and current routing angles: O1: position X=100 mm conflicts with other pinned positions, constrained lengths, or routing angles",
+      "Constraints could not be satisfied with positive beam lengths and current routing angles: O1: position Y=0 mm conflicts with other pinned positions, constrained lengths, or routing angles",
+      "Constraints could not be satisfied with positive beam lengths and current routing angles: Total path length conflicts with positions, beam lengths, or other path constraints"
+    ],
+    "before_violations": [
+      {
+        "kind": "position",
+        "message": "O1: pinned X coordinate",
+        "residual": 50.0,
+        "unit": "mm",
+        "node_ids": [
+          "adaptive-remove-fold-O1"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      },
+      {
+        "kind": "position",
+        "message": "O1: pinned Y coordinate",
+        "residual": 50.0,
+        "unit": "mm",
+        "node_ids": [
+          "adaptive-remove-fold-O1"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      }
+    ],
+    "after_status": "feasible",
+    "after_violations": [],
+    "iterations": 200,
+    "starts": 1,
+    "before_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "M1": [
+        50.0,
+        0.0
+      ],
+      "O1": [
+        50.0,
+        50.0
+      ]
+    },
+    "after_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "O1": [
+        100.0,
+        0.0
+      ]
+    },
+    "after_turns_deg": {},
+    "interface_angle_checks": [],
+    "exported_interface_angle_checks": [],
+    "analytical_export_reflection_and_open_lengths_verified": true,
+    "path_length_checks": [
+      {
+        "id": "straight-path",
+        "route": [
+          "cd22d4c4-4469-5c14-ae25-4f5c9f9a3e66"
+        ],
+        "target_mm": 100,
+        "optimized_mm": 100.0,
+        "exported_mm": 100.0
+      }
+    ],
+    "beam_separation_checks": [],
+    "original_beam_endpoint_separations_mm": {},
+    "original_beam_routed_lengths_mm": {},
+    "added_mirrors": [],
+    "omitted_mirrors": [
+      "M1"
+    ],
+    "retained_turning_mirrors": [],
+    "drawing_and_constraints_unchanged": true,
+    "seeded_repeatability_verified": true,
+    "save_load_export_verified": true,
+    "qt_run_apply_undo_redo_verified": true,
+    "freecad_runtime_trace_verified": false
+  },
+  {
+    "example": "adaptive-splitter-90",
+    "box_mm": {
+      "x": -20,
+      "y": -20,
+      "width": 220,
+      "height": 150
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 1,
+      "iterations": 1800,
+      "projection_passes": 20,
+      "folding_preset": "bare",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    },
+    "bounds_source": "analytical bare primitive shape bounding boxes (not evaluated in FreeCAD)",
+    "radii_mm": {
+      "BS1": 8.980256121069152
+    },
+    "before_export_ok": false,
+    "before_diagnostics": [
+      "O2: position X=130 mm conflicts with other pinned positions, constrained lengths, or routing angles"
+    ],
+    "before_violations": [
+      {
+        "kind": "path_length",
+        "message": "Total path length",
+        "residual": 110.0,
+        "unit": "mm",
+        "node_ids": [
+          "adaptive-splitter-90-BS1",
+          "adaptive-splitter-90-O2"
+        ],
+        "connection_ids": [
+          "adaptive-splitter-90-BS1-O2"
+        ],
+        "constraint_ids": [
+          "reflected-path"
+        ]
+      },
+      {
+        "kind": "position",
+        "message": "O2: pinned X coordinate",
+        "residual": 80.0,
+        "unit": "mm",
+        "node_ids": [
+          "adaptive-splitter-90-O2"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      },
+      {
+        "kind": "position",
+        "message": "O2: pinned Y coordinate",
+        "residual": 30.0,
+        "unit": "mm",
+        "node_ids": [
+          "adaptive-splitter-90-O2"
+        ],
+        "connection_ids": [],
+        "constraint_ids": []
+      }
+    ],
+    "after_status": "feasible",
+    "after_violations": [],
+    "iterations": 1200,
+    "starts": 1,
+    "before_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "BS1": [
+        50.0,
+        0.0
+      ],
+      "O1": [
+        150.0,
+        0.0
+      ],
+      "O2": [
+        50.0,
+        50.0
+      ]
+    },
+    "after_positions_mm": {
+      "S1": [
+        0,
+        0
+      ],
+      "BS1": [
+        50.0,
+        0.0
+      ],
+      "O1": [
+        150.0,
+        0.0
+      ],
+      "FM1": [
+        50.00000000000001,
+        80.0
+      ],
+      "O2": [
+        130.0,
+        80.0
+      ]
+    },
+    "after_turns_deg": {
+      "BS1": 90,
+      "FM1": -90.0
+    },
+    "interface_angle_checks": [
+      {
+        "reference": "BS1",
+        "connection_id": "adaptive-splitter-90-BS1-O1",
+        "constraint_deg": 0,
+        "measured_turn_deg": 0.0
+      },
+      {
+        "reference": "BS1",
+        "connection_id": "cfe4c1f5-2314-5dc0-a836-bdbce9513c90/in",
+        "constraint_deg": 90,
+        "measured_turn_deg": 90.0
+      },
+      {
+        "reference": "FM1",
+        "connection_id": "cfe4c1f5-2314-5dc0-a836-bdbce9513c90/out",
+        "constraint_deg": null,
+        "measured_turn_deg": -90.0
+      }
+    ],
+    "exported_interface_angle_checks": [
+      {
+        "reference": "BS1",
+        "connection_id": "adaptive-splitter-90-BS1-O1",
+        "constraint_deg": 0,
+        "measured_turn_deg": 0.0
+      },
+      {
+        "reference": "BS1",
+        "connection_id": "cfe4c1f5-2314-5dc0-a836-bdbce9513c90/in",
+        "constraint_deg": 90,
+        "measured_turn_deg": 90.0
+      },
+      {
+        "reference": "FM1",
+        "connection_id": "cfe4c1f5-2314-5dc0-a836-bdbce9513c90/out",
+        "constraint_deg": null,
+        "measured_turn_deg": -90.0
+      }
+    ],
+    "analytical_export_reflection_and_open_lengths_verified": true,
+    "path_length_checks": [
+      {
+        "id": "reflected-path",
+        "route": [
+          "cfe4c1f5-2314-5dc0-a836-bdbce9513c90/in",
+          "cfe4c1f5-2314-5dc0-a836-bdbce9513c90/out"
+        ],
+        "target_mm": 160,
+        "optimized_mm": 160.0,
+        "exported_mm": 160.0
+      }
+    ],
+    "beam_separation_checks": [
+      {
+        "id": "adaptive-splitter-90-S1-BS1",
+        "target_mm": 50,
+        "exported_mm": 50.0,
+        "routed_mm": 50
+      },
+      {
+        "id": "adaptive-splitter-90-BS1-O1",
+        "target_mm": 100,
+        "exported_mm": 100.0,
+        "routed_mm": 100
+      }
+    ],
+    "original_beam_endpoint_separations_mm": {
+      "adaptive-splitter-90-S1-BS1": 50.0,
+      "adaptive-splitter-90-BS1-O1": 100.0,
+      "adaptive-splitter-90-BS1-O2": 113.13708498984761
+    },
+    "original_beam_routed_lengths_mm": {
+      "adaptive-splitter-90-S1-BS1": 50,
+      "adaptive-splitter-90-BS1-O1": 100,
+      "adaptive-splitter-90-BS1-O2": 160.0
+    },
+    "added_mirrors": [
+      "FM1"
+    ],
+    "omitted_mirrors": [],
+    "retained_turning_mirrors": [],
+    "drawing_and_constraints_unchanged": true,
+    "seeded_repeatability_verified": true,
+    "save_load_export_verified": true,
+    "qt_run_apply_undo_redo_verified": true,
+    "freecad_runtime_trace_verified": false
+  }
+]

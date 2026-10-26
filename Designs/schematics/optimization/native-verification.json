@@ -1,0 +1,45 @@
+{
+  "runtime": "Native FreeCAD application macro",
+  "freecad_version": [
+    "1",
+    "1",
+    "4",
+    "20260928 (Git shallow)",
+    "Unknown",
+    "2026/09/28 13:46:34",
+    "(HEAD detached at 4fd3bf320)",
+    "4fd3bf320d9566a27e60069fc8387448aaa3a094"
+  ],
+  "tests_run": 25,
+  "successful": true,
+  "failures": [],
+  "errors": [],
+  "skipped": [],
+  "exported_examples_checked": [
+    "adaptive-multiple-folds-after.pyopticl-schematic.json",
+    "adaptive-remove-fold-after.pyopticl-schematic.json",
+    "adaptive-splitter-90-after.pyopticl-schematic.json",
+    "pinned-mirror-after.pyopticl-schematic.json",
+    "splitter-fold-after.pyopticl-schematic.json"
+  ],
+  "checks": [
+    "Full assembly bounds for every schematic preset",
+    "Exported CAD interaction traces and physical segment endpoints",
+    "Actual total path lengths, including cross-branch routes and multiple added mirrors",
+    "Constrained +90 degree splitter reflection and straight transmission",
+    "Omission of eligible Folding mirrors and preservation of Turning mirrors",
+    "Temporary-document cleanup and unchanged shared geometry"
+  ],
+  "export_input_sha256": {
+    "adaptive-multiple-folds-after.pyopticl-schematic.json": "55553279b8c16518c1a3186e3f6171ae49f8cfa01c72942836074b351ea04a41",
+    "adaptive-multiple-folds-after.py": "91fdb66aa49b6997bc4a0c3b61b849d01cd5aa710e87b789d65621502a73aba6",
+    "adaptive-remove-fold-after.pyopticl-schematic.json": "c65fdcec5762a28afcf1f88b060db1bbdc5bacbde2f5feaa623c7cf9f11dc49d",
+    "adaptive-remove-fold-after.py": "f1f5edd00b32673d1c452a2e4745a4d8821c3ba70d066d5c62be077a6ed8e5bc",
+    "adaptive-splitter-90-after.pyopticl-schematic.json": "d27460821840a54ea4b077dc7dd5f4d29210505476b5c6a5ef766874e6feda3d",
+    "adaptive-splitter-90-after.py": "2e81127ef19d023163cc8f93de4397fbe54a2d371349b5ff60d3d13b11091af9",
+    "pinned-mirror-after.pyopticl-schematic.json": "4e505490f27c3843dda0fb82cdc6a460ef0fcb95e5fcd72aa6dc6a2292ad29b4",
+    "pinned-mirror-after.py": "1fbcaa24ba553c9bb20bc68213caaf00b44d1eed36f59731efaa4ebcc146f0ec",
+    "splitter-fold-after.pyopticl-schematic.json": "f15a029dae8039bb20fdef2bb55569898b402771326a5ec4bddb83b48c459ba9",
+    "splitter-fold-after.py": "697f43e2fd7b445166aa08e5b1e149d47034ede54468b797f4c446c873f4ec54"
+  }
+}

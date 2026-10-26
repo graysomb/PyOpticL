@@ -1,0 +1,137 @@
+{
+  "title": "adaptive-multiple-folds",
+  "nodes": [
+    {
+      "id": "adaptive-multiple-folds-S1",
+      "reference": "S1",
+      "kind": "source",
+      "preset": "beam",
+      "parameters": {},
+      "position": [
+        -160,
+        0
+      ],
+      "rotation": 0,
+      "physical": {
+        "x": 0,
+        "y": 0,
+        "angle": 0
+      },
+      "mirror_role": "turning"
+    },
+    {
+      "id": "adaptive-multiple-folds-O1",
+      "reference": "O1",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        160,
+        0
+      ],
+      "rotation": 0,
+      "physical": {
+        "x": 100,
+        "y": 0
+      },
+      "mirror_role": "turning"
+    }
+  ],
+  "connections": [
+    {
+      "id": "adaptive-multiple-folds-S1-O1",
+      "a": {
+        "node_id": "adaptive-multiple-folds-S1",
+        "port_id": "beam"
+      },
+      "b": {
+        "node_id": "adaptive-multiple-folds-O1",
+        "port_id": "beam"
+      },
+      "bends": [],
+      "length": 100,
+      "turns": {},
+      "allow_folding": true
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 50,
+    "show_bounds": false,
+    "bounds_scale": 4.0
+  },
+  "version": 5,
+  "optimization": {
+    "box": {
+      "x": -15,
+      "y": -15,
+      "width": 130,
+      "height": 110
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 2,
+      "iterations": 3000,
+      "projection_passes": 20,
+      "folding_preset": "bare",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 8,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    }
+  },
+  "optimized_layout": {
+    "fingerprint": "ee90ea2c3069b251d6f451ea1bb766975013d20264a88f41b6abc3d4cfc0394a",
+    "geometry": {
+      "source_pose": [
+        0,
+        0,
+        0
+      ],
+      "lengths": {
+        "f646117f-26a9-5767-b1bf-3aa86e0cec61/in": 51.454019804089775,
+        "f646117f-26a9-5767-b1bf-3aa86e0cec61/out": 52.9561982092808,
+        "612e94be-9ab1-5d87-9043-bcde17b97cc6/out": 75.5897819866294
+      },
+      "turns": {
+        "612e94be-9ab1-5d87-9043-bcde17b97cc6": -140.31938515404417,
+        "f646117f-26a9-5767-b1bf-3aa86e0cec61": 96.17144285336268
+      }
+    },
+    "radii": {},
+    "graph": {
+      "edits": [
+        {
+          "action": "insert",
+          "node_id": "612e94be-9ab1-5d87-9043-bcde17b97cc6",
+          "segment_ids": [
+            "adaptive-multiple-folds-S1-O1"
+          ]
+        },
+        {
+          "action": "insert",
+          "node_id": "f646117f-26a9-5767-b1bf-3aa86e0cec61",
+          "segment_ids": [
+            "612e94be-9ab1-5d87-9043-bcde17b97cc6/in"
+          ]
+        }
+      ]
+    },
+    "input_version": 5,
+    "folding_radius": 8.736274949885678
+  },
+  "path_constraints": [
+    {
+      "id": "long-path",
+      "component_a": "adaptive-multiple-folds-S1",
+      "component_b": "adaptive-multiple-folds-O1",
+      "length_mm": 180
+    }
+  ]
+}

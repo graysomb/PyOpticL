@@ -459,6 +459,7 @@ class SchematicEditor(QtWidgets.QWidget):
             ("fit", "Fit", self.fit, "F"),
             ("refresh_bounds", "Refresh bounds", self.refresh_part_bounds, ""),
             ("directions", "Apply Drawing Directions", self.apply_directions, ""),
+            ("path_lengths", "Path lengths…", self.edit_path_lengths, ""),
             ("optimize", "Optimize physical layout…", self.optimize_physical_layout, ""),
             ("clear_optimized", "Clear optimized layout", self.clear_optimized_layout, ""),
             ("validate", "Validate", self.validate, ""),
@@ -526,6 +527,13 @@ class SchematicEditor(QtWidgets.QWidget):
         else:
             self.schedule_bounds_refresh()
         self.update_title()
+        saved = self.document.optimized_layout
+        if saved is not None:
+            from .optimization import input_fingerprint
+            current = saved.get("input_version") == 5 and input_fingerprint(
+                self.document,self.document.optimization,saved["radii"],folding_radius=saved.get("folding_radius")) == saved["fingerprint"]
+            if not current:
+                self.status.setText("Optimized layout is stale. Rerun Optimize physical layout or Clear optimized layout before export.")
 
     def update_title(self):
         name = self.path.name if self.path else self.document.title
@@ -681,6 +689,37 @@ class SchematicEditor(QtWidgets.QWidget):
         else:
             self.bounds_info.setText("Enable Part bounds to calculate the physical assembly circle.")
 
+    def edit_path_lengths(self):
+        from .path_dialog import PathLengthsDialog
+        selected = self.selected_nodes()
+        dialog = PathLengthsDialog(self.document, selected, self)
+
+        def highlight(route):
+            self.scene.clearSelection()
+            for key in route:
+                if key in self.scene.connections:
+                    self.scene.connections[key].setSelected(True)
+        dialog.route_selected.connect(highlight)
+        dialog.endpoints_changed()
+        method = getattr(dialog, "exec", None) or dialog.exec_
+        if method() == QtWidgets.QDialog.Accepted:
+            self.document.path_constraints = dialog.constraints
+            self.commit(selected=selected)
+        else:
+            self.scene.clearSelection()
+            for key in selected:
+                if key in self.scene.symbols:
+                    self.scene.symbols[key].setSelected(True)
+        dialog.deleteLater()
+
+    def omitted_mirrors(self):
+        saved = self.document.optimized_layout
+        if not saved or "graph" not in saved:
+            return set()
+        original_ids = {node.id for node in self.document.nodes}
+        return {edit["node_id"] for edit in saved["graph"]["edits"]
+                if edit["action"] == "remove" and edit["node_id"] in original_ids}
+
     def optimize_physical_layout(self):
         from .optimize_dialog import OptimizeLayoutDialog
 
@@ -745,7 +784,7 @@ class SchematicEditor(QtWidgets.QWidget):
             from .optimization import input_fingerprint
 
             saved = self.document.optimized_layout
-            current = input_fingerprint(self.document, self.document.optimization, saved["radii"]) == saved["fingerprint"]
+            current = saved.get("input_version") == 5 and input_fingerprint(self.document, self.document.optimization, saved["radii"], folding_radius=saved.get("folding_radius")) == saved["fingerprint"]
             self.note("Optimized physical values are shown below; free values remain unconstrained." if current else
                       "Optimized layout is stale. Rerun Optimize physical layout or Clear optimized layout before export.")
         selected = self.scene.selectedItems()
@@ -783,7 +822,26 @@ class SchematicEditor(QtWidgets.QWidget):
         if node.kind not in ("source", "output"):
             self.bounds_info = self.note("")
             self.update_bounds_info()
+        if node.kind == "mirror":
+            role = QtWidgets.QComboBox()
+            role.setObjectName("mirrorRole")
+            role.addItems(["Turning", "Folding"])
+            role.setCurrentIndex(1 if node.mirror_role == "folding" else 0)
+            role.currentIndexChanged.connect(lambda index: self.set_node_value(node.id, "mirror_role", "folding" if index else "turning"))
+            self.form.addRow("Mirror role", role)
+            from .effective import folding_protection
+            self.note(folding_protection(self.document, node.id) or "Eligible for removal when its interior arm angle exceeds the optimizer threshold.")
+            self.note("The Turning role prevents removal; angle constraints are controlled separately.")
         self.form.addRow(QtWidgets.QLabel("Physical layout (independent of canvas)"))
+        if node.id in self.omitted_mirrors():
+            self.note("Omitted from the last optimized physical layout. No current physical position is available. Adding a constraint protects this mirror on the next run.")
+            position_button = QtWidgets.QPushButton("Set position constraint…")
+            position_button.clicked.connect(lambda: self.constrain_omitted_position(node.id))
+            angle_button = QtWidgets.QPushButton("Set angle constraint…")
+            angle_button.clicked.connect(lambda: self.constrain_omitted_angle(node.id))
+            self.form.addRow(position_button)
+            self.form.addRow(angle_button)
+            return
         self.show_position_property(node)
         if node.kind in ("source", "fiber_source"):
             self.show_source_direction_property(node)
@@ -797,11 +855,45 @@ class SchematicEditor(QtWidgets.QWidget):
         self.note("Beam connection")
         a, b = self.document.node(edge.a.node_id), self.document.node(edge.b.node_id)
         self.note(f"{a.reference}.{edge.a.port_id} ↔ {b.reference}.{edge.b.port_id}")
+        folding = QtWidgets.QCheckBox("Allow folding")
+        folding.setObjectName("beamAllowFolding")
+        folding.setChecked(edge.allow_folding)
+        folding.toggled.connect(lambda value: self.set_connection_folding(edge.id, value))
+        self.form.addRow(folding)
+        compiled = compile_schematic(self.document)
+        omitted = bool({edge.a.node_id, edge.b.node_id} & self.omitted_mirrors())
+        if omitted:
+            self.note("This beam belongs to a merged physical span. Its original endpoint separation is unavailable. Enabling its length constraint retains the omitted endpoint on the next run.")
+            if compiled.geometry is not None:
+                included = {edge.id}
+                while True:
+                    expanded = included | {key for segment in compiled.geometry.graph.segments
+                                           if included.intersection(segment.logical_ids) for key in segment.logical_ids}
+                    if expanded == included:
+                        break
+                    included = expanded
+                merged = sum(compiled.geometry.lengths[segment.id] for segment in compiled.geometry.graph.segments
+                             if included.intersection(segment.logical_ids))
+                self.note(f"Merged physical path: {merged:.6f} mm")
+        elif edge.id in compiled.routed_lengths:
+            self.note(f"Routed length including folds: {compiled.routed_lengths[edge.id]:.6f} mm")
+        if compiled.geometry is not None and compiled.geometry.graph is not None:
+            from .effective import effective_document
+            from .optimization import OptimizationOptions
+            added = [item for item in compiled.geometry.graph.generated if edge.id in item.logical_ids]
+            if added:
+                physical = effective_document(self.document, compiled.geometry.graph,
+                                              OptimizationOptions(**self.document.optimization["options"]))
+                for item in added:
+                    mirror = physical.node(item.id)
+                    x, y = compiled.geometry.positions[item.id]
+                    self.note(f"{mirror.reference}: added Folding mirror ({mirror.preset}, "
+                              f"{mirror.parameters['diameter']:g} mm). Physical XY: ({x:.6f}, {y:.6f}) mm.")
         constrained = QtWidgets.QCheckBox("Constrain beam length")
         constrained.setObjectName("beamLengthConstrained")
         constrained.setChecked(edge.length is not None)
         self.form.addRow(constrained)
-        length = self.number_field("Length (mm)", self.effective_beam_length(edge),
+        length = self.number_field("Length target (mm)" if omitted else "Endpoint separation (mm)", self.effective_beam_length(edge),
                                    lambda value: self.set_connection_length(edge.id, value)
                                    if edge.length is not None else None, minimum=0.001)
         length.setObjectName("beamLengthMm")
@@ -940,6 +1032,39 @@ class SchematicEditor(QtWidgets.QWidget):
             node.physical["turn"] = value
         self.commit(rebuild=False)
 
+    def constrain_omitted_position(self, node_id):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Set physical position target")
+        form = QtWidgets.QFormLayout(dialog)
+        fields = []
+        for axis in ("x", "y"):
+            field = QtWidgets.QDoubleSpinBox()
+            field.setRange(-1e6, 1e6)
+            field.setDecimals(6)
+            field.setValue(self.document.node(node_id).physical.get(axis, 0))
+            form.addRow(axis.upper()+" target (mm)", field)
+            fields.append(field)
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        method = getattr(dialog, "exec", None) or dialog.exec_
+        if method() == QtWidgets.QDialog.Accepted:
+            self.set_optic_position(node_id, tuple(field.value() for field in fields))
+            self.show_properties()
+
+    def constrain_omitted_angle(self, node_id):
+        angle, ok = QtWidgets.QInputDialog.getDouble(self, "Set angle target", "Signed direction change (deg)",
+                                                     interface_turn(self.document, self.document.node(node_id), self.scene.topology),
+                                                     -179.999999, 179.999999, 6)
+        if ok:
+            self.set_optic_turn(node_id, angle)
+            self.show_properties()
+
+    def set_connection_folding(self, connection_id, value):
+        self.document.connection(connection_id).allow_folding = value
+        self.commit(rebuild=False)
+
     def set_connection_length(self, connection_id, value):
         self.document.connection(connection_id).length = value
         self.scene.connections[connection_id].refresh()
@@ -968,7 +1093,7 @@ class SchematicEditor(QtWidgets.QWidget):
         self.messages.clear()
         for diagnostic in diagnostics:
             item = QtWidgets.QListWidgetItem(diagnostic.message)
-            item.setData(Qt.UserRole, (diagnostic.node_id, diagnostic.connection_id))
+            item.setData(Qt.UserRole, (diagnostic.node_id, diagnostic.connection_id, diagnostic.constraint_id))
             self.messages.addItem(item)
         if not diagnostics:
             self.messages.addItem("Directions are resolved from the source. Physical placement is checked when the exported Python runs.")
@@ -981,7 +1106,21 @@ class SchematicEditor(QtWidgets.QWidget):
     def focus_diagnostic(self, item):
         value = item.data(Qt.UserRole)
         if value:
-            node_id, edge_id = value
+            node_id, edge_id, constraint_id = value
+            if constraint_id:
+                from .paths import component_path
+                constraint = next((item for item in self.document.path_constraints if item.id == constraint_id), None)
+                if constraint is not None:
+                    try:
+                        route = component_path(self.document, constraint.component_a, constraint.component_b)
+                    except ValueError:
+                        route = ()
+                    self.scene.clearSelection()
+                    for key in route:
+                        self.scene.connections[key].setSelected(True)
+                    if route:
+                        self.view.centerOn(self.scene.connections[route[len(route) // 2]])
+                        return
             target = self.scene.connections.get(edge_id) or self.scene.symbols.get(node_id)
             if target is not None:
                 self.scene.clearSelection()

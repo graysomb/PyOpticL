@@ -67,7 +67,10 @@ class PhysicalPreview(QtWidgets.QGraphicsView):
                 # Virtual optical endpoints have markers, not physical disks.
                 scene.addLine(x - 1, -y, x + 1, -y, QtGui.QPen(color, 0)).setZValue(1)
                 scene.addLine(x, -y - 1, x, -y + 1, QtGui.QPen(color, 0)).setZValue(1)
-            label = scene.addSimpleText(node.reference)
+            generated = (
+                {mirror.id for mirror in problem.graph.generated} if problem.graph is not None else set()
+            )
+            label = scene.addSimpleText(node.reference + (" (added)" if node.id in generated else ""))
             label.setBrush(color)
             label.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
             label.setPos(x + (radius or 0) + 1, -y)
@@ -116,6 +119,8 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         form = QtWidgets.QFormLayout(controls)
         previous = self.document.optimization
         options = OptimizationOptions(**previous["options"]) if previous else OptimizationOptions()
+        self.options = options
+        self.folding_radius = None
         # Resolve CAD before the thread is created. Keep the schematic MDI active.
         self.radii, self.bounds_errors = self.resolve_bounds()
         box = initial_box(self.document, self.radii)
@@ -136,7 +141,42 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
             field.valueChanged.connect(self.configuration_changed)
             self.fields[key] = field
             form.addRow(label, field)
-        self.options = options
+        self.folding_preset = QtWidgets.QComboBox()
+        self.folding_preset.setObjectName("optimizerFoldingPreset")
+        self.folding_preset.addItems(["mounted", "bare"])
+        self.folding_preset.setCurrentText(options.folding_preset)
+        form.addRow("Added mirror preset", self.folding_preset)
+        for key, label, value, minimum, maximum, integer in (
+            (
+                "folding_diameter",
+                "Added mirror diameter (mm)",
+                options.folding_diameter_mm,
+                0.001,
+                1e6,
+                False,
+            ),
+            ("max_added", "Maximum added mirrors", options.max_added_mirrors, 0, 1000, True),
+            ("max_per_beam", "Maximum added per original beam", options.max_folds_per_beam, 0, 1000, True),
+            (
+                "removal_angle",
+                "Remove above interior angle (deg)",
+                options.removal_angle_deg,
+                0.001,
+                179.999,
+                False,
+            ),
+        ):
+            field = QtWidgets.QSpinBox() if integer else QtWidgets.QDoubleSpinBox()
+            field.setObjectName("optimizer" + key.title().replace("_", ""))
+            field.setRange(int(minimum) if integer else minimum, int(maximum) if integer else maximum)
+            if not integer:
+                field.setDecimals(6)
+            field.setValue(value)
+            field.setKeyboardTracking(False)
+            self.fields[key] = field
+            field.valueChanged.connect(self.folding_settings_changed)
+            form.addRow(label, field)
+        self.folding_preset.currentTextChanged.connect(self.folding_settings_changed)
         form.addRow(self.refresh_button)
         note = QtWidgets.QLabel(
             "Physical XY preview in millimetres. Disks include mounts and hardware. Beam crossings are allowed. Applying preserves the topological drawing and your constraint checkboxes."
@@ -154,6 +194,10 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         layout.addLayout(content, 1)
         layout.addWidget(self.status)
         layout.addWidget(self.progress)
+        self.changes = QtWidgets.QLabel()
+        self.changes.setWordWrap(True)
+        self.changes.hide()
+        layout.addWidget(self.changes)
         layout.addWidget(self.violations)
         layout.addLayout(buttons)
         self.configuration_changed()
@@ -167,22 +211,62 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
             errors = validate_schematic(self.document)
             if errors:
                 return {}, [item.message for item in errors]
-            return resolve_layout_bounds(self.document, self.bounds_provider)
+            radii, errors = resolve_layout_bounds(self.document, self.bounds_provider)
+            self.folding_radius = None
+            options = self.current_options()
+            if (
+                any(edge.allow_folding for edge in self.document.connections)
+                and options.max_added_mirrors
+                and options.max_folds_per_beam
+            ):
+                from .parts import folding_part_spec
+
+                result = self.bounds_provider.get(folding_part_spec(options))
+                if result.circle is None:
+                    errors.append(
+                        "Added folding mirror bounds unavailable: "
+                        + str(result.error)
+                        + ". Refresh bounds or choose a modeled mirror preset."
+                    )
+                else:
+                    self.folding_radius = result.circle.radius_mm
+            return radii, errors
         finally:
             if area is not None and previous is not None:
                 area.setActiveSubWindow(previous)
 
-    def make_problem(self):
+    def current_options(self):
         from dataclasses import replace
 
+        if not hasattr(self, "folding_preset"):
+            return self.options
+        return replace(
+            self.options,
+            clearance_mm=self.fields["clearance"].value(),
+            beam_diameter_mm=self.fields["diameter"].value(),
+            folding_preset=self.folding_preset.currentText(),
+            folding_diameter_mm=self.fields["folding_diameter"].value(),
+            max_added_mirrors=self.fields["max_added"].value(),
+            max_folds_per_beam=self.fields["max_per_beam"].value(),
+            removal_angle_deg=self.fields["removal_angle"].value(),
+        )
+
+    def make_problem(self):
         values = {key: field.value() for key, field in self.fields.items()}
-        options = replace(self.options, clearance_mm=values["clearance"], beam_diameter_mm=values["diameter"])
         return build_problem(
             self.document,
             self.radii,
             PackingBox(**{key: values[key] for key in ("x", "y", "width", "height")}),
-            options,
+            self.current_options(),
+            folding_radius=self.folding_radius,
         )
+
+    def folding_settings_changed(self, *_):
+        try:
+            self.radii, self.bounds_errors = self.resolve_bounds()
+        except ValueError as error:
+            self.bounds_errors = [str(error)]
+        self.configuration_changed()
 
     def configuration_changed(self, *_):
         self.solution = None
@@ -214,6 +298,7 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
     def set_running(self, running):
         self.run_button.setEnabled(not running and not self.bounds_errors)
         self.refresh_button.setEnabled(not running)
+        self.folding_preset.setEnabled(not running)
         for field in self.fields.values():
             field.setEnabled(not running)
         self.apply_button.setEnabled(
@@ -250,7 +335,21 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
             )
         )
         self.show_violations(frame.violations)
-        self.preview.show_layout(self.problem, frame.positions, frame.violations)
+        preview_problem = frame.problem or self.problem
+        self.preview.show_layout(preview_problem, frame.positions, frame.violations)
+        self.show_changes(preview_problem)
+
+    def show_changes(self, problem):
+        graph = problem.graph
+        if graph is None or not graph.edits:
+            self.changes.hide()
+            return
+        added = [node.reference for node in problem.nodes if node.id in {item.id for item in graph.generated}]
+        omitted = [node.reference for node in self.document.nodes if node.id in graph.bypassed]
+        self.changes.setText(
+            "Added: " + (", ".join(added) or "none") + "; omitted: " + (", ".join(omitted) or "none")
+        )
+        self.changes.show()
 
     def show_violations(self, items):
         self.violations.clear()
@@ -261,7 +360,9 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         self.solution = result
         if self.closing:
             return
-        self.preview.show_layout(self.problem, result.positions, result.violations)
+        preview_problem = result.problem or self.problem
+        self.preview.show_layout(preview_problem, result.positions, result.violations)
+        self.show_changes(preview_problem)
         self.show_violations(result.violations)
         if result.status != "cancelled":
             self.progress.setValue(self.progress.maximum())

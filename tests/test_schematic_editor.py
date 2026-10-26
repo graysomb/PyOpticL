@@ -402,7 +402,7 @@ class EditorTests(unittest.TestCase):
             self.editor.scene.connections[edge.id].setSelected(True)
             self.app.processEvents()
             controls = [widget for widget in self.editor.properties.findChildren(QtWidgets.QCheckBox) if widget.isVisible()]
-            self.assertEqual([control.objectName() for control in controls], ["beamLengthConstrained"])
+            self.assertEqual([control.objectName() for control in controls], ["beamAllowFolding", "beamLengthConstrained"])
 
     def test_each_mirror_has_its_own_angle_control(self):
         document = chain("source", "mirror", "mirror", "stop")
