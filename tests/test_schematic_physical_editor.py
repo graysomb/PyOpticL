@@ -333,6 +333,30 @@ class PhysicalEditorTests(unittest.TestCase):
         self.settle()
         self.assertEqual(e.document.to_dict(), after)
 
+    def test_beam_length_increase_past_following_parts_is_one_undoable_edit(self):
+        from test_schematic_length_reflow import folded_chain
+
+        e = self.open(folded_chain())
+        before = deepcopy(e.document.to_dict())
+        index = e.history.index
+        edge_id = e.document.connections[1].id
+        e.set_connection_length(edge_id, 500)
+        self.settle()
+        self.assertEqual(e.history.index, index + 1)
+        result = compile_schematic(e.document)
+        self.assertTrue(result.ok, result.diagnostics)
+        self.assertAlmostEqual(result.lengths[edge_id], 500, delta=1e-6)
+        for connection in e.document.connections:
+            if connection.id != edge_id:
+                self.assertAlmostEqual(result.lengths[connection.id], 50, delta=1e-6)
+        after = deepcopy(e.document.to_dict())
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), before)
+        e.redo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), after)
+
     def test_successful_drag_is_one_undoable_edit_and_preserves_constraints(self):
         e = self.open()
         before = deepcopy(e.document.to_dict())

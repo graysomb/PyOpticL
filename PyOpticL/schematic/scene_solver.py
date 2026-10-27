@@ -228,6 +228,122 @@ def _face_mirrors(document, poses, topology=None, targets=()):
             poses[node.id][3] = wrap_angle(poses[node.id][3] + 180)
 
 
+def _length_seed(document, poses, topology, targets):
+    """Extend a beam by moving its free downstream branch as a whole.
+
+    A local projection can otherwise squash following legs against their
+    forward-travel limit, or exhaust its small steps before moving them past
+    their previous positions. Rigid translation preserves every other leg,
+    optical orientation and roof offset. Shared bodies spanning the cut and
+    explicit position pins prevent that translation.
+    """
+    from .paths import component_path
+
+    seed = deepcopy(poses)
+    free = set(variables(document))
+    requested = {(node_id, axis) for node_id, axis, _ in targets}
+    visits_by_node = {}
+    for visit_id, visit in topology.passes.items():
+        visits_by_node.setdefault(visit.component_id, set()).add(visit_id)
+    all_visits = set(topology.passes)
+    adjacency = {v: set() for v in all_visits}
+    for edge in topology.edges.values():
+        adjacency[edge.source.visit_id].add(edge.target.visit_id)
+        adjacency[edge.target.visit_id].add(edge.source.visit_id)
+
+    def change_length(edge, difference):
+        if abs(difference) <= 1e-6 or not isfinite(difference):
+            return False
+        trace = trace_scene(document, seed, check_interceptions=False, topology=topology)
+        source = trace.layout.visits[edge.source.visit_id]
+        direction = source.outputs[edge.interaction]
+        delta = tuple(difference * value for value in direction)
+        downstream, pending = set(), [edge.target.visit_id]
+        while pending:
+            visit_id = pending.pop()
+            if visit_id in downstream:
+                continue
+            downstream.add(visit_id)
+            pending.extend(e.target.visit_id for e in topology.outgoing[visit_id])
+        # Translate the opposite partition if the downstream side is pinned.
+        partitions = ((downstream, 1, edge.target.visit_id),
+                      (all_visits - downstream, -1, edge.source.visit_id))
+        for selected, sign, _ in partitions:
+            nodes = {topology.passes[v].component_id for v in selected}
+            if any(not visits_by_node[n].issubset(selected) for n in nodes):
+                continue
+            if any(abs(delta[axis]) > 1e-9 and
+                   ((node_id, axis) not in free or (node_id, axis) in requested)
+                   for node_id in nodes for axis in range(3)):
+                continue
+            for node_id in nodes:
+                for axis in range(3):
+                    if abs(delta[axis]) > 1e-9:
+                        seed[node_id][axis] += sign * delta[axis]
+            return True
+        # A fixed/shared body can anchor the far end of a free run. Move only
+        # up to that boundary, leaving parts beyond it in place, and accept
+        # this estimate only if all optical equations and fixed beams hold.
+        for selected, sign, start in partitions:
+            movable = {n for n, visits in visits_by_node.items() if visits.issubset(selected)
+                       and all(abs(delta[axis]) <= 1e-9 or
+                               ((n, axis) in free and (n, axis) not in requested)
+                               for axis in range(3))}
+            moved, seen, pending = set(), set(), [start]
+            while pending:
+                visit_id = pending.pop()
+                node_id = topology.passes[visit_id].component_id
+                if visit_id in seen or visit_id not in selected or node_id not in movable:
+                    continue
+                seen.add(visit_id)
+                moved.add(node_id)
+                pending.extend(adjacency[visit_id] | visits_by_node[node_id])
+            if not moved:
+                continue
+            candidate = deepcopy(seed)
+            for node_id in moved:
+                for axis in range(3):
+                    if abs(delta[axis]) > 1e-9:
+                        candidate[node_id][axis] += sign * delta[axis]
+            checked = trace_scene(document, candidate, check_interceptions=False, topology=topology)
+            path_ids = {c.id for c in document.path_constraints}
+            if (not any(d.severity == "error" for d in checked.diagnostics)
+                    and all(abs(row.value) <= 1e-6 for row in checked.residuals if row.id not in path_ids)):
+                seed.update(candidate)
+                return True
+        return False
+
+    for edge in topology.edges.values():
+        target = document.connection(edge.id).length
+        if target is not None:
+            trace = trace_scene(document, seed, check_interceptions=False, topology=topology)
+            change_length(edge, target - trace.layout.lengths[edge.id])
+    for constraint in document.path_constraints:
+        try:
+            route = component_path(document, constraint.pass_a or constraint.component_a,
+                                   constraint.pass_b or constraint.component_b)
+        except ValueError:
+            continue
+        trace = trace_scene(document, seed, check_interceptions=False, topology=topology)
+        routed = set(route)
+        total = sum(trace.layout.lengths[e] for e in route) + sum(
+            trace.layout.internal_lengths.get(v, 0) for v in topology.order
+            if any(e.id in routed for e in topology.outgoing[v])
+        )
+        remaining = constraint.length_mm - total
+        for edge_id in reversed(route):
+            if abs(remaining) <= 1e-6:
+                break
+            if document.connection(edge_id).length is not None:
+                continue
+            trace = trace_scene(document, seed, check_interceptions=False, topology=topology)
+            # A shortening may need several free legs; never reverse one.
+            change = max(remaining, 0.001 - trace.layout.lengths[edge_id])
+            if change_length(topology.edges[edge_id], change):
+                remaining -= change
+    return seed
+
+
 def _rows(document, poses, topology, targets=(), packing=None):
     trace = trace_scene(document, poses, check_interceptions=False, topology=topology)
     rows = list(trace.residuals)
@@ -496,6 +612,7 @@ def solve_scene(
         rows, _ = _rows(document, points, topology, targets, packing)
         if any(abs(row.value) > 1e-6 for row in rows):
             seed = _orientation_seed(document, points, topology, targets)
+            seed = _length_seed(document, seed, topology, targets)
             _face_mirrors(document, seed, topology, targets)
             seeded_rows, _ = _rows(document, seed, topology, targets, packing)
             if sum((r.value * _scale(r)) ** 2 for r in seeded_rows) < sum(

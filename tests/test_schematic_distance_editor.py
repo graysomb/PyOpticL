@@ -132,6 +132,20 @@ class DistanceDialogTests(unittest.TestCase):
             self.assertEqual(dialog.document.layout["poses"][node.id][:2], document.layout["poses"][node.id][:2])
         self.assertEqual(document.to_dict(), before)
 
+    def test_total_length_larger_than_next_component_position_pushes_the_receiver(self):
+        document = lens_pair()
+        before = deepcopy(document.to_dict())
+        dialog = self.open(document)
+        old_gap = document.layout["poses"][document.nodes[-1].id][0] - document.layout["poses"][document.nodes[2].id][0]
+        dialog.target.setValue(500)
+        dialog.add_constraint()
+        self.wait()
+        self.assert_satisfied(500)
+        poses = dialog.document.layout["poses"]
+        self.assertAlmostEqual(poses[document.nodes[2].id][0], 550, delta=1e-6)
+        self.assertAlmostEqual(poses[document.nodes[-1].id][0] - poses[document.nodes[2].id][0], old_gap, delta=1e-6)
+        self.assertEqual(document.to_dict(), before)
+
     def test_distance_edit_remains_available_in_a_draft_with_an_unrelated_interception(self):
         document = chain("fiber_source", "hwp", "mirror", "mirror", "grating", "lens", "lens",
                          "grating", "mirror", "mirror", "fiber_output")

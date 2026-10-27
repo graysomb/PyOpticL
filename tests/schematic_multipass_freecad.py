@@ -163,6 +163,24 @@ class NativeMultipassTests(unittest.TestCase):
         # build_layout verifies native contact points against EXPECTED_PASSES.
         self.build(document)
 
+    def test_length_increase_pushes_following_optics_and_exports_the_full_native_chain(self):
+        from test_schematic_length_reflow import folded_chain
+        from PyOpticL.schematic.scene_solver import solve_scene
+
+        document = folded_chain()
+        document.connections[1].length = 500
+        solution = solve_scene(document, iterations=40)
+        self.assertTrue(solution.ok, solution.diagnostics)
+        document.layout["poses"] = solution.poses
+        layout = self.build(document)
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        lengths = [segment.Proxy.distance for segment in beam.BeamSegments]
+        self.assertEqual(len(lengths), 6)
+        self.assertAlmostEqual(lengths[1], 500, delta=1e-6)
+        for index, length in enumerate(lengths):
+            if index != 1:
+                self.assertAlmostEqual(length, 50, delta=1e-6)
+
     def test_free_receiver_rotation_matches_arriving_beam_in_generated_cad(self):
         from test_schematic_receiver_alignment import fiber_pair
         from PyOpticL.schematic.scene_solver import solve_scene

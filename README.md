@@ -151,6 +151,10 @@ off **Baseplate**; attachment holes are never inferred for those parts.
 - **Constrain position** pins the shared component origin in X/Y. Every visit
   uses that same pose. **Constrain beam length** pins the distance between its
   optical interaction points. Free lengths and free orientations can adjust.
+  Increasing a length past the next part's previous position pushes the free
+  downstream chain together, preserving its other beam gaps. If that side is
+  pinned, a free upstream chain can move instead. Position pins and other hard
+  constraints remain in force.
 - Select a mirror or splitter and the relevant **Optical pass**, then enable
   **Constrain angle**. This pins the signed change in travel direction in XY:
   +90° is counterclockwise, −90° clockwise. All passes share the same optic yaw;
