@@ -735,6 +735,11 @@ class SchematicEditor(QtWidgets.QWidget):
         method = getattr(dialog, "exec", None) or dialog.exec_
         if method() == QtWidgets.QDialog.Accepted:
             self.document.path_constraints = dialog.constraints
+            if dialog.solution is not None:
+                from copy import deepcopy
+
+                self.document.layout = deepcopy(dialog.document.layout)
+                self.document.optimized_layout = deepcopy(dialog.document.optimized_layout)
             self.commit(selected=selected)
         else:
             self.scene.clearSelection()

@@ -148,7 +148,11 @@ off **Baseplate**; attachment holes are never inferred for those parts.
 - **Path lengths…** constrains the total geometric distance along a unique route,
   including across splitter branches and between two passes of the same part.
   Roof internal air paths are included; refractive-index weighting is not used.
-  The dialog shows targets, measured lengths and route highlighting. Renaming
+  **Add / update path** automatically moves free components to satisfy the
+  target and refreshes the measured length and status in the dialog. **OK**
+  applies the positions and constraints as one undoable edit; **Cancel** discards
+  them. Conflicting pinned positions or distances remain explicit errors.
+  The dialog also highlights the route. Renaming
   references preserves constraints; deleting an endpoint removes its constraints.
 - **Part bounds**, off by default, shows conservative full-assembly XY circles
   at the same millimetre scale as the canvas. These include mounts, adapters and

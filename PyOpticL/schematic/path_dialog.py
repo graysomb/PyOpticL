@@ -20,9 +20,20 @@ class PathLengthsDialog(QtWidgets.QDialog):
         self.resize(760, 430)
         self.document = document_from_dict(document.to_dict())
         self.constraints = deepcopy(document.path_constraints)
+        self.worker = None
+        self.solution = None
+        self.pending_result = None
+        self.selected_constraint = None
         self.current_document = self.document
         self.geometry = compile_schematic(document).geometry
-        if self.geometry is not None and self.geometry.graph is not None:
+        if document.optimized_layout and document.optimized_layout.get("input_version") == 6:
+            from .scene_optimization import saved_scene_document
+
+            try:
+                self.current_document = saved_scene_document(self.document)[0]
+            except ValueError:
+                pass  # A stale graph remains editable; solving reports its conflict.
+        elif self.geometry is not None and self.geometry.graph is not None:
             from .effective import effective_document
             from .optimization import OptimizationOptions
 
@@ -64,6 +75,9 @@ class PathLengthsDialog(QtWidgets.QDialog):
         self.target.setKeyboardTracking(False)
         self.note = QtWidgets.QLabel()
         self.note.setWordWrap(True)
+        self.solve_status = QtWidgets.QLabel()
+        self.solve_status.setObjectName("pathLengthSolveStatus")
+        self.solve_status.setWordWrap(True)
         self.add_button = QtWidgets.QPushButton("Add / update path")
         self.add_button.setObjectName("pathLengthAdd")
         self.delete_button = QtWidgets.QPushButton("Delete selected path")
@@ -79,17 +93,18 @@ class PathLengthsDialog(QtWidgets.QDialog):
         edit_buttons = QtWidgets.QHBoxLayout()
         edit_buttons.addWidget(self.add_button)
         edit_buttons.addWidget(self.delete_button)
-        buttons = QtWidgets.QDialogButtonBox(
+        self.buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
         )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.table)
         layout.addLayout(form)
         layout.addLayout(edit_buttons)
         layout.addWidget(self.note)
-        layout.addWidget(buttons)
+        layout.addWidget(self.solve_status)
+        layout.addWidget(self.buttons)
         self.refresh()
         self.endpoints_changed()
 
@@ -195,6 +210,8 @@ class PathLengthsDialog(QtWidgets.QDialog):
         self.endpoints_changed()
 
     def add_constraint(self):
+        if self.worker is not None:
+            return
         a, b = self.a.currentData(), self.b.currentData()
         component_path(self.document, a, b)
         existing = next(
@@ -220,11 +237,109 @@ class PathLengthsDialog(QtWidgets.QDialog):
             )
             self.constraints.append(item)
             selected = item.id
-        self.refresh(selected)
+        self.solve_draft(selected)
 
     def delete_constraint(self):
+        if self.worker is not None:
+            return
         items = self.table.selectedItems()
         if items:
             key = items[0].data(Qt.UserRole)
             self.constraints[:] = [item for item in self.constraints if item.id != key]
-            self.refresh()
+            self.solve_draft()
+
+    def solve_draft(self, selected_id=None):
+        """Solve a private draft; OK applies its constraints and poses together."""
+        from .scene_layout import is_physical, initialize_layout
+
+        self.document.path_constraints = deepcopy(self.constraints)
+        self.current_document.path_constraints = deepcopy(self.constraints)
+        self.solution = None
+        self.selected_constraint = selected_id
+        self.refresh(selected_id)
+        if not is_physical(self.current_document):
+            return
+        initialize_layout(self.current_document)
+        from .physical_editor import SceneWorker
+
+        packing = None
+        if self.document.optimized_layout:
+            parent = self.parent()
+            if callable(getattr(parent, "packing", None)):
+                packing = parent.packing()
+        self.worker = SceneWorker(self.current_document, 0, final=True, packing=packing, parent=self)
+        self.worker.completed.connect(self.solved)
+        self.worker.failed.connect(self.solve_failed)
+        self.worker.finished.connect(self.solve_finished)
+        self.set_busy(True)
+        self.solve_status.setText("Solving distance constraints; moving free components…")
+        self.worker.start()
+
+    def set_busy(self, busy):
+        for widget in (self.table, self.a, self.b, self.target, self.add_button, self.delete_button):
+            widget.setEnabled(not busy)
+        self.buttons.button(QtWidgets.QDialogButtonBox.Ok).setEnabled(not busy)
+        if not busy:
+            self.delete_button.setEnabled(bool(self.table.selectedItems()))
+            self.endpoints_changed()
+
+    def solved(self, result, revision, final):
+        if self.pending_result == QtWidgets.QDialog.Rejected:
+            return
+        from .scene_layout import trace_scene
+
+        # A draft may still intercept an unrelated optic. Keep that error
+        # visible, but allow a distance edit whose optical equations and pins
+        # are all satisfied. Optimized layouts also require verified packing.
+        equations_satisfied = (
+            result.status == "unresolved"
+            and not self.document.optimized_layout
+            and not self.current_document.layout.get("_separations")
+            and trace_scene(self.current_document, result.poses, check_interceptions=False).ok
+        )
+        if result.ok or equations_satisfied:
+            from .scene_solver import apply_scene_solution
+
+            if self.document.optimized_layout:
+                from .scene_optimization import update_scene_optimization
+
+                try:
+                    update_scene_optimization(self.document, result.poses)
+                except ValueError as error:
+                    self.solve_failed(str(error), revision)
+                    return
+            if result.ok:
+                apply_scene_solution(self.current_document, result)
+            else:
+                self.current_document.layout["poses"] = deepcopy(result.poses)
+            self.solution = result
+            self.geometry = result.layout
+            status = "Distances satisfied."
+            if not result.ok:
+                error = next(d.message for d in result.diagnostics if d.severity == "error")
+                status += " Layout still needs attention: " + error
+            self.solve_status.setText(status + " OK applies the component positions; Cancel discards them.")
+        elif result.status != "cancelled":
+            errors = [d.message for d in result.diagnostics if d.severity == "error"]
+            self.solve_status.setText(
+                "Could not satisfy all constraints. " + (errors[0] if errors else "Check pinned positions and other distances.")
+            )
+        self.refresh(self.selected_constraint)
+
+    def solve_failed(self, message, revision):
+        self.solve_status.setText("Distance solve failed: " + message)
+
+    def solve_finished(self):
+        self.worker.deleteLater()
+        self.worker = None
+        self.set_busy(False)
+        if self.pending_result is not None:
+            super().done(self.pending_result)
+
+    def done(self, result):
+        if self.worker is not None:
+            self.pending_result = result
+            if result == QtWidgets.QDialog.Rejected:
+                self.worker.cancelled.set()
+            return
+        super().done(result)

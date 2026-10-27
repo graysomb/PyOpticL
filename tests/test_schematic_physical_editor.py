@@ -586,6 +586,12 @@ class PhysicalApplicationTests(unittest.TestCase):
         self.assertTrue(dialog.add_button.isEnabled())
         self.assertAlmostEqual(dialog.target.value(), 325.4, delta=1e-6)
         dialog.add_constraint()
+        for _ in range(400):
+            self.app.processEvents()
+            if dialog.worker is None:
+                break
+            QtTest.QTest.qWait(5)
+        self.assertIsNone(dialog.worker)
         constraint = dialog.constraints[-1]
         self.assertEqual(constraint.component_a, constraint.component_b)
         self.assertEqual(constraint.pass_b, "lens-return")
