@@ -17,8 +17,8 @@ from PyOpticL.ray_math import (
     grating_direction,
 )
 from .optic_geometry import element_spec, aperture_excess, roof_trace
-from .registry import SYMBOLS, COUPLING_MOUNTS, parameter_values, default_turn
-from .physical import PhysicalLayout, wrap_angle
+from .registry import SYMBOLS, COUPLING_MOUNTS, AXIS_ALIGNED_KINDS, parameter_values, default_turn
+from .physical import PhysicalLayout, wrap_angle, wrap_axis_angle
 from .topology import Diagnostic, resolve_topology
 from .paths import component_path
 
@@ -259,6 +259,20 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                 spec = None
             else:
                 distance, hit, normal, local, spec = intersect(document, node, pose, origin, direction, topo)
+                if node.kind in AXIS_ALIGNED_KINDS:
+                    for axis, value in (
+                        ("yaw", wrap_axis_angle(heading(direction) - pose[3])),
+                        ("pitch", degrees(atan2(direction[2], hypot(direction[0], direction[1])))),
+                    ):
+                        residual(
+                            f"axis/{visit_id}/{axis}",
+                            value,
+                            f"{node.reference}: optical axis must align with the beam",
+                            node.id,
+                            visit_id,
+                            edge.id,
+                            "°",
+                        )
                 if visit.centered:
                     # The component origin is its nominal interaction center.
                     # Roof origins denote the entrance port; their exit is

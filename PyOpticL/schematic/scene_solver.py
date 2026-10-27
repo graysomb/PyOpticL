@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from math import hypot, isfinite, radians
 from .scene_layout import Residual, trace_scene, poses_for, source_offset
 from .topology import Diagnostic, resolve_topology
-from .registry import SYMBOLS
-from .physical import wrap_angle
+from .registry import SYMBOLS, AXIS_ALIGNED_KINDS
+from .physical import wrap_angle, wrap_axis_angle
 from PyOpticL.ray_math import norm, sub, unit, heading, dot, yaw
 
 
@@ -103,6 +103,12 @@ def _orientation_seed(document, poses, topology, targets):
             direction = leg(incoming[visit_id].source.visit_id, visit_id)
             if direction is not None:
                 angle = heading(direction) + 180
+        elif node.kind in AXIS_ALIGNED_KINDS:
+            direction = leg(incoming[visit_id].source.visit_id, visit_id)
+            if direction is not None:
+                # Transmission works from either side; retain the nearer body
+                # orientation instead of turning its mount by 180 degrees.
+                angle = seed[node.id][3] + wrap_axis_angle(heading(direction) - seed[node.id][3])
         if angle is not None:
             seed[node.id][3] += wrap_angle(angle - seed[node.id][3])
     return seed

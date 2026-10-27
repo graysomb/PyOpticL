@@ -19,6 +19,43 @@ class NativeMultipassTests(unittest.TestCase):
     tearDown = FreeCADSchematicTests.tearDown
     build = FreeCADSchematicTests.build
 
+    def test_half_wave_plate_and_iris_export_with_axes_parallel_to_the_beam(self):
+        from test_schematic_transmission_alignment import transmission_scene
+        from PyOpticL.schematic.registry import select_preset
+        from PyOpticL.schematic.scene_solver import solve_scene
+
+        for index, (angle, plate_preset, iris_preset) in enumerate(
+            ((30, "bare", "ida12"), (-135, "FBR", "alignment"))
+        ):
+            with self.subTest(plate_preset=plate_preset, iris_preset=iris_preset):
+                if index:
+                    self.tearDown()
+                    self.setUp()
+                document = transmission_scene(angle, offset=90)
+                plate, iris = document.nodes[1:3]
+                select_preset(plate, plate_preset)
+                select_preset(iris, iris_preset)
+                solution = solve_scene(document, iterations=40)
+                self.assertTrue(solution.ok, solution.diagnostics)
+                document.layout["poses"] = solution.poses
+                layout = self.build(document)
+                children = layout.get_object().Children
+                beam = next(child for child in children if hasattr(child, "BeamSegments"))
+                for node in (plate, iris):
+                    part = next(child for child in children if child.Label == node.reference)
+                    owned, pending = set(), [part]
+                    while pending:
+                        child = pending.pop()
+                        owned.add(child.Name)
+                        pending.extend(getattr(child, "Children", ()))
+                    incoming = next(segment.Proxy.get_global_direction() for segment in beam.BeamSegments
+                                    if segment.EndObject is not None and segment.EndObject.Name in owned)
+                    outgoing = next(segment.Proxy.get_global_direction() for segment in beam.BeamSegments
+                                    if segment.StartObject is not None and segment.StartObject.Name in owned)
+                    normal = part.getGlobalPlacement().Rotation.multVec(App.Vector(1, 0, 0))
+                    self.assertAlmostEqual(abs(normal.dot(App.Vector(*incoming))), 1, delta=1e-6)
+                    self.assertLess((App.Vector(*incoming) - App.Vector(*outgoing)).Length, 1e-6)
+
     def test_mirror_can_turn_around_and_exports_its_coated_face(self):
         from test_schematic_mirror_orientation import mirror_scene
         from PyOpticL.schematic.scene_solver import solve_scene

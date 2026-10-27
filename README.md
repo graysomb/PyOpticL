@@ -111,6 +111,10 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   When connecting or moving a centered mirror, its starting orientation is
   calculated from the two beam legs, including a turn to the coated face when
   needed. Position, direction and turn constraints still apply.
+- Half-wave plates and irises automatically align their optical axis with the
+  beam for straight-through transmission. Their body faces perpendicular to
+  the beam, from either propagation direction. A half-wave plate's **Fast axis**
+  parameter still sets its polarization rotation independently of its body yaw.
 - **Centered hit** is enabled by default for each receiving or interacting pass.
   Dragging and optimization keep the ray at the optic's nominal interaction center
   in both transverse directions. Uncheck it on a selected **Optical pass** only

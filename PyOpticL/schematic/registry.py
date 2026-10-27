@@ -34,6 +34,7 @@ TERMINAL_PORT = {"beam": (-40.0, 0.0)}
 TRANSMISSION = {"left": "right", "right": "left", "top": "bottom", "bottom": "top"}
 REFLECTION = {"left": "top", "top": "left", "right": "bottom", "bottom": "right"}
 MIN_BEAM_TURN = 0.001  # stay above the ray tracer's parallel-plane tolerance
+AXIS_ALIGNED_KINDS = ("hwp", "iris")
 
 
 DIAMETER = Parameter("Diameter (mm)", 12.7, 0, exclusive=True)

@@ -249,6 +249,43 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertEqual(e.document.layout["poses"][mirror.id][:2], [0, 0])
         self.assertTrue(compile_schematic(e.document).ok)
 
+    def test_half_wave_plate_and_iris_follow_beam_and_keep_fast_axis_independent(self):
+        from test_schematic_transmission_alignment import transmission_scene
+        from PyOpticL.ray_math import dot, yaw
+
+        document = transmission_scene()
+        source, plate, iris, output = document.nodes
+        source.physical.clear()
+        e = self.open(document)
+
+        def check_alignment():
+            compiled = compile_schematic(e.document)
+            self.assertTrue(compiled.ok, compiled.diagnostics)
+            for node in (plate, iris):
+                incoming = compiled.geometry.visits[node.id].incoming
+                normal = yaw((1, 0, 0), compiled.geometry.poses[node.id][3])
+                self.assertAlmostEqual(abs(dot(incoming, normal)), 1, delta=1e-6)
+
+        check_alignment()
+        before = deepcopy(document.layout["poses"])
+        self.select(plate.id)
+        fast_axis = e.findChild(QtWidgets.QDoubleSpinBox, "componentParameter_fast_axis_angle")
+        fast_axis.setValue(42)
+        self.settle()
+        self.assertEqual(document.nodes[1].parameters["fast_axis_angle"], 42)
+        self.assertEqual(document.layout["poses"], before)
+        e.begin_drag()
+        e.start_solve(((output.id, 0, 120), (output.id, 1, 60)), True)
+        self.settle()
+        self.assertAlmostEqual(document.layout["poses"][output.id][0], 120, delta=1e-6)
+        self.assertAlmostEqual(document.layout["poses"][output.id][1], 60, delta=1e-6)
+        check_alignment()
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.layout["poses"], before)
+        self.assertEqual(e.document.nodes[1].parameters["fast_axis_angle"], 42)
+        check_alignment()
+
     def test_pinned_drag_is_rejected_and_reports_residual(self):
         doc = double_pass()
         doc.nodes[3].physical["x"] = 200

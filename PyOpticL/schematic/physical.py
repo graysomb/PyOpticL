@@ -13,6 +13,11 @@ def wrap_angle(angle):
     return (angle + 180) % 360 - 180
 
 
+def wrap_axis_angle(angle):
+    """Signed angular mismatch of a bidirectional axis, modulo 180 degrees."""
+    return (angle + 90) % 180 - 90
+
+
 @dataclass(frozen=True)
 class PhysicalLayout:
     positions: dict

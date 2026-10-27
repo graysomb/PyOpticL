@@ -16,7 +16,7 @@ from .editor import (
     pair,
 )
 from .model import Schematic, History, Endpoint, Connection, OpticalPass, new_id, document_from_dict
-from .registry import SYMBOLS, parameter_values
+from .registry import SYMBOLS, AXIS_ALIGNED_KINDS, parameter_values
 from .topology import resolve_topology
 from .scene_layout import initialize_layout, trace_scene, poses_for, source_offset
 from .scene_solver import solve_scene, apply_scene_solution
@@ -856,6 +856,8 @@ class PhysicalSchematicEditor(BaseEditor):
                 self.form.insertRow(4, centered)
             pose = self.display_poses().get(node.id, (0, 0, 0, 0))
             self.note(f"Physical Z: {pose[2]:.6f} mm · yaw: {pose[3]:.6f}°")
+            if node.kind in AXIS_ALIGNED_KINDS:
+                self.note("The optical axis automatically follows the beam for straight-through transmission from either side.")
             spec = element_spec(node, self.scene.topology)
             if spec and spec.aperture_only:
                 self.note("Optical aperture outline only; the full body requires vendor geometry.")
