@@ -46,6 +46,8 @@ def variables(document, *, pins=True):
                 continue
             if pins and axis == 3 and SYMBOLS[node.kind].role == "source" and "angle" in node.physical:
                 continue
+            if pins and axis == 3 and "yaw" in node.physical:
+                continue
             result.append((node.id, axis))
     return result
 
@@ -275,7 +277,7 @@ def _face_mirrors(document, poses, topology=None, targets=()):
     requested = {(node_id, axis) for node_id, axis, _ in targets}
     trace = trace_scene(document, poses, check_interceptions=False, topology=topology)
     for node in document.nodes:
-        if node.kind != "mirror" or (node.id, 3) in requested:
+        if node.kind != "mirror" or (node.id, 3) in requested or "yaw" in node.physical:
             continue
         states = [state for key, state in trace.layout.visits.items()
                   if document.optical_pass(key).component_id == node.id]
@@ -687,6 +689,7 @@ def _continue_drag(document, initial, targets, packing, iterations, cancelled, p
         for node in document.nodes:
             visits = [p for p in topology.passes.values() if p.component_id == node.id]
             if (node.kind != "lens" or len(visits) != 1 or not visits[0].centered
+                    or (node.id, 3) not in free
                     or any(n == node.id and axis == 3 for n, axis, _ in targets)):
                 continue
             direction = result.layout.visits[visits[0].id].incoming
@@ -834,7 +837,9 @@ def solve_scene(
         for axis, key in enumerate(("x", "y")):
             if key in node.physical:
                 points[node.id][axis] = node.physical[key]
-        if SYMBOLS[node.kind].role == "source" and "angle" in node.physical:
+        if "yaw" in node.physical:
+            points[node.id][3] = node.physical["yaw"]
+        elif SYMBOLS[node.kind].role == "source" and "angle" in node.physical:
             points[node.id][3] = node.physical["angle"] + source_offset(node)
     if not topology.ok:
         return SceneSolution("unresolved", None, points, list(topology.diagnostics))

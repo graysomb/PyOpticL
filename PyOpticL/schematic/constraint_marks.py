@@ -8,6 +8,7 @@ from .registry import AXIS_ALIGNED_KINDS, parameter_values
 
 MARK_TYPES = (
     ("position", "P", "Position"),
+    ("rotation", "R", "Rotation"),
     ("angle", "∠", "Pass angle"),
     ("direction", "→", "Beam direction"),
     ("center", "⊙", "Centered hit"),
@@ -56,6 +57,8 @@ def component_marks(document, node_id):
     pins = [f"{axis.upper()} = {node.physical[axis]:g} mm" for axis in ("x", "y") if axis in node.physical]
     if pins:
         add("position", node.reference + ": " + ", ".join(pins))
+    if "yaw" in node.physical:
+        add("rotation", f"{node.reference}: physical yaw {node.physical['yaw']:g}° in XY")
     if "angle" in node.physical:
         add("direction", f"{node.reference}: beam travel heading {node.physical['angle']:g}° in XY")
     for visit in document.optical_passes():

@@ -531,6 +531,11 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
         for edge in topo.outgoing[visit_id]:
             rays[edge.target.visit_id] = (state.exit, state.outputs.get(edge.interaction, state.incoming))
     for node in document.nodes:
+        if "yaw" in node.physical:
+            residual(
+                f"pin/{node.id}/yaw", wrap_angle(poses[node.id][3] - node.physical["yaw"]),
+                f"{node.reference}: pinned rotation", node.id, unit="°",
+            )
         for axis, key in enumerate(("x", "y")):
             if key in node.physical:
                 residual(

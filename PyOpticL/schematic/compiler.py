@@ -64,6 +64,8 @@ def validate_schematic(document):
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
         allowed = {"x", "y", "angle"} if symbol.role in ("source", "terminal") else {"x", "y"}
+        if document.layout is not None and node.kind != "output":
+            allowed.add("yaw")
         if node.kind in ("mirror", "splitter"):
             allowed.add("turn")
         for name, value in node.physical.items():

@@ -116,6 +116,13 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   When connecting or moving a centered mirror, its starting orientation is
   calculated from the two beam legs, including a turn to the coated face when
   needed. Position, direction and turn constraints still apply.
+- Select several components to show the group constraint controls in the
+  properties panel. **Constrain position (X/Y)** pins each component at its
+  current location; **Constrain rotation (XY)** pins each component's current
+  physical yaw. Click a mixed toggle to enable it for the whole selection, or
+  clear a checked toggle to release it. Each group edit is one undoable action.
+  Rotation is also available for a single component. Pass-turn and beam-direction
+  constraints remain separate settings.
 - Half-wave plates and irises automatically align their optical axis with the
   beam for straight-through transmission. Their body faces perpendicular to
   the beam, from either propagation direction. A half-wave plate's **Fast axis**
@@ -144,7 +151,7 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   constraints. Optical solving can move free parts off the grid. Changing
   spacing or disabling snap leaves existing parts in place.
 - Small constraint marks sit beside component references and constrained beams:
-  **P** position, **∠** pass angle, **→** beam heading, **⊙** centered hit,
+  **P** position, **R** physical rotation, **∠** pass angle, **→** beam heading, **⊙** centered hit,
   **↔** roof offset, **i** grating incidence, **∥** automatic beam alignment,
   **L** beam endpoint separation, and **Σ** total routed length.
   Hover a mark for its target and affected passes. Shared optics show all their

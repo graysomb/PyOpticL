@@ -29,6 +29,13 @@ from PyOpticL.ray_math import add, yaw, heading
 Qt = QtCore.Qt
 
 
+class SelectionConstraintToggle(QtWidgets.QCheckBox):
+    """Display mixed selections, but apply one enabled/disabled state per click."""
+
+    def nextCheckState(self):
+        self.setCheckState(Qt.Unchecked if self.checkState() == Qt.Checked else Qt.Checked)
+
+
 def project(p, plane):
     return QtCore.QPointF(p[0], -p[1 if plane == "XY" else 2])
 
@@ -1040,6 +1047,10 @@ class PhysicalSchematicEditor(BaseEditor):
         if not hasattr(self, "scene"):
             return
         chosen = self.selected_nodes()
+        if len(chosen) > 1:
+            self.clear_form()
+            self.show_selection_constraints()
+            return
         if len(chosen) == 1 and chosen[0] not in {n.id for n in self.document.nodes}:
             self.clear_form()
             node = self.scene_document().node(chosen[0])
@@ -1100,6 +1111,8 @@ class PhysicalSchematicEditor(BaseEditor):
                 self.form.insertRow(4, centered)
             pose = self.display_poses().get(node.id, (0, 0, 0, 0))
             self.note(f"Physical Z: {pose[2]:.6f} mm · yaw: {pose[3]:.6f}°")
+            if node.kind != "output":
+                self.show_rotation_property(node)
             if node.kind in AXIS_ALIGNED_KINDS:
                 self.note("The optical axis automatically follows the beam for straight-through transmission from either side.")
             if node.kind == "grating":
@@ -1141,6 +1154,96 @@ class PhysicalSchematicEditor(BaseEditor):
         self.scene.clearSelection()
         self.inspected_omitted = node_id
         self.show_properties()
+
+    def selected_constraint_nodes(self):
+        selected = set(self.selected_nodes()) - self.omitted_mirrors()
+        return [node for node in self.document.nodes if node.id in selected]
+
+    def selection_constraint_toggle(self, label, name, states, callback):
+        toggle = SelectionConstraintToggle(label)
+        toggle.setObjectName(name)
+        toggle.setTristate(True)
+        state = Qt.Unchecked if not states or not any(states) else Qt.Checked if all(states) else Qt.PartiallyChecked
+        toggle.setCheckState(state)
+        toggle.setEnabled(bool(states))
+        toggle.clicked.connect(lambda: callback(toggle.checkState() == Qt.Checked))
+        self.form.addRow(toggle)
+        return toggle
+
+    def show_selection_constraints(self):
+        nodes = self.selected_constraint_nodes()
+        self.note(f"{len(nodes)} selected components")
+        positions = [all(key in node.physical for key in ("x", "y")) for node in nodes]
+        # A partially pinned component contributes a mixed state too.
+        if any(("x" in node.physical) != ("y" in node.physical) for node in nodes):
+            positions.extend((False, True))
+        self.selection_constraint_toggle("Constrain position (X/Y)", "selectionPositionConstrained",
+                                         positions, self.set_selection_position_constrained)
+        rotations = ["yaw" in node.physical for node in nodes if node.kind != "output"]
+        self.selection_constraint_toggle("Constrain rotation (XY)", "selectionRotationConstrained",
+                                         rotations, self.set_selection_rotation_constrained)
+        self.note("Enable a toggle to pin each selected component at its current position or rotation. A mixed mark means only some selected components are constrained.")
+        self.note("Rotation fixes each part's physical yaw. Optical pass turns and beam-direction constraints have their own controls.")
+        if len(nodes) != len(self.selected_nodes()):
+            self.note("Optimizer-added or omitted components are read-only here.")
+
+    def set_selection_position_constrained(self, enabled):
+        nodes = self.selected_constraint_nodes()
+        poses = self.display_poses()
+        changed = False
+        for node in nodes:
+            before = dict(node.physical)
+            if enabled:
+                for axis, key in enumerate(("x", "y")):
+                    node.physical.setdefault(key, poses[node.id][axis])
+            else:
+                for key in ("x", "y"):
+                    node.physical.pop(key, None)
+            changed |= before != node.physical
+        if changed:
+            self.commit()
+
+    def set_selection_rotation_constrained(self, enabled):
+        poses = self.display_poses()
+        changed = False
+        for node in self.selected_constraint_nodes():
+            if node.kind == "output":
+                continue
+            before = dict(node.physical)
+            if enabled:
+                node.physical.setdefault("yaw", poses[node.id][3])
+            else:
+                node.physical.pop("yaw", None)
+            changed |= before != node.physical
+        if changed:
+            self.commit()
+
+    def show_rotation_property(self, node):
+        toggle = QtWidgets.QCheckBox("Constrain rotation")
+        toggle.setObjectName("opticRotationConstrained")
+        toggle.setChecked("yaw" in node.physical)
+        self.form.addRow(toggle)
+        field = self.number_field(
+            "Rotation in XY (deg)", node.physical.get("yaw", self.display_poses()[node.id][3]),
+            lambda value: self.set_optic_rotation(node.id, value) if toggle.isChecked() else None,
+        )
+        field.setObjectName("opticRotationDeg")
+        field.setEnabled(toggle.isChecked())
+
+        def change(checked):
+            field.setEnabled(checked)
+            self.set_optic_rotation(node.id, self.display_poses()[node.id][3] if checked else None)
+
+        toggle.toggled.connect(change)
+        toggle.setToolTip("Pin the shared component's absolute physical yaw in XY.")
+
+    def set_optic_rotation(self, node_id, value):
+        node = self.document.node(node_id)
+        if value is None:
+            node.physical.pop("yaw", None)
+        else:
+            node.physical["yaw"] = value
+        self.commit()
 
     def delete_selected(self):
         if any(node_id not in {n.id for n in self.document.nodes} for node_id in self.selected_nodes()):

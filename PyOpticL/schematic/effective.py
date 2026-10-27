@@ -91,6 +91,8 @@ def folding_protection(document, node_id):
         return "Mirrors shared by multiple optical passes are retained"
     if any(p.component_id == node_id and p.turn is not None for p in document.passes):
         return "Angle-constrained mirrors are retained"
+    if "yaw" in node.physical:
+        return "Rotation-constrained mirrors are retained"
     if any(key in node.physical for key in ("x", "y")):
         return "Position-constrained mirrors are retained"
     if "turn" in node.physical or any(node_id in edge.turns for edge in document.connections):

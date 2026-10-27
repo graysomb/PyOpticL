@@ -197,6 +197,24 @@ class NativeMultipassTests(unittest.TestCase):
         self.assertAlmostEqual(segment.Proxy.distance, 100, delta=1e-6)
         self.assertLess(heading(segment.Proxy.get_global_direction()), 60)
 
+    def test_physical_rotation_pins_export_to_the_same_native_component_orientations(self):
+        from test_schematic_mirror_orientation import mirror_scene
+        from PyOpticL.schematic.scene_solver import solve_scene
+        from PyOpticL.ray_math import yaw
+
+        document = mirror_scene(incoming=37)
+        solution = solve_scene(document)
+        self.assertTrue(solution.ok, solution.diagnostics)
+        document.layout["poses"] = solution.poses
+        for node in document.nodes:
+            node.physical["yaw"] = solution.poses[node.id][3]
+        layout = self.build(document)
+        children = layout.get_object().Children
+        for node in document.nodes:
+            obj = next(child for child in children if child.Label == node.reference)
+            expected = App.Vector(*yaw((1, 0, 0), node.physical["yaw"]))
+            self.assertLess((obj.Placement.Rotation.multVec(App.Vector(1, 0, 0)) - expected).Length, 1e-6)
+
     def test_free_receiver_rotation_matches_arriving_beam_in_generated_cad(self):
         from test_schematic_receiver_alignment import fiber_pair
         from PyOpticL.schematic.scene_solver import solve_scene
