@@ -332,13 +332,20 @@ class PhysicalBeam(ConnectionItem):
             p.lineTo(tip)
             p.lineTo(tip - u - normal)
         self.setPath(p)
-        pen = QtGui.QPen(QtGui.QColor("#e79b36" if self.isSelected() else "#bd3c43"), 0)
+        source = trace.layout.visits.get(editor.scene.topology.source_id) if trace else None
+        out_of_plane = valid and source is not None and any(
+            abs(p[2] - source.exit[2]) > 1e-6 for p in (start, end)
+        )
+        color = "#2878c8" if out_of_plane else "#bd3c43"
+        pen = QtGui.QPen(QtGui.QColor("#e79b36" if self.isSelected() else color), 0)
         if not valid:
             pen.setStyle(Qt.DashLine)
         self.setPen(pen)
         self.constraint_marks.refresh(beam_marks(editor.document, self.logical_ids))
         self.constraint_marks.setPos((first + last) / 2)
         description = "Physical beam" if valid else "Unresolved connection guide"
+        if out_of_plane:
+            description += " · out of source plane"
         self.setToolTip(
             f"{description} · {edge.id}\nSelect to edit endpoint separation or folding permission"
         )
