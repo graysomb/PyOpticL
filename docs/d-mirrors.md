@@ -38,8 +38,9 @@ described in the component contract but is excluded from the plate footprint.
 Local +X is the outward reflective normal. The substrate extends from X=-6 to 0.
 The straight edge runs along Y, at Z=`edge_distance`; the open half faces +Z. The component
 origin is `edge_distance` below the straight edge, default 1 mm, inside the reflective
-area. This default clears the half-inch clamp screws for the demonstrated 45-degree
-beam. `edge_distance` must be greater than 0.1 mm and less than the clear radius;
+area. The default leaves 1 mm between the ray center and the pickoff edge; the
+example separately verifies its 45-degree approach/return envelopes.
+`edge_distance` must be greater than 0.1 mm and less than the clear radius;
 changing it selects a beam datum without changing any purchased dimensions.
 The circle center itself lies on the straight edge,
 so it is recorded as a separate datum rather than used as the default beam hit.
@@ -76,12 +77,15 @@ Drawings are **21737-E0W revision A**, **TTN099623-E0W revision A**,
   "optic not included" by the drawing. Working holder geometry excludes that
   reference solid (index 22); the exact PFD10-03-P01 replaces it in the assembly.
 - KM05DR retains all 26 hardware solids. In the mounted pair, the existing two
-  nylon-tipped screws move 0.44375 mm along their axes to contact the purchased
-  6 mm mirror. Their dimensions and the original source pose/bytes are unchanged.
+  nylon-tipped screws retract 0.44375 mm along their axes to contact the rear S2
+  surface of the purchased 6 mm mirror. KM05DR is rear loaded: coated S1 faces
+  native +Z through the retaining lip at Z=14.6558 mm; rear S2 is at Z=8.6558 mm.
+  Their dimensions and the original source pose/bytes are unchanged.
 - PFD05 imports as one valid solid. PFD10 is supplied as one valid, closed shell;
   it is promoted to a solid using its eight unchanged faces. No sewing, healing,
   or remodeling is applied. This conversion is explicitly enabled for that asset.
-- Both mirrors seat against their measured rear support planes without material
+- KM100D seats on its rear support plane. KM05DR seats against its front retaining
+  lip, with nylon screws contacting the rear surface. Both pairs have no material
   overlap with the holder or nylon clamp tips. Source compounds are protected
   from neighboring automatic drilling.
 
@@ -130,10 +134,13 @@ geometry/baseplate STEP assembly, separate baseplate STEP, machining JSON, BOM,
 and verification report. Generated outputs remain rebuildable ignored artifacts;
 original vendor sources and the rebuilding code are tracked in Git.
 
-Verified 2026-10-27 with FreeCAD 1.1.4: **101 tests passed** (13 standard
-catalog tests, 13 D-mirror acceptance tests, and 75 existing FreeCAD regression
-tests across catalog, baseplate, iris, vendor batch, roof, grating and the original
-all-components demo). The beam smoke test and standalone demo rebuild also
-passed. The D-mirror suite passed again from a Git-index-only checkout with
-cache/network access blocked. Export/reopen checks preserve 51 physical solids.
-Detailed local results are in `artifacts/d_mirrors.verification.json`.
+Verified 2026-10-27 after correcting KM05DR's rear-loaded orientation:
+**37 tests passed** (14 D-mirror acceptance tests, 10 catalog acceptance tests,
+and 13 standard catalog tests). The new front-lip orientation check rejects the
+previous committed pose, which had S1 facing the adjusters. It verifies S1 at
+native Z=14.6558 mm facing +Z, with nylon tips touching rear S2 at Z=8.6558 mm.
+The full D-mirror suite covers both plate workflows, nested placements, native
+heights, beam envelopes, seating and export/reopen integrity. Vendor source
+hashes are unchanged. Detailed local results are in
+`artifacts/d_mirrors.verification.json`; corrected review copies are under
+`artifacts/d_mirrors_corrected*`.

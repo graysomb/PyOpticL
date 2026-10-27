@@ -1720,12 +1720,12 @@
     "origin": [
       -17.526,
       16.526,
-      8.6558
+      14.6558
     ],
     "rotation": [
       90,
       0,
-      -90
+      90
     ],
     "datums": {
       "optic_seat": [
@@ -1736,12 +1736,22 @@
       "circle_center": [
         -17.526,
         17.526,
-        8.6558
+        14.6558
       ],
       "mounting_face": [
         -14.732,
         0,
         3.937
+      ],
+      "front_lip": [
+        -17.526,
+        16.526,
+        14.6558
+      ],
+      "rear_surface": [
+        -17.526,
+        16.526,
+        8.6558
       ]
     },
     "holes": [
@@ -1788,7 +1798,8 @@
       6
     ],
     "reference_optic_solids": [],
-    "d_mirror": "PFD05-03-P01"
+    "d_mirror": "PFD05-03-P01",
+    "mirror_loading": "rear"
   },
   "PFD05-03-P01": {
     "origin": [

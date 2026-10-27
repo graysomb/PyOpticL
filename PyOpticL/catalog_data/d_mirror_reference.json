@@ -83,10 +83,9 @@
       "circle_center_native": [
         -17.526,
         17.526,
-        8.6558
+        14.6558
       ],
-      "back_seating_plane_native_z_mm": 14.6558,
-      "front_plane_native_z_mm": 8.6558,
+      "front_plane_native_z_mm": 14.6558,
       "native_circle_center_height_mm": 17.526,
       "native_beam_height_mm": 16.526,
       "physical_mounting_features": [
@@ -124,7 +123,9 @@
         }
       ],
       "reference_optic_solids": [],
-      "source_note": "No example optic in supplier compound. Cylinders model 8-32 major diameter; thread identity is from drawing."
+      "source_note": "No example optic in supplier compound. Cylinders model 8-32 major diameter; thread identity is from drawing. Rear-loaded mirror: S1 faces native +Z through the front lip at Z=14.6558 mm; S2 faces the adjusters at Z=8.6558 mm.",
+      "front_seating_plane_native_z_mm": 14.6558,
+      "back_surface_plane_native_z_mm": 8.6558
     },
     "PFD05-03-P01": {
       "source_step_sha256": "d900887eecff235068c9f28d66e667dea7b67ea5690983d7265ae9a21c41eb25",
@@ -203,17 +204,17 @@
       "coating": "Protected silver P01; ideal reflection only, no measured efficiency or coating phase.",
       "seated_clamp_offsets_mm": {
         "24": [
-          0.44375,
+          -0.44375,
           0,
           0
         ],
         "25": [
-          0.44375,
+          -0.44375,
           0,
           0
         ]
       },
-      "clamp_pose_note": "Supplier 4-40 nylon tips end at native Z=9.09955 mm; retract each existing screw by 0.44375 mm along native -Z to contact the actual 6 mm optic front at Z=8.6558 mm. Dimensions and source bytes unchanged.",
+      "clamp_pose_note": "Supplier 4-40 nylon tips end at native Z=9.09955 mm; retract each existing screw by 0.44375 mm along native -Z to contact the 6 mm optic rear S2 at Z=8.6558 mm. Coated S1 is at Z=14.6558 mm, facing native +Z through the front retaining lip. Dimensions and source bytes unchanged.",
       "default_edge_distance_mm": 1.0
     }
   }

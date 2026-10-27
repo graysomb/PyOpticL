@@ -16,7 +16,7 @@ QUALIFICATIONS = [
     'Source STEP and drawings are versioned. PFD10 closed shell is promoted using unchanged faces.',
     'Optical datum is 1 mm below the straight edge; native beam heights are 16.526 and 31.004 mm.',
     'KM100D example optic is excluded because it is not supplied; exact PFD10-03-P01 replaces it.',
-    'KM05DR included nylon clamp screws are retracted 0.44375 mm to contact the 6 mm optic.',
+    'KM05DR is rear loaded: S1 faces its front opening; nylon screws retract 0.44375 mm to contact rear S2.',
     'KM100D knob requires one 0.885 mm plate clearance relief; mounting face stays at plate top.',
     'One M4 cap screw for KM100D and one 8-32 x 1/4 in stud for KM05DR are BOM requirements. No dowels.',
     'Ideal single-sided reflection with conservative 90%-diameter semicircular clear aperture and 0.1 mm edge exclusion. No coating efficiency, edge diffraction, or clamp-force model.',

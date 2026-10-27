@@ -108,6 +108,28 @@ class DMirrorTests(unittest.TestCase):
             self.assertAlmostEqual(b.ZMax, 1, places=5)
             self.assertAlmostEqual(b.ZMin, 1-r, places=5)
 
+    def test_half_inch_coated_face_points_through_front_lip(self):
+        component = catalog.create('d_mirror', 'Rear-loaded half-inch', mount='KM05DR')
+        component.recompute()
+        optic, holder = component.get_object().Children
+        # Independently identified source coordinates: the moving plate's
+        # front retaining lip is at native Z=14.6558; adjusters are toward -Z.
+        # Seating/zero-overlap alone also passes for a backwards optic.
+        definition = holder.Proxy
+        rotation = App.Rotation('XYZ', *definition.rotation)
+        native_to_component = App.Placement(-rotation.multVec(App.Vector(*definition.origin)), rotation)
+        component_to_native = native_to_component.inverse()
+        fronts = [f for f in optic.Shape.Faces if isinstance(f.Surface, Part.Plane)
+                  and f.normalAt(0,0).x > .999999 and abs(f.CenterOfMass.x) < 1e-7]
+        self.assertEqual(len(fronts), 1)
+        front = fronts[0]
+        self.assertAlmostEqual(component_to_native.multVec(front.CenterOfMass).z,14.6558,places=6)
+        self.assert_vector(component_to_native.Rotation.multVec(front.normalAt(0,0)), (0,0,1))
+        for i in (24,25):
+            self.assertAlmostEqual(holder.Shape.Solids[i].optimalBoundingBox().XMax,-6,places=6)
+        self.assert_vector(component_to_native.Rotation.multVec(
+            App.Vector(*component.interfaces()[0].normal)), (0,0,1))
+
     def ray(self, optic, hit, direction=(-1,0,0)):
         optic.compute_placement()
         placement = optic.get_object().Placement
