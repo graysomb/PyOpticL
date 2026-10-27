@@ -277,15 +277,19 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                     except ValueError as error:
                         result.diagnostics.append(Diagnostic(f"{node.reference}: {error}", node.id,
                                                              pass_id=visit_id))
-                if node.kind in AXIS_ALIGNED_KINDS:
+                if node.kind in AXIS_ALIGNED_KINDS or node.kind == "roof":
+                    # Retroreflection alone leaves a roof's yaw ambiguous when
+                    # its entrance hit is off center. The schematic uses normal
+                    # entrance incidence, even with Centered hit disabled.
+                    yaw_error = heading(direction) - pose[3]
                     for axis, value in (
-                        ("yaw", wrap_axis_angle(heading(direction) - pose[3])),
+                        ("yaw", wrap_angle(yaw_error) if node.kind == "roof" else wrap_axis_angle(yaw_error)),
                         ("pitch", degrees(atan2(direction[2], hypot(direction[0], direction[1])))),
                     ):
                         residual(
                             f"axis/{visit_id}/{axis}",
                             value,
-                            f"{node.reference}: optical axis must align with the beam",
+                            f"{node.reference}: {'roof entrance' if node.kind == 'roof' else 'optical axis'} must align with the beam",
                             node.id,
                             visit_id,
                             edge.id,

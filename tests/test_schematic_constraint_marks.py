@@ -47,7 +47,7 @@ class ConstraintDescriptionTests(unittest.TestCase):
         for node in (plate, iris):
             self.assertEqual(set(by_kind(component_marks(document, node.id))), {"center", "alignment"})
         self.assertEqual(set(by_kind(component_marks(document, grating.id))), {"center", "incidence"})
-        self.assertEqual(set(by_kind(component_marks(document, roof.id))), {"center", "offset"})
+        self.assertEqual(set(by_kind(component_marks(document, roof.id))), {"center", "offset", "alignment"})
         self.assertEqual(len({mark for _, mark, _ in MARK_TYPES}), len(MARK_TYPES))
 
     def test_overlapping_total_paths_and_original_lengths_follow_their_beam_routes(self):

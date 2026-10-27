@@ -491,6 +491,33 @@ class SceneWorker(QtCore.QThread):
         self.final = final
         self.packing = packing
         self.cancelled = Event()
+        self.allow_roof_slide = False
+
+    def roof_slide_targets(self):
+        """Project an infeasible roof drag onto its current incoming beam."""
+        if not self.targets or any(axis not in (0, 1, 2) for _, axis, _ in self.targets):
+            return None
+        nodes = {node_id for node_id, _, _ in self.targets}
+        if len(nodes) != 1:
+            return None
+        node_id = next(iter(nodes))
+        if self.document.node(node_id).kind != "roof":
+            return None
+        visits = [p for p in self.document.optical_passes() if p.component_id == node_id]
+        if len(visits) != 1:
+            return None
+        trace = trace_scene(self.document)
+        if not trace.ok:
+            return None
+        pose = poses_for(self.document)[node_id]
+        direction = trace.layout.visits[visits[0].id].incoming
+        denominator = sum(direction[axis] ** 2 for _, axis, _ in self.targets)
+        if denominator < 1e-12:
+            return None
+        distance = sum((value - pose[axis]) * direction[axis]
+                       for _, axis, value in self.targets) / denominator
+        return tuple((node_id, axis, pose[axis] + distance * direction[axis])
+                     for _, axis, _ in self.targets)
 
     def run(self):
         try:
@@ -501,6 +528,15 @@ class SceneWorker(QtCore.QThread):
                 iterations=200 if self.final else 40,
                 cancelled=self.cancelled.is_set,
             )
+            if not result.ok and self.allow_roof_slide and not self.cancelled.is_set():
+                targets = self.roof_slide_targets()
+                if targets is not None:
+                    slid = solve_scene(
+                        self.document, targets=targets, packing=self.packing,
+                        iterations=200 if self.final else 40, cancelled=self.cancelled.is_set,
+                    )
+                    if slid.ok or slid.status == "cancelled":
+                        result = slid
             self.completed.emit(result, self.revision, self.final)
         except Exception as error:
             self.failed.emit(f"{type(error).__name__}: {error}", self.revision)
@@ -720,6 +756,7 @@ class PhysicalSchematicEditor(BaseEditor):
             self.move_draft(targets, final)
             return
         worker = SceneWorker(self.scene_document(), self.revision, targets, final, self.packing(), self)
+        worker.allow_roof_slide = self.dragging
         if self.dragging and self.preview_poses is not None:
             # Continue from the last valid drag frame, especially when fixed
             # lens separations require a coupled change in beam direction.
@@ -1049,7 +1086,7 @@ class PhysicalSchematicEditor(BaseEditor):
             if node.kind == "grating":
                 self.note("Incidence angle is fixed relative to the incoming beam. Free downstream parts adjust to the diffracted path.")
             if node.kind == "roof":
-                self.note("Beam separation fixes the actual transverse return offset. The roof angle is free to adjust with the beam; Constrain position pins only its X/Y origin.")
+                self.note("The roof entrance automatically faces the incoming beam, even with Centered hit off. Sliding along a fixed beam preserves its orientation and return separation. Constrain position pins only its X/Y origin.")
             spec = element_spec(node, self.scene.topology)
             if spec and spec.aperture_only:
                 self.note("Optical aperture outline only; the full body requires vendor geometry.")

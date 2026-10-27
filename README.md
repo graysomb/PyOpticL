@@ -132,9 +132,12 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   reduce roof beam separation or select a larger optic if the return misses it.
   A roof's center refers to
   its entrance port; its internal geometry retains the displaced exit.
-  Its **Beam separation** fixes the actual transverse return offset. Dragging
-  adjusts the roof's free angle to preserve that offset; a position pin fixes
-  only X/Y.
+  Its **Beam separation** fixes the actual transverse return offset. The roof
+  entrance automatically faces the incoming beam, even with centering off.
+  Sliding along a fixed beam preserves its orientation; changing the incoming
+  direction turns the roof with it. If other constraints block a sideways drag,
+  the editor projects the roof's move along its incoming beam. A position pin
+  fixes only X/Y; dragging adds no pins.
 - The placement grid has **Snap to grid** enabled by default and an editable
   **Grid** spacing in millimetres beside the XY/XZ selector. Snapping applies
   when adding or dragging parts; it adds no position, angle or distance
@@ -142,8 +145,8 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   spacing or disabling snap leaves existing parts in place.
 - Small constraint marks sit beside component references and constrained beams:
   **P** position, **∠** pass angle, **→** beam heading, **⊙** centered hit,
-  **↔** roof offset, **i** grating incidence, **∥** automatic straight-through
-  alignment, **L** beam endpoint separation, and **Σ** total routed length.
+  **↔** roof offset, **i** grating incidence, **∥** automatic beam alignment,
+  **L** beam endpoint separation, and **Σ** total routed length.
   Hover a mark for its target and affected passes. Shared optics show all their
   pass constraints; total-path marks follow every beam on the route. Marks stay
   readable when zooming and remain visible on unresolved drafts. A legend is

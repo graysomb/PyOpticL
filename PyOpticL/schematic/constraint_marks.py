@@ -13,7 +13,7 @@ MARK_TYPES = (
     ("center", "⊙", "Centered hit"),
     ("offset", "↔", "Roof offset"),
     ("incidence", "i", "Grating incidence"),
-    ("alignment", "∥", "Straight-through alignment"),
+    ("alignment", "∥", "Beam alignment"),
     ("length", "L", "Beam endpoint separation"),
     ("path_length", "Σ", "Total routed path length"),
 )
@@ -75,6 +75,7 @@ def component_marks(document, node_id):
             add("angle", f"{node.reference}: legacy turn {edge.turns[node_id]:g}° on beam {edge.id}")
     if node.kind == "roof":
         add("offset", f"{node.reference}: transverse return separation {parameter_values(node)['beam_separation']:g} mm")
+        add("alignment", f"{node.reference}: roof entrance automatically faces the incoming beam")
     if node.kind == "grating":
         add("incidence", f"{node.reference}: incidence {parameter_values(node)['incidence_angle']:g}° relative to the beam")
     if node.kind in AXIS_ALIGNED_KINDS:

@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from PyOpticL.ray_math import norm, sub, yaw, dot, mul, heading
+from PyOpticL.ray_math import add, norm, sub, yaw, dot, mul, heading
 from PyOpticL.schematic.physical import wrap_angle
 from PyOpticL.schematic import Connection, Endpoint, PathLengthConstraint, Schematic, compile_schematic, load_schematic, save_schematic
 from PyOpticL.schematic.registry import select_preset
@@ -141,6 +141,54 @@ class RoofReturnTests(unittest.TestCase):
         self.assertGreater(abs(rows[0].value), 1)
         self.assertFalse(trace.ok)
         self.assertFalse(compile_schematic(document).ok)
+
+    def test_uncentered_roof_slides_without_tilting_when_other_parts_are_pinned(self):
+        for vertical, reverse, angle in ((False, False, 0), (False, True, 37),
+                                         (True, False, -150), (True, True, 0)):
+            with self.subTest(vertical=vertical, reverse=reverse, angle=angle):
+                document = shared_mirror_roof_scene(vertical=vertical, reverse=reverse, angle=angle)
+                initial = solve_scene(document)
+                self.assertTrue(initial.ok, initial.diagnostics)
+                document.layout["poses"] = initial.poses
+                roof = document.nodes[2]
+                roof.physical.clear()
+                for node in (roof, document.nodes[1]):
+                    visit = document.optical_pass(node.id)
+                    visit.centered = False
+                    document.passes.append(visit)
+                for node in document.nodes:
+                    if node.id != roof.id:
+                        node.physical.update(zip(("x", "y"), initial.poses[node.id][:2]))
+                state = initial.layout.visits[roof.id]
+                for distance in (20, -15):
+                    target = [initial.poses[roof.id][i] + distance * state.incoming[i] for i in range(3)]
+                    solved = solve_scene(document, targets=((roof.id, 0, target[0]), (roof.id, 1, target[1])))
+                    self.assertTrue(solved.ok, solved.diagnostics)
+                    self.assertAlmostEqual(wrap_angle(solved.poses[roof.id][3] - initial.poses[roof.id][3]),
+                                           0, delta=1e-6)
+                    returning = solved.layout.visits[roof.id]
+                    self.assertLess(norm(sub(returning.exit, add(returning.entry, sub(state.exit, state.entry)))),
+                                    1e-6)
+                    for node in document.nodes:
+                        if node.id != roof.id:
+                            self.assertEqual(solved.poses[node.id][:2], initial.poses[node.id][:2])
+                    document.layout["poses"] = solved.poses
+                    self.assertTrue(compile_schematic(document).ok)
+
+    def test_uncentered_roof_still_requires_normal_entrance_incidence(self):
+        document = shared_mirror_roof_scene()
+        initial = solve_scene(document)
+        self.assertTrue(initial.ok, initial.diagnostics)
+        document.layout["poses"] = initial.poses
+        roof = document.nodes[2]
+        visit = document.optical_pass(roof.id)
+        visit.centered = False
+        document.passes.append(visit)
+        document.layout["poses"][roof.id][3] -= 25
+        trace = trace_scene(document)
+        alignment = next(row for row in trace.residuals if row.id == f"axis/{roof.id}/yaw")
+        self.assertAlmostEqual(alignment.value, 25, delta=1e-6)
+        self.assertFalse(trace.ok)
 
     def test_roof_position_pin_does_not_pin_yaw_when_upstream_beam_moves(self):
         document = shared_mirror_roof_scene()

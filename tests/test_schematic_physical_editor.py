@@ -299,6 +299,47 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertEqual(len(e.document.connections), 4)
         self.assertEqual(len(e.scene.symbols), 4)
 
+    def test_roof_with_pinned_neighbors_projects_drag_onto_beam_without_tilting(self):
+        from test_schematic_roof_return import shared_mirror_roof_scene
+        from PyOpticL.schematic.scene_solver import solve_scene
+        from PyOpticL.schematic.physical import wrap_angle
+
+        document = shared_mirror_roof_scene(angle=37)
+        initial = solve_scene(document)
+        self.assertTrue(initial.ok, initial.diagnostics)
+        document.layout["poses"] = initial.poses
+        roof = document.nodes[2]
+        roof.physical.clear()
+        for node in (roof, document.nodes[1]):
+            visit = document.optical_pass(node.id)
+            visit.centered = False
+            document.passes.append(visit)
+        for node in document.nodes:
+            if node.id != roof.id:
+                node.physical.update(zip(("x", "y"), initial.poses[node.id][:2]))
+        e = self.open(document)
+        before = deepcopy(e.document.to_dict())
+        old = e.document.layout["poses"][roof.id]
+        direction = e.display_trace.layout.visits[roof.id].incoming
+        target = (old[0] + 20 * direction[0] - 5 * direction[1],
+                  old[1] + 20 * direction[1] + 5 * direction[0])
+        index = e.history.index
+        e.begin_drag()
+        e.start_solve(((roof.id, 0, target[0]), (roof.id, 1, target[1])), True)
+        self.settle()
+        self.assertTrue(e.display_trace.ok)
+        moved = e.document.layout["poses"][roof.id]
+        self.assertAlmostEqual(moved[0], old[0] + 20 * direction[0], delta=1e-6)
+        self.assertAlmostEqual(moved[1], old[1] + 20 * direction[1], delta=1e-6)
+        self.assertAlmostEqual(wrap_angle(moved[3] - old[3]), 0, delta=1e-6)
+        self.assertEqual(e.history.index, index + 1)
+        self.assertEqual(e.document.node(roof.id).physical, {})
+        self.assertFalse(e.document.optical_pass(roof.id).centered)
+        self.assertTrue(compile_schematic(e.document).ok)
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), before)
+
     def test_roof_drag_fixes_beam_offset_and_changes_free_angle_as_one_edit(self):
         from test_schematic_roof_return import shared_mirror_roof_scene
         from PyOpticL.ray_math import norm, sub, mul, dot
