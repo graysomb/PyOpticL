@@ -69,6 +69,15 @@ def grating_direction(direction, normal, transverse, wavelength_nm, order, groov
     return add(tangent, mul(normal, (1 if dn > 0 else -1) * sqrt(squared)))
 
 
+def grating_surface_angle(incidence_angle, mirrored=False):
+    """Yaw of the real grating face for either in-plane diffraction side.
+
+    Turning the upright assembly to its opposite face reverses diffraction
+    while retaining the selected order and incidence magnitude.
+    """
+    return 180 - incidence_angle if mirrored else incidence_angle
+
+
 def trace_roof(point, direction, center, vertical, model):
     if not all(isfinite(v) for v in (*point, *direction)) or norm(direction) < 1e-12:
         return None

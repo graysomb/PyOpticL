@@ -7,6 +7,7 @@ portable model, compiler, or numerical worker.
 from PyOpticL import lab_catalog
 from PyOpticL.beam_path import Stop, TransmissionGrating
 from PyOpticL.roof_mirror import RoofGeometry, MountedRoof, RoofOptic
+from PyOpticL.ray_math import grating_surface_angle
 
 
 def vendor(part):
@@ -56,14 +57,16 @@ def roof(orientation="horizontal", beam_separation=12.7, mounted=True, reverse=F
     return MountedRoof(geometry) if mounted else RoofOptic(geometry)
 
 
-def grating(incidence_angle=49.9, order=1, design_wavelength=1550, mounted=True):
+def grating(incidence_angle=49.9, order=1, design_wavelength=1550, mounted=True, mirrored=False):
     from PyOpticL.grating import MountedGrating, GratingOptic
 
     if mounted:
         return MountedGrating(
-            design_wavelength=design_wavelength, incidence_angle=incidence_angle, order=order
+            design_wavelength=design_wavelength, incidence_angle=incidence_angle, order=order,
+            mirrored=mirrored,
         )
     result = GratingOptic(order=order)
-    result.shape = lambda: lab_catalog.transform(GratingOptic.shape(result), rotation=(0, 0, incidence_angle))
-    result.interfaces = lambda: [TransmissionGrating(rotation=(0, 0, incidence_angle), order=order)]
+    angle = grating_surface_angle(incidence_angle, mirrored)
+    result.shape = lambda: lab_catalog.transform(GratingOptic.shape(result), rotation=(0, 0, angle))
+    result.interfaces = lambda: [TransmissionGrating(rotation=(0, 0, angle), order=order)]
     return result

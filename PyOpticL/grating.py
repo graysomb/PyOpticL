@@ -10,6 +10,7 @@ import Part
 
 from PyOpticL import attachments
 from PyOpticL.beam_path import TransmissionGrating, grating_angles
+from PyOpticL.ray_math import grating_surface_angle
 from PyOpticL.component_contract import ComponentContract, Frame, Hole, MechanicalInterface, Provenance, Thread
 from PyOpticL.lab_catalog import DATA, Assembly, NominalScrew, _blind_bore, asset_record, transform, vendor_shape, _dofs
 
@@ -155,13 +156,16 @@ class GratingAdapter:
 
 
 class MountedGrating(Assembly):
-    def __init__(self, mount='MK05S', design_wavelength=1550., incidence_angle=49.9, order=1):
+    def __init__(self, mount='MK05S', design_wavelength=1550., incidence_angle=49.9, order=1, mirrored=False):
         if mount != 'MK05S':
             raise ValueError('Unsupported grating mount: '+str(mount))
         self.angles = grating_angles(design_wavelength,incidence_angle,order)
+        self.mirrored = bool(mirrored)
+        if self.mirrored:
+            self.angles['deflection_angle_deg'] *= -1
         self.incidence_angle, self.order = incidence_angle, order
-        rotation = App.Rotation('XYZ',0,0,incidence_angle)
-        self.optical_rotation = (0,0,incidence_angle)
+        self.optical_rotation = (0,0,grating_surface_angle(incidence_angle, self.mirrored))
+        rotation = App.Rotation('XYZ',*self.optical_rotation)
         adapter = GratingAdapter()
         children = [('LightSmyth grating',GratingOptic(order,optical=False),(0,0,0),(0,0,0)),
                     ('MK05S',MK05SMount(),(0,0,0),(0,0,0)),

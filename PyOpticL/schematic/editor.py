@@ -862,7 +862,12 @@ class SchematicEditor(QtWidgets.QWidget):
         for name, value in parameter_values(node).items():
             spec = parameter_specs(node)[name]
             callback = lambda value, name=name: self.set_node_dict(node.id,"parameters",name,value)
-            if spec.integer:
+            if node.kind == "grating" and name == "mirrored":
+                field = QtWidgets.QCheckBox(spec.label)
+                field.setChecked(bool(value))
+                field.toggled.connect(lambda checked, callback=callback: callback(int(checked)))
+                self.form.addRow(field)
+            elif spec.integer:
                 field = QtWidgets.QSpinBox()
                 field.setRange(int(spec.minimum if spec.minimum is not None else -1000000),
                                int(spec.maximum if spec.maximum is not None else 1000000))

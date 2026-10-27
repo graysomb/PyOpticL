@@ -49,6 +49,11 @@ The grating's outgoing direction follows source wavelength, incidence angle,
 and diffraction order. The incidence angle is a hard constraint relative to
 the incoming beam: free downstream components move to meet the diffracted ray,
 while position, beam-length and mirror-turn pins remain enforced.
+Select the grating and enable **Mirrored orientation** to send diffraction to
+the other side of the incident beam. This keeps the same incidence angle and
+diffraction order, turns the real assembly in XY with its mount upright, and
+repositions free downstream optics. A/B propagation remains reversible in
+either orientation; the selection is saved and included in generated Python/CAD.
 Unsupported nonpropagating/grazing orders block export
 and optimization with a diagnostic. The optimizer preserves this optical
 relationship. A/B connections remain reversible. The model is the catalog's

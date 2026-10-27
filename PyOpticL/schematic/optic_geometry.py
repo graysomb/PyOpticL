@@ -5,7 +5,7 @@ from functools import lru_cache
 import json
 from math import hypot, sqrt
 from pathlib import Path
-from PyOpticL.ray_math import add, mul, sub, trace_roof
+from PyOpticL.ray_math import add, mul, sub, trace_roof, grating_surface_angle
 from .registry import parameter_values, default_turn, COUPLING_MOUNTS
 
 
@@ -59,7 +59,8 @@ def element_spec(node, topology=None):
         )
     if node.kind == "grating":
         return OpticalElementSpec(
-            (0.95, 31.8, 12.3), (0, -15.9, -6.15), ("rect", 15.4, 5.65), p["incidence_angle"]
+            (0.95, 31.8, 12.3), (0, -15.9, -6.15), ("rect", 15.4, 5.65),
+            grating_surface_angle(p["incidence_angle"], p["mirrored"])
         )
     if node.kind == "roof":
         sep = p["beam_separation"]

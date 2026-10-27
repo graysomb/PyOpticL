@@ -1,12 +1,14 @@
 """Fixed grating incidence moves free downstream optics onto the diffracted ray."""
 
 from copy import deepcopy
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 
 from PyOpticL.ray_math import add, heading, mul, norm, sub, yaw
-from PyOpticL.schematic import Endpoint, compile_schematic
+from PyOpticL.schematic import Endpoint, compile_schematic, load_schematic, save_schematic
 from PyOpticL.schematic.physical import wrap_angle
-from PyOpticL.schematic.registry import grating_input_heading, grating_turn, select_preset
+from PyOpticL.schematic.registry import grating_input_heading, grating_turn, select_preset, parameter_values
 from PyOpticL.schematic.scene_layout import initialize_layout, trace_scene
 from PyOpticL.schematic.scene_solver import solve_scene
 from PyOpticL.schematic.topology import resolve_topology
@@ -65,6 +67,66 @@ class GratingConstraintTests(unittest.TestCase):
         document.layout["poses"] = solution.poses
         compiled = compile_schematic(document)
         self.assertTrue(compiled.ok, compiled.diagnostics)
+
+    def test_mirrored_orientation_reverses_diffraction_without_changing_incidence_or_order(self):
+        for reverse in (False, True):
+            for wavelength in (635, 1550):
+                turns = []
+                for mirrored in (0, 1):
+                    with self.subTest(reverse=reverse, wavelength=wavelength, mirrored=mirrored):
+                        document = grating_chain(reverse=reverse, wavelength=wavelength)
+                        grating = document.nodes[2]
+                        grating.parameters["mirrored"] = mirrored
+                        solution = solve_scene(document, iterations=40)
+                        self.assert_grating(document, solution)
+                        state = solution.layout.visits[grating.id]
+                        turns.append(wrap_angle(heading(state.outputs["out"]) - heading(state.incoming)))
+                        self.assertEqual(parameter_values(grating)["incidence_angle"], 49.9)
+                        self.assertEqual(parameter_values(grating)["order"], 1)
+                self.assertAlmostEqual(turns[0], -turns[1], delta=1e-6)
+
+    def test_mirrored_orientation_persists_copies_and_defaults_off_in_existing_files(self):
+        document = grating_chain()
+        grating = document.nodes[2]
+        self.assertEqual(parameter_values(grating)["mirrored"], 0)
+        grating.parameters["mirrored"] = 1
+        solution = solve_scene(document)
+        self.assert_grating(document, solution)
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "mirrored.json"
+            save_schematic(document, path)
+            restored = load_schematic(path)
+            self.assertEqual(restored.to_dict(), document.to_dict())
+            self.assertTrue(compile_schematic(restored).ok)
+        copy = document.duplicate_nodes([grating.id])[0]
+        self.assertEqual(copy.parameters["mirrored"], 1)
+        select_preset(copy, "MK05S")
+        self.assertEqual(copy.parameters["mirrored"], 1)
+        for value in (-1, 2, 0.5, 1.0):
+            invalid = grating_chain()
+            invalid.nodes[2].parameters["mirrored"] = value
+            self.assertFalse(compile_schematic(invalid).ok)
+
+    def test_mirrored_orientation_is_preserved_by_legacy_export_and_optimization(self):
+        from PyOpticL.schematic.optimization import (
+            OptimizationOptions, PackingBox, build_problem, optimize_layout,
+        )
+
+        document = chain("source", "grating", "output")
+        grating = document.nodes[1]
+        select_preset(grating, "bare")
+        grating.parameters["mirrored"] = 1
+        compiled = compile_schematic(document)
+        self.assertTrue(compiled.ok, compiled.diagnostics)
+        self.assertIn("'mirrored': 1", compiled.source)
+        turn = grating_turn(document, grating, resolve_topology(document))
+        self.assertLess(turn, 0)
+        self.assertAlmostEqual(compiled.geometry.headings[document.connections[1].id], turn, delta=1e-6)
+        problem = build_problem(document, {grating.id: 20}, PackingBox(-100, -100, 400, 400),
+                                OptimizationOptions(starts=1, iterations=2))
+        result = optimize_layout(problem)
+        self.assertEqual(result.status, "feasible", result.violations)
+        self.assertAlmostEqual(result.problem.angles[0].turn, turn, delta=1e-6)
 
     def test_free_waveplates_irises_and_mirrors_reflow_together_after_a_grating(self):
         for transmission in (("hwp", "iris"), ("lens",)):

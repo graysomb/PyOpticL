@@ -19,6 +19,39 @@ class NativeMultipassTests(unittest.TestCase):
     tearDown = FreeCADSchematicTests.tearDown
     build = FreeCADSchematicTests.build
 
+    def test_mirrored_grating_baseplate_and_saved_cad_keep_the_mount_upright(self):
+        import json
+        from tempfile import TemporaryDirectory
+        from PyOpticL.layout import Component, Layout
+        from PyOpticL.schematic.catalog_parts import grating
+        from PyOpticL.schematic.cad import add_baseplate
+
+        layout = Layout("Mirrored grating plate")
+        part = layout.add(Component("G1", grating(mirrored=True)), (0, 0, 0), 0)
+        layout.recompute()
+        plate = add_baseplate(layout, thickness=30)
+        obj = plate.get_object()
+        self.assertTrue(obj.Shape.isValid())
+        self.assertEqual(len(obj.Shape.Solids), 1)
+        plan = json.loads(obj.MachiningPlan)
+        self.assertEqual(len(plan["holes"]), 4)
+        self.assertLess(obj.Shape.BoundBox.ZMax, 0)
+        expected = obj.Shape.Volume
+        part_name, plate_name = part.get_object().Name, obj.Name
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "mirrored.FCStd"
+            self.cad.saveAs(str(path))
+            App.closeDocument(self.cad.Name)
+            self.cad = App.openDocument(str(path))
+            self.cad.recompute()
+            self.assertTrue(self.cad.getObject(plate_name).Shape.isValid())
+            self.assertAlmostEqual(self.cad.getObject(plate_name).Shape.Volume, expected, delta=1e-6)
+            contract = json.loads(self.cad.getObject(part_name).ComponentContract)
+            surface = next(frame for frame in contract["frames"] if frame["name"] == "grating_surface")
+            output = next(frame for frame in contract["frames"] if frame["name"] == "output")
+            self.assertAlmostEqual(surface["rotation"][2], 180 - 49.9, delta=1e-6)
+            self.assertLess(output["rotation"][2], 0)
+
     def test_fixed_grating_moves_free_mirror_and_receiver_and_matches_native_diffraction(self):
         from test_schematic_grating_constraints import grating_chain
         from PyOpticL.schematic.registry import grating_turn, select_preset
@@ -27,14 +60,17 @@ class NativeMultipassTests(unittest.TestCase):
         from PyOpticL.schematic.physical import wrap_angle
         from PyOpticL.ray_math import heading
 
-        for index, (preset, reverse) in enumerate((("bare", False), ("MK05S", True))):
-            with self.subTest(preset=preset, reverse=reverse):
+        heights = {}
+        cases = (("bare", False, 0), ("bare", False, 1), ("MK05S", True, 0), ("MK05S", True, 1))
+        for index, (preset, reverse, mirrored) in enumerate(cases):
+            with self.subTest(preset=preset, reverse=reverse, mirrored=mirrored):
                 if index:
                     self.tearDown()
                     self.setUp()
                 document = grating_chain(reverse=reverse, transmission=("hwp", "iris") if not reverse else ())
                 grating = document.nodes[2]
                 select_preset(grating, preset)
+                grating.parameters["mirrored"] = mirrored
                 solution = solve_scene(document, iterations=40)
                 self.assertTrue(solution.ok, solution.diagnostics)
                 document.layout["poses"] = solution.poses
@@ -48,6 +84,13 @@ class NativeMultipassTests(unittest.TestCase):
                                 if segment.StartObject == part)
                 turn = grating_turn(document, grating, resolve_topology(document))
                 self.assertAlmostEqual(wrap_angle(heading(outgoing) - heading(incoming) - turn), 0, delta=1e-6)
+                if preset == "MK05S":
+                    frame = next(frame for frame in part.Proxy.contract().frames if frame.name == "mounting_face")
+                    self.assertLess(frame.position[2], 0)
+                    if not mirrored:
+                        heights[preset] = frame.position[2]
+                    else:
+                        self.assertAlmostEqual(frame.position[2], heights[preset], delta=1e-6)
 
     def test_half_wave_plate_and_iris_export_with_axes_parallel_to_the_beam(self):
         from test_schematic_transmission_alignment import transmission_scene

@@ -65,7 +65,7 @@ OPEN_SEGMENTS = [((63.875542073984676, 78.35816394347283, 0.0),
 def build_layout():
     layout = Layout('Grating and alignment iris')
     objects = {}
-    part_0 = Component('G1', catalog.grating(mounted=False, design_wavelength=1550, incidence_angle=49.9, order=1))
+    part_0 = Component('G1', catalog.grating(mounted=False, design_wavelength=1550, incidence_angle=49.9, order=1, mirrored=0))
     x, y, z, angle = PLACEMENTS['G1']
     objects['G1'] = layout.add(part_0, position=(x, y, z), rotation=angle)
     part_1 = Component('I1', catalog.iris(aperture_diameter=0.5))

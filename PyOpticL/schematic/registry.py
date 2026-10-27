@@ -178,6 +178,7 @@ SYMBOLS["grating"] = Symbol(
     {
         "incidence_angle": Parameter("Incidence angle (deg)", 49.9, -89.999, 89.999),
         "order": Parameter("Diffraction order", 1, -20, 20, integer=True),
+        "mirrored": Parameter("Mirrored orientation", 0, 0, 1, integer=True),
     },
 )
 SYMBOLS["roof"] = Symbol(
@@ -225,6 +226,8 @@ def grating_turn(document, node, topology, pass_id=None):
     if not -1 < sine < 1:
         raise ValueError("Selected grating order is nonpropagating or grazing at the source wavelength")
     turn = alpha + degrees(asin(sine))
+    if p["mirrored"]:
+        turn = -turn
     return -turn if topology.incident_ports.get(pass_id or node.id) == "B" else turn
 
 

@@ -324,6 +324,38 @@ class PhysicalEditorTests(unittest.TestCase):
         self.settle()
         check()
 
+    def test_grating_mirrored_orientation_checkbox_reflows_and_undoes(self):
+        from test_schematic_grating_constraints import grating_chain
+        from PyOpticL.ray_math import heading
+        from PyOpticL.schematic.physical import wrap_angle
+
+        e = self.open(grating_chain())
+        grating = e.document.nodes[2]
+        self.select(grating.id)
+        before = deepcopy(e.document.to_dict())
+        state = compile_schematic(e.document).geometry.visits[grating.id]
+        original_turn = wrap_angle(heading(state.outputs["out"]) - heading(state.incoming))
+        checkbox = e.findChild(QtWidgets.QCheckBox, "componentParameter_mirrored")
+        self.assertFalse(checkbox.isChecked())
+        checkbox.setChecked(True)
+        self.settle()
+        compiled = compile_schematic(e.document)
+        self.assertTrue(compiled.ok, compiled.diagnostics)
+        self.assertEqual(e.document.node(grating.id).parameters["mirrored"], 1)
+        state = compiled.geometry.visits[grating.id]
+        self.assertAlmostEqual(wrap_angle(heading(state.outputs["out"]) - heading(state.incoming)),
+                               -original_turn, delta=1e-6)
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), before)
+        self.select(grating.id)
+        self.assertFalse(e.findChild(QtWidgets.QCheckBox, "componentParameter_mirrored").isChecked())
+        e.redo()
+        self.settle()
+        self.select(grating.id)
+        self.assertTrue(e.findChild(QtWidgets.QCheckBox, "componentParameter_mirrored").isChecked())
+        self.assertTrue(compile_schematic(e.document).ok)
+
     def test_pinned_drag_is_rejected_and_reports_residual(self):
         doc = double_pass()
         doc.nodes[3].physical["x"] = 200
