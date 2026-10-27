@@ -104,9 +104,14 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   Finite apertures, single-sided coatings, off-axis lens deflection and roof facets
   are checked. An unintended interception reports the part and beam and asks you
   to add a pass or move the optic.
-- Drag a body to solve its new placement while preserving hard constraints.
-  A valid release is one undoable edit; an unresolved release restores the previous
-  layout and reports residuals. **R** requests a yaw rotation. Free geometry changes
+- In a valid layout, drag a body to solve its new placement while preserving hard
+  constraints. A valid release is one undoable edit; an unresolved release restores
+  the previous layout and reports residuals. If the layout already has errors or missing
+  connections, dragging and **R** keep edits as an undoable draft while respecting
+  position and source-direction pins. Dashed connection guides and ports stay at
+  the component bodies so incomplete layouts remain easy to reconnect. Validation
+  and CAD generation still require a resolved optical layout.
+  **R** requests a yaw rotation. Free geometry changes
   without checking any constraint boxes. Grid coordinates and sizes use millimetres.
   When connecting or moving a centered mirror, its starting orientation is
   calculated from the two beam legs, including a turn to the coated face when

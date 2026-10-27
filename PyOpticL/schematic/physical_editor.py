@@ -19,7 +19,7 @@ from .model import Schematic, History, Endpoint, Connection, OpticalPass, new_id
 from .registry import SYMBOLS, AXIS_ALIGNED_KINDS, parameter_values
 from .topology import resolve_topology
 from .scene_layout import initialize_layout, trace_scene, poses_for, source_offset
-from .scene_solver import solve_scene, apply_scene_solution
+from .scene_solver import solve_scene, apply_scene_solution, variables
 from .physical import wrap_angle
 from .optic_geometry import element_spec
 from .geometry import snap_point
@@ -142,7 +142,7 @@ class PhysicalSymbol(SymbolItem):
         active = editor.active_pass(self.node.id)
         geometry = editor.display_trace.layout if editor.display_trace else None
         for (visit, name), port in self.ports.items():
-            state = geometry.visits.get(visit) if geometry else None
+            state = geometry.visits.get(visit) if geometry and editor.display_trace.ok else None
             local = QtCore.QPointF()
             if state:
                 incident = editor.scene.topology.incident_ports.get(visit)
@@ -237,14 +237,16 @@ class PhysicalBeam(ConnectionItem):
         a = trace.layout.visits.get(edge.a.visit_id) if trace else None
         b = trace.layout.visits.get(edge.b.visit_id) if trace else None
         resolved = editor.scene.topology.edges.get(edge.id)
-        if resolved and a and b:
+        if resolved and a and b and trace.ok:
             start = trace.layout.visits[resolved.source.visit_id].exit
             end = trace.layout.visits[resolved.target.visit_id].entry
             valid = trace.ok
         else:
             poses = editor.display_poses()
-            start = poses.get(edge.a.node_id, (0, 0, 0))
-            end = poses.get(edge.b.node_id, (0, 0, 0))
+            source = resolved.source if resolved else edge.a
+            target = resolved.target if resolved else edge.b
+            start = poses.get(source.node_id, (0, 0, 0))
+            end = poses.get(target.node_id, (0, 0, 0))
             valid = False
         first, last = project(start, editor.projection), project(end, editor.projection)
         p = QtGui.QPainterPath(first)
@@ -263,8 +265,9 @@ class PhysicalBeam(ConnectionItem):
         if not valid:
             pen.setStyle(Qt.DashLine)
         self.setPen(pen)
+        description = "Physical beam" if valid else "Unresolved connection guide"
         self.setToolTip(
-            f"Physical beam · {edge.id}\nSelect to edit endpoint separation or folding permission"
+            f"{description} · {edge.id}\nSelect to edit endpoint separation or folding permission"
         )
 
     def mouseDoubleClickEvent(self, event):
@@ -316,7 +319,11 @@ class PhysicalScene(SchematicScene):
         super().drawBackground(painter, rect)
 
     def choose_ports(self, position):
-        ports = [item for item in self.items(position) if isinstance(item, PhysicalPort)]
+        # Ports keep a fixed pixel size at every zoom. Hit-test using the view
+        # transform so a click on a nearby body is not mistaken for wiring.
+        items = self.items(position, Qt.IntersectsItemShape, Qt.DescendingOrder,
+                           self.editor.view.viewportTransform())
+        ports = [item for item in items if isinstance(item, PhysicalPort)]
         return [p for p in ports if not self.editor.port_connected(p.endpoint)]
 
     def mousePressEvent(self, event):
@@ -419,6 +426,8 @@ class PhysicalSchematicEditor(BaseEditor):
         self.preview_poses = None
         self.pending_targets = ()
         self.drag_start = None
+        self.drag_poses = None
+        self.draft_drag = False
         document = document or Schematic()
         fresh = document.layout is None
         initialize_layout(document)
@@ -528,7 +537,7 @@ class PhysicalSchematicEditor(BaseEditor):
         if solve:
             self.solve_after_edit()
 
-    def solve_after_edit(self):
+    def solve_after_edit(self, targets=()):
         if self.document.optimized_layout:
             from .optimization import optimized_physical_layout
 
@@ -550,7 +559,7 @@ class PhysicalSchematicEditor(BaseEditor):
             self.status.setText(message)
             return
         if self.scene.topology.ok:
-            self.start_solve()
+            self.start_solve(targets)
         else:
             self.show_diagnostics(self.scene.topology.diagnostics)
 
@@ -580,6 +589,9 @@ class PhysicalSchematicEditor(BaseEditor):
     def start_solve(self, targets=(), final=False):
         self.cancel_workers()
         self.revision += 1
+        if self.dragging and self.draft_drag:
+            self.move_draft(targets, final)
+            return
         worker = SceneWorker(self.scene_document(), self.revision, targets, final, self.packing(), self)
         worker.completed.connect(self.solved)
         worker.failed.connect(self.solve_failed)
@@ -691,6 +703,34 @@ class PhysicalSchematicEditor(BaseEditor):
         self.revision += 1
         self.dragging = True
         self.drag_start = deepcopy(self.document.to_dict())
+        self.drag_poses = deepcopy(self.display_poses())
+        self.pending_targets = ()
+        self.draft_drag = not self.display_trace.ok
+
+    def move_draft(self, targets, final):
+        """Keep deliberate edits to an unresolved draft, even if solving fails."""
+        poses = deepcopy(self.drag_poses)
+        free = set(variables(self.document))
+        for node_id, axis, value in targets:
+            if (node_id, axis) in free and node_id in poses:
+                poses[node_id][axis] = value
+        self.preview_poses = poses
+        if final:
+            self.document.layout["poses"].update(deepcopy(poses))
+            saved = self.document.optimized_layout
+            if saved and saved.get("input_version") == 6:
+                # Preserve the effective graph for display without certifying
+                # an invalid packing or refreshing its validation fingerprint.
+                saved["geometry"]["poses"].update(deepcopy(poses))
+            self.dragging = False
+            self.draft_drag = False
+            self.preview_poses = None
+            self.commit(solve=False)
+            # Try to repair the optics while holding the requested placement.
+            # A failed solve leaves the user's draft edit in place.
+            self.solve_after_edit(targets)
+        else:
+            self.scene.refresh()
 
     def queue_drag(self):
         targets = []
@@ -700,7 +740,9 @@ class PhysicalSchematicEditor(BaseEditor):
             p = item.pos()
             targets.extend(((node_id, 0, p.x()), (node_id, 1 if self.projection == "XY" else 2, -p.y())))
         self.pending_targets = tuple(targets)
-        if targets and not self.drag_timer.isActive():
+        if targets and self.draft_drag:
+            self.start_solve(self.pending_targets)
+        elif targets and not self.drag_timer.isActive():
             self.drag_timer.start(75)
 
     def finish_drag(self):
@@ -710,7 +752,18 @@ class PhysicalSchematicEditor(BaseEditor):
         self.queue_drag()
         self.drag_timer.stop()
         if self.pending_targets:
-            self.start_solve(self.pending_targets, True)
+            if self.draft_drag:
+                # Committing rebuilds the scene. Wait until the symbol's mouse
+                # release handler has returned before replacing its Qt item.
+                targets, revision = self.pending_targets, self.revision
+
+                def finish():
+                    if self.dragging and self.revision == revision:
+                        self.start_solve(targets, True)
+
+                QtCore.QTimer.singleShot(0, finish)
+            else:
+                self.start_solve(self.pending_targets, True)
         else:
             self.dragging = False
 
@@ -1051,7 +1104,7 @@ class PhysicalSchematicEditor(BaseEditor):
         for node_id in self.selected_nodes():
             targets.append((node_id, 3, self.display_poses()[node_id][3] + self.document.settings["angle"]))
         if targets:
-            self.dragging = True
+            self.begin_drag()
             self.start_solve(tuple(targets), True)
 
     def restore(self):
@@ -1059,6 +1112,7 @@ class PhysicalSchematicEditor(BaseEditor):
         self.revision += 1
         self.preview_poses = None
         self.dragging = False
+        self.draft_drag = False
         initialize_layout(self.document)
         self.projection = self.document.layout.get("projection", "XY")
         BaseEditor.restore(self)
@@ -1092,6 +1146,8 @@ class PhysicalSchematicEditor(BaseEditor):
             self.commit()
 
     def closeEvent(self, event):
+        self.dragging = False
+        self.revision += 1
         self.cancel_workers()
         for worker in list(self.workers):
             worker.wait(3000)
