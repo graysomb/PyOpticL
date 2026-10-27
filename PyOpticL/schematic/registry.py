@@ -38,7 +38,7 @@ MIN_BEAM_TURN = 0.001  # stay above the ray tracer's parallel-plane tolerance
 
 DIAMETER = Parameter("Diameter (mm)", 12.7, 0, exclusive=True)
 SOURCE = {
-    "wavelength": Parameter("Wavelength (nm)", 635, 0, exclusive=True),
+    "wavelength": Parameter("Wavelength (nm)", 1550, 0, exclusive=True),
     "power": Parameter("Power (W)", 1, 0, exclusive=True),
     "waist": Parameter("Beam waist radius (mm)", 0.5, 0, exclusive=True),
     "polarization_angle": Parameter("Linear polarization (deg)", 0),

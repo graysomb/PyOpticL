@@ -4,21 +4,21 @@ from PyOpticL.beam_path import BeamPath, linear_polarization
 from PyOpticL.library import optics, thorlabs
 from PyOpticL.schematic.runtime import check_pass_trace
 
-PLACEMENTS = {'BS1': (50, 0, 0.0, -3.492883360846785e-13),
- 'FM1': (50.00001336934802, 80.00001314947124, 0.0, -44.99999992123106)}
+PLACEMENTS = {'BS1': (50, 0, 0.0, -1.338488763574108e-10),
+ 'FM1': (50.00000000043266, 79.99999978062873, 0.0, -44.99999992152473)}
 
 SOURCE = {'angle': 0,
  'polarization_angle': 0,
  'position': (0, 0, 0.0),
  'power': 1,
  'waist': 0.5,
- 'wavelength': 635}
+ 'wavelength': 1550}
 
 EXPECTED_PASSES = {'adaptive-splitter-90-BS1': {'branches': {'reflected': {'connection': 'cfe4c1f5-2314-5dc0-a836-bdbce9513c90/in',
-                                                         'direction': (1.2101430968414206e-14,
+                                                         'direction': (4.672151554530046e-12,
                                                                        1.0,
                                                                        0.0),
-                                                         'length': 79.99999978012416,
+                                                         'length': 79.99999978056984,
                                                          'pass': 'cfe4c1f5-2314-5dc0-a836-bdbce9513c90'},
                                            'transmitted': {'connection': 'adaptive-splitter-90-BS1-O1',
                                                            'direction': (1.0,
@@ -41,8 +41,8 @@ EXPECTED_PASSES = {'adaptive-splitter-90-BS1': {'branches': {'reflected': {'conn
                              'reference': 'O1'},
  'adaptive-splitter-90-O2': {'branches': {},
                              'component': None,
-                             'entry': (130.0, 80.00000000008951, 0.0),
-                             'exit': (130.0, 80.00000000008951, 0.0),
+                             'entry': (130.0, 80.00000000008788, 0.0),
+                             'exit': (130.0, 80.00000000008788, 0.0),
                              'internal_length': 0.0,
                              'mode': 'receive',
                              'reference': 'O2'},
@@ -58,26 +58,26 @@ EXPECTED_PASSES = {'adaptive-splitter-90-BS1': {'branches': {'reflected': {'conn
                              'reference': 'S1'},
  'cfe4c1f5-2314-5dc0-a836-bdbce9513c90': {'branches': {'out': {'connection': 'cfe4c1f5-2314-5dc0-a836-bdbce9513c90/out',
                                                                'direction': (1.0,
-                                                                             2.7495670185118115e-09,
+                                                                             2.743975602292892e-09,
                                                                              0.0),
-                                                               'length': 79.99999999999903,
+                                                               'length': 79.99999999962623,
                                                                'pass': 'adaptive-splitter-90-O2'}},
                                           'component': 'FM1',
-                                          'entry': (50.000000000000966,
-                                                    79.99999978012416,
+                                          'entry': (50.000000000373774,
+                                                    79.99999978056984,
                                                     0.0),
-                                          'exit': (50.000000000000966,
-                                                   79.99999978012416,
+                                          'exit': (50.000000000373774,
+                                                   79.99999978056984,
                                                    0.0),
                                           'internal_length': 0.0,
                                           'mode': 'pass',
                                           'reference': 'FM1'}}
 
-PATH_LENGTHS = {'reflected-path': 159.99999978012318}
+PATH_LENGTHS = {'reflected-path': 159.99999978019605}
 OPEN_SEGMENTS = [((50.0, 0.0, 0.0), (1.0, 0.0, 0.0), 100.0),
- ((50.000000000000966, 79.99999978012416, 0.0),
-  (1.0, 2.7495670185118115e-09, 0.0),
-  79.99999999999903)]
+ ((50.000000000373774, 79.99999978056984, 0.0),
+  (1.0, 2.743975602292892e-09, 0.0),
+  79.99999999962623)]
 
 def build_layout():
     layout = Layout('adaptive-splitter-90')

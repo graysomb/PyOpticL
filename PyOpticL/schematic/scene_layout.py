@@ -259,6 +259,19 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                 spec = None
             else:
                 distance, hit, normal, local, spec = intersect(document, node, pose, origin, direction, topo)
+                if visit.centered:
+                    # The component origin is its nominal interaction center.
+                    # Roof origins denote the entrance port; their exit is
+                    # intentionally displaced by the internal facet geometry.
+                    for axis in (1, 2):
+                        residual(
+                            f"center/{visit_id}/{axis}",
+                            local[axis],
+                            f"{node.reference}: pass must hit the optical center",
+                            node.id,
+                            visit_id,
+                            edge.id,
+                        )
                 residual(
                     f"aperture/{visit_id}",
                     max(0, aperture_excess(spec, local)),

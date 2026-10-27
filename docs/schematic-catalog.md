@@ -3,6 +3,16 @@
 Drag a symbol from the palette and select its **Part preset** in the inspector.
 Mounts and adapters belong to the optical assembly, so the same selection is
 used for Python export, Part bounds, and physical optimization.
+New beam and fiber sources default to **1550 nm**, as does `BeamPath` in Python.
+An explicitly selected wavelength is preserved.
+
+Each optical pass defaults to **Centered hit**. The physical solver, packing,
+validation and Python export require its intersection at the nominal interaction
+center, rather than accepting any point inside the aperture. Select the pass and
+uncheck **Centered hit** for an intentional off-center interaction. Shared return
+examples explicitly disable centering on their displaced lens and waveplate
+passes; clear-aperture checks remain active. Roofs center the entrance port and
+preserve the designed displacement of the exit.
 
 ![Grating and alignment iris in the schematic editor](../Designs/schematics/catalog/editor.png)
 

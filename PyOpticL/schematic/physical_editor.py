@@ -542,6 +542,12 @@ class PhysicalSchematicEditor(BaseEditor):
 
                 self.show_diagnostics([Diagnostic(str(error))])
                 return
+        if not self.document.nodes:
+            self.show_diagnostics([])
+            message = "Start by adding a Beam source or Fiber source from the palette."
+            self.messages.addItem(message)
+            self.status.setText(message)
+            return
         if self.scene.topology.ok:
             self.start_solve()
         else:
@@ -837,6 +843,16 @@ class PhysicalSchematicEditor(BaseEditor):
             row.addWidget(add_button)
             row.addWidget(remove)
             self.form.insertRow(3, buttons)
+            visit = self.document.optical_pass(self.active_pass(node.id))
+            if visit.mode != "emit" and node.kind != "output":
+                centered = QtWidgets.QCheckBox("Centered hit")
+                centered.setObjectName("passCenteredHit")
+                centered.setChecked(visit.centered)
+                centered.setToolTip(
+                    "Keep this pass at the optical center. Uncheck for an intentional off-center pass; clear-aperture checks still apply."
+                )
+                centered.toggled.connect(lambda value: self.set_centered_hit(node.id, value))
+                self.form.insertRow(4, centered)
             pose = self.display_poses().get(node.id, (0, 0, 0, 0))
             self.note(f"Physical Z: {pose[2]:.6f} mm · yaw: {pose[3]:.6f}°")
             spec = element_spec(node, self.scene.topology)
@@ -919,6 +935,10 @@ class PhysicalSchematicEditor(BaseEditor):
         p = self.document.optical_pass(visit_id)
         self.document.passes.append(p)
         return p
+
+    def set_centered_hit(self, node_id, centered):
+        self.editable_pass(node_id).centered = centered
+        self.commit()
 
     def effective_turn(self, node):
         g = self.display_trace.layout if self.display_trace else None
@@ -1008,7 +1028,7 @@ class PhysicalSchematicEditor(BaseEditor):
             for primary in self.document.passes:
                 if primary.id == original:
                     self.document.passes.append(
-                        OpticalPass(copy.id, copy.id, primary.mode, primary.turn, primary.direction)
+                        OpticalPass(copy.id, copy.id, primary.mode, primary.turn, primary.direction, primary.centered)
                     )
                     break
             for visit in self.document.optical_passes():
@@ -1016,6 +1036,7 @@ class PhysicalSchematicEditor(BaseEditor):
                     added = self.document.add_pass(copy.id, visit.mode)
                     added.turn = visit.turn
                     added.direction = visit.direction
+                    added.centered = visit.centered
         self.commit(selected=[n.id for n in copies])
 
     def rotate(self):

@@ -528,7 +528,7 @@ class BeamPath(Layout):
     def __init__(
         self,
         label: str,
-        wavelength: float = 635,
+        wavelength: float = 1550,
         polarization: JonesState = None,
         power: float = 1,
         waist_position: dim = dim(0, "mm"),

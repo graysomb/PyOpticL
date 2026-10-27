@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from PyOpticL.bounds import BoundingCircleXY
-from PyOpticL.schematic import compile_schematic, load_schematic, save_schematic
+from PyOpticL.schematic import Schematic, compile_schematic, load_schematic, save_schematic
 from PyOpticL.schematic.bounds import BoundsProvider
 from test_schematic_multipass import double_pass
 from test_schematic import chain
@@ -65,6 +65,31 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertTrue(compile_schematic(e.document).ok)
         self.assertFalse(e.bounds_toggle.isChecked())
 
+    def test_empty_document_shows_getting_started_guidance_and_remains_editable(self):
+        e = self.open(Schematic())
+        self.assertEqual(e.messages.count(), 1)
+        self.assertIn("Start by adding", e.messages.item(0).text())
+        self.assertIn("Beam source or Fiber source", e.status.text())
+        self.assertFalse(e.workers)
+        self.assertFalse(e.history.dirty)
+        e.add_symbol("source", (0, 0))
+        self.settle()
+        self.assertEqual(len(e.scene.symbols), 1)
+        self.assertTrue(any("Error:" in e.messages.item(i).text() for i in range(e.messages.count())))
+        e.undo()
+        self.settle()
+        self.assertFalse(e.document.nodes)
+        self.assertEqual(e.messages.count(), 1)
+        self.assertIn("Start by adding", e.messages.item(0).text())
+
+    def test_empty_document_still_requires_a_source_when_validating_or_exporting(self):
+        e = self.open(Schematic())
+        result = e.validate()
+        self.assertFalse(result.ok)
+        self.assertTrue(any("Exactly one beam source" in d.message for d in result.diagnostics))
+        self.assertFalse(e.export_python())
+        self.assertIn("Export blocked", e.status.text())
+
     def test_optic_body_dimensions_and_common_circle_scale(self):
         e = self.open()
         lens = e.scene.symbols["part-1"]
@@ -121,6 +146,29 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertIsNotNone(e.document.optical_pass(p.id).turn)
         self.assertIsNone(e.document.optical_pass("part-4").turn)
         self.assertNotIn("turn", e.document.node("part-4").physical)
+
+    def test_centered_hit_is_per_pass_undoable_and_copied_with_component(self):
+        e = self.open()
+        self.select("part-1")
+        toggle = e.findChild(QtWidgets.QCheckBox, "passCenteredHit")
+        self.assertTrue(toggle.isChecked())
+        toggle.setChecked(False)
+        self.settle()
+        self.assertFalse(e.document.optical_pass("part-1").centered)
+        e.undo()
+        self.settle()
+        self.assertTrue(e.document.optical_pass("part-1").centered)
+        e.redo()
+        self.settle()
+        self.select("part-1")
+        e.set_active_pass("part-1", "lens-return")
+        self.assertFalse(e.findChild(QtWidgets.QCheckBox, "passCenteredHit").isChecked())
+        e.duplicate()
+        self.settle()
+        copy = e.document.nodes[-1]
+        copied = [p for p in e.document.optical_passes() if p.component_id == copy.id]
+        self.assertEqual(len(copied), 2)
+        self.assertTrue(all(not p.centered for p in copied))
 
     def test_successful_drag_is_one_undoable_edit_and_preserves_constraints(self):
         e = self.open()

@@ -12,7 +12,7 @@ SOURCE = {'angle': 0,
  'position': (0, 0, 0.0),
  'power': 1,
  'waist': 0.5,
- 'wavelength': 635}
+ 'wavelength': 1550}
 
 EXPECTED_PASSES = {'node-0': {'branches': {'out': {'connection': 'beam-1',
                                  'direction': (1.0, 0.0, 0.0),

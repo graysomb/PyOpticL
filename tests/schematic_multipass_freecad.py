@@ -19,6 +19,19 @@ class NativeMultipassTests(unittest.TestCase):
     tearDown = FreeCADSchematicTests.tearDown
     build = FreeCADSchematicTests.build
 
+    def test_centered_coupler_mirror_contacts_match_native_trace_after_drag(self):
+        from test_schematic_centering import coupler_scene
+        from PyOpticL.schematic.scene_solver import solve_scene
+
+        document = coupler_scene()
+        mirror = document.nodes[1]
+        document.layout["poses"][mirror.id][1:3] = [2, 1]
+        solution = solve_scene(document, targets=((mirror.id, 0, 55),))
+        self.assertTrue(solution.ok, solution.diagnostics)
+        document.layout["poses"] = solution.poses
+        # build_layout verifies native contact points against EXPECTED_PASSES.
+        self.build(document)
+
     def test_shared_horizontal_and_vertical_returns_with_analytical_roof_body(self):
         for vertical in (False, True):
             if vertical:

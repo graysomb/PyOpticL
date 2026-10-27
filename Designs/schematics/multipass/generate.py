@@ -87,7 +87,7 @@ def main():
     problem = build_problem(
         before,
         {},
-        PackingBox(0, 0, 100, 100),
+        PackingBox(0, -10, 110, 110),
         OptimizationOptions(
             starts=1, iterations=2400, projection_passes=5, folding_preset="bare", max_added_mirrors=2
         ),

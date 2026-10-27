@@ -226,7 +226,8 @@ class SceneOptimizationTests(unittest.TestCase):
         problem = build_problem(
             d,
             {},
-            PackingBox(0, 0, 100, 100),
+            # Give centered folding mirrors clearance around both endpoints.
+            PackingBox(0, -10, 110, 110),
             OptimizationOptions(
                 starts=1, iterations=2400, projection_passes=5, folding_preset="bare", max_added_mirrors=2
             ),

@@ -4,59 +4,59 @@ from PyOpticL.beam_path import BeamPath, linear_polarization
 from PyOpticL.library import optics, thorlabs
 from PyOpticL.schematic.runtime import check_pass_trace
 
-PLACEMENTS = {'FM1': (88.54627417392314, 26.113743763708477, 0.0, 524.3219917070566),
- 'FM2': (33.07428479593884, 46.36312253043163, 0.0, 1766.7474771500015)}
+PLACEMENTS = {'FM1': (98.09836945355597, 80.73205837422056, 0.0, 609.0951416280925),
+ 'FM2': (69.49999690355405, 20.000000000001513, 0.0, 842.392263522195)}
 
 SOURCE = {'angle': 0,
  'polarization_angle': 0,
  'position': (20, 20, 0.0),
  'power': 1,
  'waist': 0.5,
- 'wavelength': 635}
+ 'wavelength': 1550}
 
-EXPECTED_PASSES = {'137c56da-2be9-5f02-8cfa-9d7c2714714b': {'branches': {'out': {'connection': '137c56da-2be9-5f02-8cfa-9d7c2714714b/out',
-                                                               'direction': (-0.8539505015929822,
-                                                                             0.5203542455184679,
+EXPECTED_PASSES = {'a7b39d31-4852-5bf4-b985-7d881c5072ec': {'branches': {'out': {'connection': 'a7b39d31-4852-5bf4-b985-7d881c5072ec/out',
+                                                               'direction': (-0.28559208823134663,
+                                                                             -0.9583512712673043,
                                                                              0.0),
-                                                               'length': 59.44237464082634,
-                                                               'pass': 'e685273e-dff9-58f7-b76a-05b5bc9a1b9a'}},
+                                                               'length': 63.371396475437805,
+                                                               'pass': 'output'}},
                                           'component': 'FM1',
-                                          'entry': (86.83031006337959,
-                                                    20.0,
+                                          'entry': (98.09836945355697,
+                                                    80.73205837422019,
                                                     0.0),
-                                          'exit': (86.83031006337959,
-                                                   20.0,
+                                          'exit': (98.09836945355697,
+                                                   80.73205837422019,
                                                    0.0),
                                           'internal_length': 0.0,
                                           'mode': 'pass',
                                           'reference': 'FM1'},
- 'e685273e-dff9-58f7-b76a-05b5bc9a1b9a': {'branches': {'out': {'connection': 'e685273e-dff9-58f7-b76a-05b5bc9a1b9a/out',
-                                                               'direction': (0.8176573747478022,
-                                                                             -0.5757051480754117,
+ 'e685273e-dff9-58f7-b76a-05b5bc9a1b9a': {'branches': {'out': {'connection': 'a7b39d31-4852-5bf4-b985-7d881c5072ec/in',
+                                                               'direction': (0.42602362821953266,
+                                                                             0.9047120360637773,
                                                                              0.0),
-                                                               'length': 53.727315295811444,
-                                                               'pass': 'output'}},
+                                                               'length': 67.12860662101207,
+                                                               'pass': 'a7b39d31-4852-5bf4-b985-7d881c5072ec'}},
                                           'component': 'FM2',
-                                          'entry': (36.06946442296797,
-                                                    50.9310920080533,
+                                          'entry': (69.49999690355166,
+                                                    20.0,
                                                     0.0),
-                                          'exit': (36.06946442296797,
-                                                   50.9310920080533,
+                                          'exit': (69.49999690355166,
+                                                   20.0,
                                                    0.0),
                                           'internal_length': 0.0,
                                           'mode': 'pass',
                                           'reference': 'FM2'},
  'output': {'branches': {},
             'component': None,
-            'entry': (79.99999999998859, 19.99999999998384, 0.0),
-            'exit': (79.99999999998859, 19.99999999998384, 0.0),
+            'entry': (80.00000000000009, 20.0, 0.0),
+            'exit': (80.00000000000009, 20.0, 0.0),
             'internal_length': 0.0,
             'mode': 'receive',
             'reference': 'O1'},
- 'source': {'branches': {'out': {'connection': '137c56da-2be9-5f02-8cfa-9d7c2714714b/in',
+ 'source': {'branches': {'out': {'connection': 'e685273e-dff9-58f7-b76a-05b5bc9a1b9a/in',
                                  'direction': (1.0, 0.0, 0.0),
-                                 'length': 66.83031006337959,
-                                 'pass': '137c56da-2be9-5f02-8cfa-9d7c2714714b'}},
+                                 'length': 49.49999690355166,
+                                 'pass': 'e685273e-dff9-58f7-b76a-05b5bc9a1b9a'}},
             'component': None,
             'entry': (20, 20, 0.0),
             'exit': (20, 20, 0.0),
@@ -64,10 +64,10 @@ EXPECTED_PASSES = {'137c56da-2be9-5f02-8cfa-9d7c2714714b': {'branches': {'out': 
             'mode': 'emit',
             'reference': 'S1'}}
 
-PATH_LENGTHS = {'total': 180.00000000001737}
-OPEN_SEGMENTS = [((36.06946442296797, 50.9310920080533, 0.0),
-  (0.8176573747478022, -0.5757051480754117, 0.0),
-  53.727315295811444)]
+PATH_LENGTHS = {'total': 180.00000000000153}
+OPEN_SEGMENTS = [((98.09836945355697, 80.73205837422019, 0.0),
+  (-0.28559208823134663, -0.9583512712673043, 0.0),
+  63.371396475437805)]
 
 def build_layout():
     layout = Layout('Two-fold physical path')

@@ -50,6 +50,7 @@ class OpticalPass:
     mode: str = "pass"
     turn: float | None = None
     direction: float | None = None
+    centered: bool = True
 
 
 @dataclass
@@ -262,7 +263,7 @@ def document_from_dict(data, *, migrate_lengths=True):
                     raise ValueError("Optical pass refers to an invalid component")
                 if item.mode not in ("pass", "emit", "receive") or any(
                     v is not None and not _finite(v) for v in (item.turn, item.direction)
-                ):
+                ) or type(item.centered) is not bool:
                     raise ValueError("Invalid optical pass properties")
                 node = document.node(item.component_id)
                 if item.mode == "emit" and SYMBOLS[node.kind].role != "source":

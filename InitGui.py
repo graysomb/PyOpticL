@@ -1,7 +1,7 @@
 import FreeCADGui as Gui
 
 
-class OpticsWorkbench(Workbench):
+class PyOpticLWorkbench(Workbench):
 
     MenuText = "PyOpticL"
     ToolTip = "A workbench for designing baseplates for optical layouts"
@@ -84,4 +84,4 @@ class OpticsWorkbench(Workbench):
         return "Gui::PythonWorkbench"
 
 
-Gui.addWorkbench(OpticsWorkbench())
+Gui.addWorkbench(PyOpticLWorkbench())

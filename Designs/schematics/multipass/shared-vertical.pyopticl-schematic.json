@@ -234,14 +234,16 @@
       "component_id": "part-2",
       "mode": "pass",
       "turn": null,
-      "direction": null
+      "direction": null,
+      "centered": false
     },
     {
       "id": "lens-return",
       "component_id": "part-1",
       "mode": "pass",
       "turn": null,
-      "direction": null
+      "direction": null,
+      "centered": false
     }
   ],
   "layout": {

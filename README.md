@@ -97,6 +97,12 @@ creates an ordinary PyOpticL macro and checks its actual ray trace when it runs.
   A valid release is one undoable edit; an unresolved release restores the previous
   layout and reports residuals. **R** requests a yaw rotation. Free geometry changes
   without checking any constraint boxes. Grid coordinates and sizes use millimetres.
+- **Centered hit** is enabled by default for each receiving or interacting pass.
+  Dragging and optimization keep the ray at the optic's nominal interaction center
+  in both transverse directions. Uncheck it on a selected **Optical pass** only
+  for intentional off-center paths, such as a displaced return through a shared
+  lens or waveplate. Clear-aperture checks still apply. A roof's center refers to
+  its entrance port; its internal geometry retains the displaced exit.
 - **Constrain position** pins the shared component origin in X/Y. Every visit
   uses that same pose. **Constrain beam length** pins the distance between its
   optical interaction points. Free lengths and free orientations can adjust.

@@ -287,6 +287,7 @@ def _relax(candidate, cancelled):
     # ray/pose projection then restores all hard constraints, including returns.
     forces = {n.id: [0.0, 0.0] for n in problem.nodes}
     topology = resolve_topology(candidate.document)
+    coincident_directions = {}
     for edge in problem.edges:
         resolved = topology.edges[edge.id]
         a = candidate.layout.visits.get(resolved.source.visit_id)
@@ -296,15 +297,31 @@ def _relax(candidate, cancelled):
         dx, dy = b.entry[0] - a.exit[0], b.entry[1] - a.exit[1]
         distance = hypot(dx, dy)
         nx, ny, _ = api._direction(dx, dy, edge.a + edge.b)
+        if distance < 1e-12:
+            # Separate connected centered optics along their propagation order.
+            # An arbitrary transverse direction can trap the hard center and
+            # forward-travel constraints when two bodies start coincident.
+            direction = a.outputs.get(resolved.interaction, b.incoming)
+            planar = hypot(direction[0], direction[1])
+            if planar > 1e-12:
+                nx, ny = direction[0] / planar, direction[1] / planar
+                coincident_directions[(resolved.source.node_id, resolved.target.node_id)] = (nx, ny)
         stress = (distance - edge.preferred_length) / max(edge.preferred_length, 1)
         candidate.stress[edge.id] = 0.95 * candidate.stress.get(edge.id, 0) + 0.05 * abs(stress)
         for axis, d in enumerate((nx, ny)):
-            forces[problem.nodes[edge.a].id][axis] += stress * d
-            forces[problem.nodes[edge.b].id][axis] -= stress * d
+            forces[resolved.source.node_id][axis] += stress * d
+            forces[resolved.target.node_id][axis] -= stress * d
     for i, node in enumerate(problem.nodes):
         for other in problem.nodes[:i]:
             dx, dy = poses[other.id][0] - poses[node.id][0], poses[other.id][1] - poses[node.id][1]
             nx, ny, distance = api._direction(dx, dy, i * 31 + problem.nodes.index(other))
+            if distance < 1e-12:
+                forward = coincident_directions.get((other.id, node.id))
+                reverse = coincident_directions.get((node.id, other.id))
+                if forward:
+                    nx, ny = -forward[0], -forward[1]
+                elif reverse:
+                    nx, ny = reverse
             force = 10 / max(distance, 1) ** 2
             for axis, d in enumerate((nx, ny)):
                 forces[node.id][axis] -= force * d

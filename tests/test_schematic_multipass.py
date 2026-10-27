@@ -38,8 +38,10 @@ def double_pass(vertical=False):
     pickoff.parameters.update(diameter=2, thickness=0.5)
     back_plate = doc.add_pass(plate.id)
     back_plate.id = "plate-return"
+    back_plate.centered = False  # Intentional displaced return through the shared aperture.
     back_lens = doc.add_pass(lens.id)
     back_lens.id = "lens-return"
+    back_lens.centered = False
     visits = (source.id, lens.id, plate.id, roof.id, back_plate.id, back_lens.id, pickoff.id, output.id)
     for i, (a, b) in enumerate(zip(visits, visits[1:])):
         ap, bp = doc.optical_pass(a), doc.optical_pass(b)
