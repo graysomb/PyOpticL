@@ -181,6 +181,22 @@ class NativeMultipassTests(unittest.TestCase):
             if index != 1:
                 self.assertAlmostEqual(length, 50, delta=1e-6)
 
+    def test_rotated_lens_pair_keeps_fixed_separation_in_native_cad(self):
+        from test_schematic_lens_rotation import telescope
+        from PyOpticL.schematic.scene_solver import solve_scene
+        from PyOpticL.ray_math import heading
+
+        document = telescope()
+        lens = document.nodes[3]
+        solution = solve_scene(document, targets=((lens.id, 0, 150), (lens.id, 1, 50)), iterations=40)
+        self.assertTrue(solution.ok, solution.diagnostics)
+        document.layout["poses"] = solution.poses
+        layout = self.build(document)
+        beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+        segment = beam.BeamSegments[2]
+        self.assertAlmostEqual(segment.Proxy.distance, 100, delta=1e-6)
+        self.assertLess(heading(segment.Proxy.get_global_direction()), 60)
+
     def test_free_receiver_rotation_matches_arriving_beam_in_generated_cad(self):
         from test_schematic_receiver_alignment import fiber_pair
         from PyOpticL.schematic.scene_solver import solve_scene

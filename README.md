@@ -155,6 +155,11 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   downstream chain together, preserving its other beam gaps. If that side is
   pinned, a free upstream chain can move instead. Position pins and other hard
   constraints remain in force.
+  A lens-to-lens length fixes separation, not beam direction. Drag previews
+  continue from the last valid layout. The solver can rotate a free arm at a
+  steering mirror while preserving its gaps, or use smaller verified moves
+  to keep the lens spacing during a large drag. Explicit position and
+  beam-direction pins still apply.
 - Select a mirror or splitter and the relevant **Optical pass**, then enable
   **Constrain angle**. This pins the signed change in travel direction in XY:
   +90° is counterclockwise, −90° clockwise. All passes share the same optic yaw;

@@ -5,7 +5,7 @@ Only immutable/plain numerical state enters a worker. No CAD or Qt imports.
 
 from copy import deepcopy
 from dataclasses import dataclass, field
-from math import hypot, isfinite, radians
+from math import hypot, isfinite, radians, ceil
 from .scene_layout import Residual, trace_scene, poses_for, source_offset
 from .topology import Diagnostic, resolve_topology
 from .registry import (
@@ -582,6 +582,151 @@ def analyze_constraints(document, poses=None, topology=None):
     return ConstraintReport(max(0, len(keys) - len(basis)), len(basis), tuple(redundant), diagnostics)
 
 
+def _continue_drag(document, initial, targets, packing, iterations, cancelled, progress, report):
+    """Walk a large drag through verified layouts on the same constraint branch."""
+    if not targets or not (document.path_constraints or
+                           any(e.length is not None for e in document.connections) or
+                           (document.layout or {}).get("_separations")):
+        return None
+    free = set(variables(document))
+    if any((node_id, axis) not in free and abs(initial[node_id][axis] - value) > 1e-6
+           for node_id, axis, value in targets):
+        return None
+    topology = resolve_topology(document)
+    rows, trace = _rows(document, initial, topology, packing=packing)
+    if not trace.ok or any(abs(row.value) > 1e-6 for row in rows):
+        return None
+    distance = max(abs(value - initial[node_id][axis]) for node_id, axis, value in targets)
+    steps = min(64, max(2, ceil(distance / 10)))
+    stride = maximum_stride = 1 / steps
+    poses, used, fraction = initial, 0, 0.0
+    for _ in range(128):
+        if cancelled():
+            return SceneSolution("cancelled", None, poses, [], iterations=used)
+        next_fraction = min(1.0, fraction + stride)
+        intermediate = tuple((node_id, axis, initial[node_id][axis] +
+                              (value - initial[node_id][axis]) * next_fraction)
+                             for node_id, axis, value in targets)
+        result = solve_scene(document, poses=poses, targets=intermediate, packing=packing,
+                             iterations=iterations, cancelled=cancelled, progress=progress,
+                             report=report and next_fraction == 1, _continuation=False)
+        used += result.iterations
+        if result.status == "cancelled":
+            return result
+        if not result.ok:
+            stride /= 2
+            if stride < maximum_stride / 32:
+                return None
+            continue
+        poses = result.poses
+        # Recondition free, centered lens frames between small moves. Leaving
+        # their normals at the original yaw can approach a grazing singularity
+        # while the fixed-length optical axis swings around them.
+        aligned = deepcopy(poses)
+        changed = False
+        for node in document.nodes:
+            visits = [p for p in topology.passes.values() if p.component_id == node.id]
+            if (node.kind != "lens" or len(visits) != 1 or not visits[0].centered
+                    or any(n == node.id and axis == 3 for n, axis, _ in targets)):
+                continue
+            direction = result.layout.visits[visits[0].id].incoming
+            angle = poses[node.id][3] + wrap_axis_angle(heading(direction) - poses[node.id][3])
+            changed |= abs(angle - aligned[node.id][3]) > 1e-9
+            aligned[node.id][3] = angle
+        if changed:
+            aligned_rows, _ = _rows(document, aligned, topology, intermediate, packing)
+            if (all(abs(row.value) <= 1e-6 for row in aligned_rows)
+                    and trace_scene(document, aligned, topology=topology).ok):
+                poses = aligned
+        fraction = next_fraction
+        if fraction == 1:
+            result.iterations = used
+            return result
+        stride = min(maximum_stride, stride * 1.5)
+    return None
+
+
+def _steered_drag_seed(document, poses, topology, targets, packing):
+    """Swing a free optical arm about an upstream steering mirror.
+
+    The mirror may slide on its existing incoming ray. Rotating its entire
+    downstream arm preserves lens spacing and the surrounding free gaps, while
+    changing the mirror normal steers the incoming beam into that arm.
+    """
+    if not targets or any(axis not in (0, 1) for _, axis, _ in targets):
+        return None
+    if not (document.path_constraints or any(e.length is not None for e in document.connections)
+            or (document.layout or {}).get("_separations")):
+        return None
+    dragged = {node_id for node_id, _, _ in targets}
+    if len(dragged) != 1:
+        return None
+    node_id = next(iter(dragged))
+    desired = poses[node_id][:3].copy()
+    for _, axis, value in targets:
+        desired[axis] = value
+    trace = trace_scene(document, poses, topology=topology)
+    if not trace.ok:
+        return None
+    visits_by_node = {}
+    for v, visit in topology.passes.items():
+        visits_by_node.setdefault(visit.component_id, set()).add(v)
+    if len(visits_by_node[node_id]) != 1:
+        return None
+    incoming = {e.target.visit_id: e for e in topology.edges.values()}
+    visit_id = next(iter(visits_by_node[node_id]))
+    while visit_id in incoming:
+        visit_id = incoming[visit_id].source.visit_id
+        pivot_id = topology.passes[visit_id].component_id
+        if document.node(pivot_id).kind != "mirror" or len(visits_by_node[pivot_id]) != 1:
+            continue
+        state = trace.layout.visits[visit_id]
+        if abs(state.incoming[2]) > 1e-8 or len(topology.outgoing[visit_id]) != 1:
+            continue
+        selected, pending = set(), [visit_id]
+        while pending:
+            v = pending.pop()
+            if v in selected:
+                continue
+            selected.add(v)
+            pending.extend(e.target.visit_id for e in topology.outgoing[v])
+        nodes = {topology.passes[v].component_id for v in selected}
+        if any(not visits_by_node[n].issubset(selected) for n in nodes):
+            continue
+        old = poses[pivot_id][:3]
+        radius = norm(sub(poses[node_id][:3], old))
+        if radius < 1e-6:
+            continue
+        origin = trace.layout.visits[incoming[visit_id].source.visit_id].exit
+        offset = sub(desired, origin)
+        along = dot(offset, state.incoming)
+        squared = radius * radius - (dot(offset, offset) - along * along)
+        if squared < -1e-8:
+            continue
+        root = max(0, squared) ** 0.5
+        distances = sorted((along - root, along + root),
+                           key=lambda t: abs(t - norm(sub(old, origin))))
+        for distance in distances:
+            if distance <= 0.001:
+                continue
+            pivot = tuple(origin[i] + distance * state.incoming[i] for i in range(3))
+            angle = wrap_angle(heading(sub(desired, pivot)) - heading(sub(poses[node_id][:3], old)))
+            candidate = deepcopy(poses)
+            for n in nodes:
+                rotated = yaw(sub(poses[n][:3], old), angle)
+                candidate[n] = [*(pivot[i] + rotated[i] for i in range(3)), poses[n][3] + angle]
+            outgoing = yaw(state.outputs[topology.outgoing[visit_id][0].interaction], angle)
+            normal = sub(outgoing, state.incoming)
+            if norm(normal) < 1e-8:
+                continue
+            candidate[pivot_id][3] = heading(normal)
+            rows, checked = _rows(document, candidate, topology, targets, packing)
+            if (all(abs(row.value) <= 1e-6 for row in rows) and checked.ok
+                    and trace_scene(document, candidate, topology=topology).ok):
+                return candidate
+    return None
+
+
 def solve_scene(
     document,
     *,
@@ -592,6 +737,7 @@ def solve_scene(
     cancelled=None,
     progress=None,
     report=True,
+    _continuation=True,
 ):
     cancelled = cancelled or (lambda: False)
     topology = resolve_topology(document)
@@ -607,12 +753,15 @@ def solve_scene(
     conflicts = explicit_conflicts(document)
     if conflicts:
         return SceneSolution("inconsistent", trace_scene(document, points).layout, points, conflicts)
+    initial = deepcopy(points)
     if iterations > 0 and not cancelled():
         _face_mirrors(document, points, topology, targets)
         rows, _ = _rows(document, points, topology, targets, packing)
         if any(abs(row.value) > 1e-6 for row in rows):
-            seed = _orientation_seed(document, points, topology, targets)
-            seed = _length_seed(document, seed, topology, targets)
+            seed = _steered_drag_seed(document, points, topology, targets, packing)
+            if seed is None:
+                seed = _orientation_seed(document, points, topology, targets)
+                seed = _length_seed(document, seed, topology, targets)
             _face_mirrors(document, seed, topology, targets)
             seeded_rows, _ = _rows(document, seed, topology, targets, packing)
             if sum((r.value * _scale(r)) ** 2 for r in seeded_rows) < sum(
@@ -674,6 +823,12 @@ def solve_scene(
     checked = trace_scene(document, points, topology=topology)
     rows, _ = _rows(document, points, topology, targets, packing)
     satisfied = all(abs(row.value) <= 1e-6 for row in rows) and checked.ok
+    if not satisfied and _continuation and iterations > 0 and not cancelled():
+        continued = _continue_drag(document, initial, targets, packing, iterations,
+                                   cancelled, progress, report)
+        if continued is not None:
+            continued.iterations += count
+            return continued
     analysis = analyze_constraints(document, points, topology) if report else None
     diagnostics = list(checked.diagnostics)
     diagnostics.extend(

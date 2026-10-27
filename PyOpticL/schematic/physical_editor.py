@@ -713,6 +713,10 @@ class PhysicalSchematicEditor(BaseEditor):
             self.move_draft(targets, final)
             return
         worker = SceneWorker(self.scene_document(), self.revision, targets, final, self.packing(), self)
+        if self.dragging and self.preview_poses is not None:
+            # Continue from the last valid drag frame, especially when fixed
+            # lens separations require a coupled change in beam direction.
+            worker.document.layout["poses"] = deepcopy(self.preview_poses)
         worker.completed.connect(self.solved)
         worker.failed.connect(self.solve_failed)
         self.workers.add(worker)
