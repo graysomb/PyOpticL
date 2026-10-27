@@ -184,6 +184,39 @@ class PhysicalEditorTests(unittest.TestCase):
         self.settle()
         self.assertAlmostEqual(e.document.layout["poses"]["part-3"][0], 200, delta=1e-6)
 
+    def test_free_fiber_endpoints_align_on_open_and_follow_rotation_and_drag(self):
+        from test_schematic_receiver_alignment import fiber_pair
+        from PyOpticL.ray_math import heading
+        from PyOpticL.schematic.physical import wrap_angle
+
+        e = self.open(fiber_pair("POLARIS-K05T6"))
+        source, receiver = e.document.nodes
+
+        def check_alignment():
+            compiled = compile_schematic(e.document)
+            self.assertTrue(compiled.ok, compiled.diagnostics)
+            pose = e.document.layout["poses"][receiver.id]
+            incoming = compiled.geometry.visits[receiver.id].incoming
+            self.assertAlmostEqual(wrap_angle(heading(incoming) - pose[3] - 180), 0, delta=1e-6)
+            self.assertTrue(all("angle" not in node.physical for node in e.document.nodes))
+
+        check_alignment()
+        for node in (source, receiver):
+            self.select(node.id)
+            name = "sourceDirectionConstrained" if node == source else "outputDirectionConstrained"
+            self.assertFalse(e.findChild(QtWidgets.QCheckBox, name).isChecked())
+            target = e.document.layout["poses"][node.id][3] + e.document.settings["angle"]
+            e.rotate()
+            self.settle()
+            self.assertAlmostEqual(e.document.layout["poses"][node.id][3], target, delta=1e-6)
+            check_alignment()
+        e.begin_drag()
+        e.start_solve(((source.id, 0, 10), (source.id, 1, 20)), True)
+        self.settle()
+        self.assertAlmostEqual(e.document.layout["poses"][source.id][0], 10, delta=1e-6)
+        self.assertAlmostEqual(e.document.layout["poses"][source.id][1], 20, delta=1e-6)
+        check_alignment()
+
     def test_pinned_drag_is_rejected_and_reports_residual(self):
         doc = double_pass()
         doc.nodes[3].physical["x"] = 200

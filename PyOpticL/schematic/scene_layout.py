@@ -440,6 +440,19 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                             unit="°",
                         )
             target_dir = getattr(visit, "direction", None)
+            if visit.mode == "receive" and node.kind in ("fiber_source", "fiber_output"):
+                # A fiber's receiving face is local +X. Coupling requires its
+                # axis to face the arriving ray even when the travel heading
+                # itself is free (no user direction constraint).
+                residual(
+                    f"fiber_axis/{visit_id}",
+                    wrap_angle(heading(direction) - pose[3] - 180),
+                    f"{node.reference}: fiber receiver must face the incoming beam",
+                    node.id,
+                    visit_id,
+                    edge.id,
+                    "°",
+                )
             if visit.mode == "receive" and target_dir is None and visit_id == node.id:
                 target_dir = node.physical.get("angle")
             if target_dir is not None:

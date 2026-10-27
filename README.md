@@ -124,7 +124,9 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   transmission remains straight. Uncheck the box to leave the turn free.
 - Sources offer **Constrain source direction**. Open outputs, stops and fiber
   receivers offer **Constrain output direction** for the arriving travel heading
-  in XY. A returning visit to a source fiber can receive on the same assembly.
+  in XY. Fiber receivers automatically turn to face the arriving beam even with
+  this box unchecked; checking it fixes the travel heading as well. A returning
+  visit to a source fiber can receive on the same assembly.
 - **Path lengths…** constrains the total geometric distance along a unique route,
   including across splitter branches and between two passes of the same part.
   Roof internal air paths are included; refractive-index weighting is not used.

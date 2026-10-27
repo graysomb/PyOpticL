@@ -20,6 +20,7 @@ from .registry import SYMBOLS, parameter_values
 from .topology import resolve_topology
 from .scene_layout import initialize_layout, trace_scene, poses_for, source_offset
 from .scene_solver import solve_scene, apply_scene_solution
+from .physical import wrap_angle
 from .optic_geometry import element_spec
 from .geometry import snap_point
 from PyOpticL.ray_math import add, yaw, heading
@@ -982,6 +983,8 @@ class PhysicalSchematicEditor(BaseEditor):
         state = self.display_trace.layout.visits.get(p.id) if self.display_trace else None
         if state:
             return heading(state.incoming)
+        if p.mode == "receive" and node.kind in ("fiber_source", "fiber_output", "stop"):
+            return wrap_angle(self.display_poses()[node.id][3] - 180)
         return self.display_poses()[node.id][3] - source_offset(node)
 
     def show_source_direction_property(self, node):
@@ -989,6 +992,8 @@ class PhysicalSchematicEditor(BaseEditor):
         self.show_endpoint_direction_property(node, p.mode == "emit")
 
     def show_endpoint_direction_property(self, node, source):
+        if not source and node.kind in ("fiber_source", "fiber_output"):
+            self.note("The fiber receiver automatically faces the arriving beam. Constrain its direction to fix the beam heading in XY.")
         if self.active_pass(node.id) == node.id:
             return BaseEditor.show_endpoint_direction_property(self, node, source)
         p = self.document.optical_pass(self.active_pass(node.id))

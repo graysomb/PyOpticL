@@ -32,6 +32,24 @@ class NativeMultipassTests(unittest.TestCase):
         # build_layout verifies native contact points against EXPECTED_PASSES.
         self.build(document)
 
+    def test_free_receiver_rotation_matches_arriving_beam_in_generated_cad(self):
+        from test_schematic_receiver_alignment import fiber_pair
+        from PyOpticL.schematic.scene_solver import solve_scene
+
+        document = fiber_pair("POLARIS-K05T6")
+        source, receiver = document.nodes
+        solution = solve_scene(document, targets=((source.id, 3, 35),))
+        self.assertTrue(solution.ok, solution.diagnostics)
+        document.layout["poses"] = solution.poses
+        layout = self.build(document)
+        children = layout.get_object().Children
+        target = next(child for child in children if child.Label == receiver.reference)
+        beam = next(child for child in children if hasattr(child, "BeamSegments"))
+        incoming = next(segment.Proxy.get_global_direction() for segment in beam.BeamSegments
+                        if segment.EndObject == target)
+        normal = target.getGlobalPlacement().Rotation.multVec(App.Vector(1, 0, 0))
+        self.assertAlmostEqual(normal.dot(App.Vector(*incoming)), -1, delta=1e-6)
+
     def test_shared_horizontal_and_vertical_returns_with_analytical_roof_body(self):
         for vertical in (False, True):
             if vertical:
