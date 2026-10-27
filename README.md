@@ -74,6 +74,11 @@ beam.add(beamsplitter_cube())
 The workbench includes **New Optical Schematic** and **Open Optical Schematic**.
 The canvas now shows physical optical geometry in millimetres. **Export Python…**
 creates an ordinary PyOpticL macro and checks its actual ray trace when it runs.
+**Generate CAD…** validates the current schematic, builds its full assembly in a
+new FreeCAD document, checks the actual ray trace, and saves both the selected
+`.FCStd` file and its companion `.py`. The 3D assembly opens with the view fitted
+to the parts. Each generation uses a separate document; existing designs are
+preserved. Save the schematic separately to retain its editable constraints.
 
 - Place a part from the palette and select its **Part preset** and optical
   parameters in the inspector. Each physical optic has one shared position,

@@ -1,7 +1,8 @@
-"""A 2D optical schematic workspace. Export never executes generated code."""
+"""A 2D workspace with Python export and explicit FreeCAD generation."""
 
 from math import ceil, floor
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from .bounds import BoundsProvider
 from .compiler import compile_schematic
@@ -483,6 +484,7 @@ class SchematicEditor(QtWidgets.QWidget):
             ("clear_optimized", "Clear optimized layout", self.clear_optimized_layout, ""),
             ("validate", "Validate", self.validate, ""),
             ("export", "Export Python…", self.export_python, ""),
+            ("generate_cad", "Generate CAD…", self.generate_cad, ""),
         ):
             action = Action(text, self)
             if shortcut:
@@ -492,6 +494,9 @@ class SchematicEditor(QtWidgets.QWidget):
             self.addAction(action)
             self.toolbar.addAction(action)
             self.actions[name] = action
+        self.actions["generate_cad"].setToolTip(
+            "Build a new 3D assembly and save a FreeCAD file with its generated Python."
+        )
         self.toolbar.addSeparator()
         self.grid_toggle = QtWidgets.QCheckBox("Grid snap")
         self.grid_toggle.setChecked(self.document.settings["snap_grid"])
@@ -1244,6 +1249,58 @@ class SchematicEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Cannot export Python", str(error))
             return False
         self.status.setText(f"Exported {path}. Run it using the existing PyOpticL macro workflow.")
+        return True
+
+    def generate_cad(self):
+        result = self.validate()
+        if not result.ok:
+            self.status.setText("CAD generation blocked. Select a validation message to locate the part.")
+            return False
+        default = (self.path.with_name(self.path.name.removesuffix(".pyopticl-schematic.json") + ".FCStd")
+                   if self.path else Path("optics.FCStd"))
+        name, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Generate CAD and Python", str(default), "FreeCAD document (*.FCStd)"
+        )
+        if not name:
+            return False
+        path = Path(name)
+        if path.suffix.lower() != ".fcstd":
+            path = Path(str(path) + ".FCStd")
+            if path.exists() and not self.confirm_overwrite(path):
+                return False
+        python_path = path.with_suffix(".py")
+        if python_path.exists() and not self.confirm_overwrite(python_path):
+            return False
+        document = None
+        temporary = None
+        self.actions["generate_cad"].setEnabled(False)
+        QtWidgets.QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            from .cad import build_cad
+
+            # Stage the source first so an unwritable destination cannot leave
+            # a freshly built document or overwrite an existing Python file.
+            with NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".py", dir=path.parent,
+                                    delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(result.source)
+            document = build_cad(result.source, self.document.title)
+            document.saveAs(str(path))
+            temporary.replace(python_path)
+        except Exception as error:
+            message = ("CAD was built and remains open, but its files could not both be saved. "
+                       if document is not None else "CAD generation failed. ") + str(error)
+            self.status.setText(message)
+            QtWidgets.QMessageBox.warning(self, "Cannot generate CAD", message)
+            return False
+        finally:
+            try:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+            finally:
+                QtWidgets.QApplication.restoreOverrideCursor()
+                self.actions["generate_cad"].setEnabled(True)
+        self.status.setText(f"Generated {path} and {python_path}. The 3D assembly is open in FreeCAD.")
         return True
 
     def closeEvent(self, event):
