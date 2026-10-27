@@ -65,6 +65,91 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertTrue(compile_schematic(e.document).ok)
         self.assertFalse(e.bounds_toggle.isChecked())
 
+    def test_visible_grid_controls_and_optional_snap_apply_to_new_parts_only(self):
+        e = self.open(Schematic())
+        self.assertTrue(e.grid_toggle.isChecked())
+        self.assertEqual(e.grid_toggle.text(), "Snap to grid")
+        actions = e.toolbar.actions()
+        snap_action = next(a for a in actions if e.toolbar.widgetForAction(a) is e.grid_toggle)
+        spacing_action = next(a for a in actions if e.toolbar.widgetForAction(a) is e.grid_spacing)
+        self.assertLess(actions.index(snap_action), actions.index(e.actions["fit"]))
+        self.assertLess(actions.index(spacing_action), actions.index(e.actions["fit"]))
+        self.assertEqual(e.grid_spacing.value(), 1)
+        e.grid_spacing.setValue(5)
+        e.add_symbol("mirror", (12.1, 18.4))
+        self.settle()
+        mirror = e.document.nodes[-1]
+        self.assertEqual(e.document.layout["poses"][mirror.id][:3], [10, -20, 0])
+        self.assertEqual(mirror.physical, {})
+        self.assertIsNone(e.document.optical_pass(mirror.id).turn)
+        e.grid_toggle.setChecked(False)
+        e.add_symbol("lens", (12.1, 18.4))
+        self.settle()
+        lens = e.document.nodes[-1]
+        self.assertEqual(e.document.layout["poses"][lens.id][:3], [12.1, -18.4, 0])
+        self.assertEqual(e.document.layout["poses"][mirror.id][:3], [10, -20, 0])
+        self.assertEqual(lens.physical, {})
+
+    def test_drag_snap_is_optional_in_xy_and_xz_without_adding_constraints(self):
+        e = self.open(Schematic())
+        e.grid_spacing.setValue(5)
+        e.add_symbol("mirror", (0, 0))
+        self.settle()
+        node_id = e.document.nodes[0].id
+        self.select(node_id)
+        e.begin_drag()
+        e.scene.symbols[node_id].setPos(12.1, -18.4)
+        e.finish_drag()
+        self.settle()
+        self.assertEqual(e.document.layout["poses"][node_id][:3], [10, 20, 0])
+        e.change_projection("XZ")
+        e.grid_toggle.setChecked(False)
+        self.select(node_id)
+        e.begin_drag()
+        e.scene.symbols[node_id].setPos(12.1, -18.4)
+        e.finish_drag()
+        self.settle()
+        self.assertEqual(e.document.layout["poses"][node_id][:3], [12.1, 20, 18.4])
+        self.assertEqual(e.document.nodes[0].physical, {})
+        self.assertFalse(e.document.path_constraints)
+        self.assertFalse(e.document.connections)
+
+    def test_grid_preferences_keep_poses_and_optical_solves_can_move_off_grid(self):
+        from test_schematic_distance_editor import lens_pair
+        from PyOpticL.schematic import PathLengthConstraint
+
+        e = self.open(lens_pair())
+        before = deepcopy(e.document.layout["poses"])
+        old_grid = e.document.settings["grid"]
+        e.grid_spacing.setValue(10)
+        e.grid_toggle.setChecked(False)
+        self.assertEqual(e.document.layout["poses"], before)
+        self.assertFalse(e.workers)
+        e.undo()
+        self.settle()
+        self.assertTrue(e.grid_toggle.isChecked())
+        self.assertEqual(e.grid_spacing.value(), 10)
+        e.undo()
+        self.settle()
+        self.assertEqual(e.grid_spacing.value(), old_grid)
+        e.redo()
+        self.settle()
+        a, b = e.document.nodes[1:3]
+        e.document.path_constraints.append(PathLengthConstraint("grid-is-not-a-pin", a.id, b.id, 77.25))
+        e.commit()
+        self.settle()
+        self.assertTrue(e.grid_toggle.isChecked())
+        self.assertAlmostEqual(e.document.layout["poses"][b.id][0], 127.25, delta=1e-6)
+        self.assertEqual(e.document.node(b.id).physical, {})
+        self.assertTrue(compile_schematic(e.document).ok)
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "grid.json"
+            save_schematic(e.document, path)
+            restored = load_schematic(path)
+            self.assertEqual(restored.settings["grid"], 10)
+            self.assertTrue(restored.settings["snap_grid"])
+            self.assertEqual(restored.layout["poses"], e.document.layout["poses"])
+
     def test_empty_document_shows_getting_started_guidance_and_remains_editable(self):
         e = self.open(Schematic())
         self.assertEqual(e.messages.count(), 1)

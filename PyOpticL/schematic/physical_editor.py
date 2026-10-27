@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from itertools import product
-from math import sin, cos, pi
+from math import sin, cos, pi, floor, ceil
 from threading import Event
 from .qt import Action, QtCore, QtGui, QtWidgets, exec_menu
 from .editor import (
@@ -316,7 +316,20 @@ class PhysicalScene(SchematicScene):
         self.editor.placing = False
 
     def drawBackground(self, painter, rect):
-        super().drawBackground(painter, rect)
+        painter.fillRect(rect, QtGui.QColor("#ffffff"))
+        spacing = self.editor.document.settings["grid"]
+        scale = max(abs(self.editor.view.transform().m11()), 1e-9)
+        # Hide dense minor lines at low zoom without changing placement snap.
+        while spacing * scale < 8:
+            spacing *= 5
+        for major in (False, True):
+            painter.setPen(QtGui.QPen(QtGui.QColor("#c8d5df" if major else "#e7edf2"), 0))
+            for x in range(floor(rect.left() / spacing), ceil(rect.right() / spacing) + 1):
+                if (x % 5 == 0) == major:
+                    painter.drawLine(QtCore.QLineF(x * spacing, rect.top(), x * spacing, rect.bottom()))
+            for y in range(floor(rect.top() / spacing), ceil(rect.bottom() / spacing) + 1):
+                if (y % 5 == 0) == major:
+                    painter.drawLine(QtCore.QLineF(rect.left(), y * spacing, rect.right(), y * spacing))
 
     def choose_ports(self, position):
         # Ports keep a fixed pixel size at every zoom. Hit-test using the view
@@ -459,6 +472,25 @@ class PhysicalSchematicEditor(BaseEditor):
         self.projection_choice.setObjectName("physicalProjection")
         self.projection_choice.currentTextChanged.connect(self.change_projection)
         self.toolbar.insertWidget(self.actions["fit"], self.projection_choice)
+        # Keep placement controls beside the projection, within easy reach
+        # even when the longer export/optimization toolbar overflows.
+        self.grid_toggle.setText("Snap to grid")
+        self.grid_toggle.setObjectName("placementGridSnap")
+        self.grid_toggle.setToolTip("Snap new and dragged parts to grid points. This adds no optical constraints.")
+        grid_action = next(action for action in self.toolbar.actions()
+                           if self.toolbar.widgetForAction(action) is self.grid_toggle)
+        self.toolbar.insertAction(self.actions["fit"], grid_action)
+        self.grid_spacing = QtWidgets.QDoubleSpinBox()
+        self.grid_spacing.setObjectName("placementGridSpacing")
+        self.grid_spacing.setRange(0.001, 1e9)
+        self.grid_spacing.setDecimals(3)
+        self.grid_spacing.setPrefix("Grid: ")
+        self.grid_spacing.setSuffix(" mm")
+        self.grid_spacing.setKeyboardTracking(False)
+        self.grid_spacing.setValue(self.document.settings["grid"])
+        self.grid_spacing.setToolTip("Placement grid spacing in millimetres. Dense minor lines hide when zoomed out.")
+        self.grid_spacing.valueChanged.connect(lambda value: self.change_setting("grid", value))
+        self.toolbar.insertWidget(self.actions["fit"], self.grid_spacing)
         self.actions["directions"].setVisible(False)
         self.bounds_toggle.setToolTip(
             "Full assembly XY bounds in millimetres, at the same scale as the optical bodies."
@@ -472,6 +504,21 @@ class PhysicalSchematicEditor(BaseEditor):
         if not selected and getattr(self, "inspected_omitted", None) in {n.id for n in self.document.nodes}:
             return [self.inspected_omitted]
         return selected
+
+    def change_setting(self, key, value):
+        if not self.ready or key not in ("grid", "snap_grid"):
+            return BaseEditor.change_setting(self, key, value)
+        self.document.settings[key] = value
+        # Placement preferences never move existing parts or invoke a solve.
+        self.commit(solve=False)
+        self.sync_grid_spacing()
+
+    def sync_grid_spacing(self):
+        if hasattr(self, "grid_spacing"):
+            self.grid_spacing.blockSignals(True)
+            self.grid_spacing.setValue(self.document.settings["grid"])
+            self.grid_spacing.blockSignals(False)
+        self.scene.invalidate(self.scene.sceneRect(), QtWidgets.QGraphicsScene.BackgroundLayer)
 
     def active_pass(self, node_id):
         valid = {p.id for p in self.document.optical_passes() if p.component_id == node_id}
@@ -1122,6 +1169,7 @@ class PhysicalSchematicEditor(BaseEditor):
         initialize_layout(self.document)
         self.projection = self.document.layout.get("projection", "XY")
         BaseEditor.restore(self)
+        self.sync_grid_spacing()
         if hasattr(self, "projection_choice"):
             self.projection_choice.blockSignals(True)
             self.projection_choice.setCurrentText(self.projection)

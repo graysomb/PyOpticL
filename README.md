@@ -135,6 +135,11 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   Its **Beam separation** fixes the actual transverse return offset. Dragging
   adjusts the roof's free angle to preserve that offset; a position pin fixes
   only X/Y.
+- The placement grid has **Snap to grid** enabled by default and an editable
+  **Grid** spacing in millimetres beside the XY/XZ selector. Snapping applies
+  when adding or dragging parts; it adds no position, angle or distance
+  constraints. Optical solving can move free parts off the grid. Changing
+  spacing or disabling snap leaves existing parts in place.
 - **Constrain position** pins the shared component origin in X/Y. Every visit
   uses that same pose. **Constrain beam length** pins the distance between its
   optical interaction points. Free lengths and free orientations can adjust.
