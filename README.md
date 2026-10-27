@@ -140,6 +140,14 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   when adding or dragging parts; it adds no position, angle or distance
   constraints. Optical solving can move free parts off the grid. Changing
   spacing or disabling snap leaves existing parts in place.
+- Small constraint marks sit beside component references and constrained beams:
+  **P** position, **∠** pass angle, **→** beam heading, **⊙** centered hit,
+  **↔** roof offset, **i** grating incidence, **∥** automatic straight-through
+  alignment, **L** beam endpoint separation, and **Σ** total routed length.
+  Hover a mark for its target and affected passes. Shared optics show all their
+  pass constraints; total-path marks follow every beam on the route. Marks stay
+  readable when zooming and remain visible on unresolved drafts. A legend is
+  also available in the inspector when no component is selected.
 - **Constrain position** pins the shared component origin in X/Y. Every visit
   uses that same pose. **Constrain beam length** pins the distance between its
   optical interaction points. Free lengths and free orientations can adjust.

@@ -23,6 +23,7 @@ from .scene_solver import solve_scene, apply_scene_solution, variables
 from .physical import wrap_angle
 from .optic_geometry import element_spec
 from .geometry import snap_point
+from .constraint_marks import component_marks, beam_marks, LEGEND
 from PyOpticL.ray_math import add, yaw, heading
 
 Qt = QtCore.Qt
@@ -70,6 +71,69 @@ class PhysicalPort(PortItem):
         )
 
 
+class ConstraintBadge(QtWidgets.QGraphicsSimpleTextItem):
+    def __init__(self, mark, parent):
+        super().__init__(mark, parent)
+        font = self.font()
+        font.setPixelSize(11)
+        font.setBold(True)
+        self.setFont(font)
+        self.setBrush(QtGui.QColor("#31536e"))
+        self.setAcceptedMouseButtons(Qt.NoButton)
+
+    def boundingRect(self):
+        return super().boundingRect().adjusted(-3, -1, 3, 1)
+
+    def shape(self):
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(self.boundingRect(), 3, 3)
+        return path
+
+    def paint(self, painter, option, widget=None):
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtGui.QPen(QtGui.QColor("#9db4c6"), 0))
+        painter.setBrush(QtGui.QColor("#f6f9fc"))
+        painter.drawRoundedRect(self.boundingRect(), 3, 3)
+        super().paint(painter, option, widget)
+
+
+class ConstraintMarks(QtWidgets.QGraphicsObject):
+    """Small screen-sized marks; hovering explains every pass of each type."""
+    def __init__(self, parent, fixed=False, offset=(0, 0)):
+        super().__init__(parent)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations, fixed)
+        self.setAcceptedMouseButtons(Qt.NoButton)
+        self.setZValue(5)
+        self.badges = {}
+        self.specs = ()
+        self.rect = QtCore.QRectF()
+        self.offset = offset
+
+    def refresh(self, specs):
+        self.prepareGeometryChange()
+        self.specs = specs
+        for badge in self.badges.values():
+            badge.hide()
+        x, y = self.offset
+        self.rect = QtCore.QRectF()
+        for spec in specs:
+            if spec.kind not in self.badges:
+                self.badges[spec.kind] = ConstraintBadge(spec.mark, self)
+            badge = self.badges[spec.kind]
+            badge.setToolTip(spec.tooltip)
+            badge.setPos(x + 3, y + 1)
+            badge.show()
+            self.rect = self.rect.united(badge.mapRectToParent(badge.boundingRect()))
+            x += badge.boundingRect().width() + 3
+        self.setVisible(bool(specs))
+
+    def boundingRect(self):
+        return self.rect
+
+    def paint(self, painter, option, widget=None):
+        pass
+
+
 class PhysicalSymbol(SymbolItem):
     def __init__(self, node, editor):
         QtWidgets.QGraphicsObject.__init__(self)
@@ -87,6 +151,7 @@ class PhysicalSymbol(SymbolItem):
             self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, False)
         self.label = QtWidgets.QGraphicsSimpleTextItem(node.reference, self)
         self.label.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+        self.constraint_marks = ConstraintMarks(self.label)
         self.bounds_circle = QtWidgets.QGraphicsEllipseItem(self)
         self.bounds_circle.setFlag(QtWidgets.QGraphicsItem.ItemStacksBehindParent)
         self.bounds_circle.setAcceptedMouseButtons(Qt.NoButton)
@@ -155,6 +220,9 @@ class PhysicalSymbol(SymbolItem):
             port.setPos(local)
             port.setVisible(visit == active)
         self.label.setPos(self.rectangle.left(), self.rectangle.bottom() + 1)
+        source = editor.document if self.node.id in {n.id for n in editor.document.nodes} else editor.scene_document()
+        self.constraint_marks.refresh(component_marks(source, self.node.id))
+        self.constraint_marks.setPos(self.label.boundingRect().right() + 5, 0)
         self.setToolTip(
             f"{self.node.reference}: {SYMBOLS[self.node.kind].title}\nPhysical XYZ: {tuple(round(v,4) for v in pose[:3])} mm"
         )
@@ -215,6 +283,7 @@ class PhysicalBeam(ConnectionItem):
         QtWidgets.QGraphicsPathItem.__init__(self)
         self.segment_connection = connection
         self.connection, self.editor = connection, editor
+        self.logical_ids = (connection.id,)
         if connection.id not in {e.id for e in editor.document.connections}:
             saved = editor.document.optimized_layout
             if saved and saved.get("input_version") == 6:
@@ -223,11 +292,13 @@ class PhysicalBeam(ConnectionItem):
                 try:
                     graph = saved_scene_document(editor.document)[1]
                     logical = graph.segment(connection.id).logical_ids
+                    self.logical_ids = tuple(logical)
                     self.connection = editor.document.connection(logical[0])
                 except (ValueError, StopIteration):
                     pass
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
         self.setZValue(0)
+        self.constraint_marks = ConstraintMarks(self, fixed=True, offset=(6, -20))
         self.refresh()
 
     def refresh(self):
@@ -265,6 +336,8 @@ class PhysicalBeam(ConnectionItem):
         if not valid:
             pen.setStyle(Qt.DashLine)
         self.setPen(pen)
+        self.constraint_marks.refresh(beam_marks(editor.document, self.logical_ids))
+        self.constraint_marks.setPos((first + last) / 2)
         description = "Physical beam" if valid else "Unresolved connection guide"
         self.setToolTip(
             f"{description} · {edge.id}\nSelect to edit endpoint separation or folding permission"
@@ -908,6 +981,8 @@ class PhysicalSchematicEditor(BaseEditor):
             return
         BaseEditor.show_properties(self)
         ids = self.selected_nodes()
+        if not ids:
+            self.note(LEGEND + ". Hover a mark for its target and affected passes.")
         if len(ids) == 1 and ids[0] in self.omitted_mirrors():
             return
         if not ids and self.omitted_mirrors():
