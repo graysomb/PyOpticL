@@ -41,6 +41,9 @@ The exact [MK05S product downloads](https://www.thorlabs.com/item/MK05S) are
 pinned in `catalog_data/assets/MK05S.*.json`. The engineering drawing is
 **TTN193112-E0W, revision A**. STEP declares inches; FreeCAD imports millimeters.
 Independent measurements and normalization are in `catalog_data/grating_reference.json`.
+The original STEP, drawing, and LightSmyth datasheet are versioned in
+`PyOpticL/catalog_data/sources`; rebuilding and source checks work offline.
+The datasheet is indexed by `source_references.json`.
 
 | Source | SHA-256 |
 |---|---|

@@ -47,7 +47,10 @@ class DemoTests(unittest.TestCase):
             self.assertAlmostEqual(segment.Proxy.get_global_direction()[2], 0., places=8)
         self.assertEqual(segments[-1].EndObject.Label, 'Output receiver datum')
         actual = {o.Proxy.contract().part_number for o in self.source.Objects if hasattr(o.Proxy, 'contract')}
-        self.assertTrue(set(catalog.VENDOR_IDS).issubset(actual))
+        # This fixed demo covers the original eight-part vendor batch; later
+        # catalog additions have their own layouts and must not expand its route.
+        batch = json.loads((catalog.DATA/'batch_measurements.json').read_text())['parts']
+        self.assertTrue(set(batch).issubset(actual))
         self.assertEqual(sum(o.Proxy.contract().part_number == 'POLARIS-K05T6'
                              for o in self.source.Objects if hasattr(o.Proxy, 'contract')), 2)
         self.assertEqual(len(self.parts), 10)

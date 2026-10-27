@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "PFD10-03-P01",
+  "product_url": "https://www.thorlabs.com/item/PFD10-03-P01",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/p/pf/pfd/pfd10-03-p01/15656-e0w.pdf?v=0116020735",
+  "vendor_filename": "15656-E0W.pdf",
+  "document_id": "15656-E0W",
+  "revision": "C",
+  "retrieved_at": "2026-10-27T17:30:04.845231+00:00",
+  "sha256": "e06d4755268b11017c65d76fe4611649c23a8a7a4ae592dc122cbbc527ef9837",
+  "kind": "pdf",
+  "cache_path": "objects/e06d4755268b11017c65d76fe4611649c23a8a7a4ae592dc122cbbc527ef9837/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

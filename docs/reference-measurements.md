@@ -153,3 +153,12 @@ to explicit KA05TA assemblies.
 
 See [batch verification](component-batch-verification.md) and
 [the catalog API](lab-catalog.md) for tests, native heights and drilling selections.
+
+## Versioned original sources
+
+Original lab CAD and reference documents are bundled in
+[`PyOpticL/catalog_data/sources`](../PyOpticL/catalog_data/sources/README.md)
+and indexed by `source_references.json`. Historical `Data/` names above identify
+provenance; they are not external rebuild dependencies. The PBS verifier and HOM
+extractor use these bundled sources by default. Run
+`python3 -m PyOpticL.vendor_cad verify --all` to check every original source pin.

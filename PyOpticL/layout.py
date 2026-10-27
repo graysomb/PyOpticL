@@ -292,6 +292,10 @@ class Component(Layout):
                     # Profile-bearing mounts may be nested below optics/assemblies.
                     # Traverse the enclosing layout once, not only direct peers.
                     shape, _, _ = attachments.fuse_integrated(shape, obj.Parent, obj)
+                    for mount, record, pocket in attachments.plate_clearances(obj.Parent, obj):
+                        if pocket.optimalBoundingBox().ZMin < shape.optimalBoundingBox().ZMin + .5:
+                            raise ValueError('Clearance pocket leaves insufficient stock')
+                        shape = shape.cut(pocket)
                     for mount, operation in attachments.plate_attachments(obj.Parent, obj):
                         shape = shape.cut(attachments.bore(operation))
                 # gather peer objects

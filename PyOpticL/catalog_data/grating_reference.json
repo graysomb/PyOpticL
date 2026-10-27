@@ -165,7 +165,7 @@
     "datasheet_url": "https://www.coherent.com/content/dam/coherent/site/en/resources/datasheet/optics/diffraction-grating-t-1000c-series-ds.pdf",
     "geometry_status": "Nominal parametric envelope from manufacturer dimensions; no exact grating STEP supplied. Grooves parallel to short edge.",
     "datasheet_sha256": "77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e",
-    "datasheet_cache_path": "objects/77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e/source.pdf"
+    "datasheet_reference": "lightsmyth-datasheet"
   },
   "units": "mm",
   "source_step_units": "INCH; converted by STEP importer, cross-checked against drawing envelope",

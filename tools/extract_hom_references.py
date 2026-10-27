@@ -9,12 +9,14 @@ import Import
 import Part
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from PyOpticL.lab_catalog import DATA
+from PyOpticL.vendor_cad import resolve_reference
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('source',type=Path,help='Data/HOM Mount/HOM setup.step')
+    parser.add_argument('source',type=Path,nargs='?',help='Default: bundled HOM setup.step')
     parser.add_argument('output',type=Path)
     args=parser.parse_args()
+    args.source = args.source or resolve_reference('hom-assembly')
     expected=json.loads((DATA/'reference_measurements.json').read_text())['source_files']['../Data/HOM Mount/HOM setup.step']
     if hashlib.sha256(args.source.read_bytes()).hexdigest()!=expected:
         raise ValueError('Lab source differs from independently measured revision')

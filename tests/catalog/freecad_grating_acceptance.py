@@ -19,7 +19,7 @@ from PyOpticL.component_contract import ComponentContract, Thread, MechanicalInt
 from PyOpticL.grating import (GratingAdapter, GratingOptic, MK05SMount, reference)
 from PyOpticL.layout import Component, Layout
 from PyOpticL.library import Baseplate
-from PyOpticL.vendor_cad import resolve
+from PyOpticL.vendor_cad import resolve, resolve_reference
 from examples import grating as demo
 
 
@@ -55,7 +55,7 @@ class GratingTests(unittest.TestCase):
         for kind in ('step','pdf'):
             record = json.loads((catalog.DATA/'assets'/('MK05S.'+kind+'.json')).read_text())
             self.assertEqual(hashlib.sha256(resolve(record).read_bytes()).hexdigest(),r['step_sha256' if kind=='step' else 'drawing_sha256'])
-        data = (Path.home()/'.cache/pyopticl/cad'/r['grating']['datasheet_cache_path']).read_bytes()
+        data = resolve_reference(r['grating']['datasheet_reference']).read_bytes()
         self.assertEqual(hashlib.sha256(data).hexdigest(),r['grating']['datasheet_sha256'])
         source = catalog.vendor_shape('MK05S')
         normalized = MK05SMount().shape()

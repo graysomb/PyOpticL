@@ -9,9 +9,11 @@ import Import
 import Part
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PyOpticL import lab_catalog as catalog
+from PyOpticL.vendor_cad import resolve_reference
 
 
-def verify(source):
+def verify(source=None):
+    source = source or resolve_reference('displacement-pbs')
     measurement = json.loads((catalog.DATA / 'displacement_pbs_reference.json').read_text())
     if hashlib.sha256(source.read_bytes()).hexdigest() != measurement['sha256']:
         raise ValueError('Displacement source revision differs from measured CAD')
@@ -43,7 +45,7 @@ def verify(source):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('source', type=Path)
+    parser.add_argument('source', type=Path, nargs='?', help='Default: bundled displacement PBS source')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     result = verify(args.source)

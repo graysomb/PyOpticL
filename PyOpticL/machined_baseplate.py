@@ -108,6 +108,13 @@ class MachinedBaseplate:
                     App.Vector(b.XMin-self.pocket_clearance,b.YMin-self.pocket_clearance,seat.z))
                 plate = plate.cut(pocket)
                 pockets.append(dict(mount=obj.Label,depth_mm=-seat.z,clearance_mm=self.pocket_clearance))
+            for record, pocket in attachments.clearance_pockets(obj.Proxy, placement):
+                bottom = pocket.optimalBoundingBox().ZMin
+                if bottom < -self.thickness + .5:
+                    raise ValueError('Clearance pocket leaves insufficient stock')
+                plate = plate.cut(pocket)
+                pockets.append(dict(mount=obj.Label, kind='hardware_clearance',
+                    depth_mm=-bottom, **record))
             for operation in attachments.operations(obj.Proxy, placement):
                 center = App.Vector(*operation['center_mm'])
                 if center.z-operation['depth_mm']-attachments.tip_height(operation['diameter_mm']) < -self.thickness+.5:

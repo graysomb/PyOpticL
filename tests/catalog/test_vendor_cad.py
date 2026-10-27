@@ -17,6 +17,68 @@ class DownloadTests(unittest.TestCase):
             with self.assertRaisesRegex(FileNotFoundError,'Missing pinned CAD asset for KA05TA.*PYOPTICL_CAD_CACHE'):
                 cad.resolve(record,root)
 
+    def test_default_registration_is_versioned_and_resolves_without_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store=Path(directory)/'sources'
+            with patch.dict('os.environ',{},clear=True),patch.object(cad,'source_root',return_value=store), \
+                    patch.object(cad,'cache_root',side_effect=AssertionError('No cache access')):
+                record=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step')
+                self.assertEqual(cad.resolve(record),(store/record['cache_path']).resolve())
+
+    def test_repository_is_authoritative_and_explicit_root_remains_supported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store,cache=Path(directory)/'sources',Path(directory)/'cache'
+            record=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step',root=store)
+            cad.register('thorlabs','KA05TA',record['product_url'],STEP,'KA05TA.step','step',root=cache)
+            with patch.object(cad,'source_root',return_value=store), \
+                    patch.object(cad,'cache_root',side_effect=AssertionError('Do not fall back')):
+                self.assertEqual(cad.resolve(record),(store/record['cache_path']).resolve())
+                (store/record['cache_path']).write_bytes(b'corrupt')
+                with self.assertRaisesRegex(ValueError,'hash differs'):cad.resolve(record)
+                self.assertEqual(cad.resolve(record,cache),(cache/record['cache_path']).resolve())
+
+    def test_legacy_cache_fallback_and_missing_source_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache=Path(directory)/'cache'
+            record=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step',root=cache)
+            with patch.object(cad,'source_root',return_value=Path(directory)/'sources'), \
+                    patch.object(cad,'cache_root',return_value=cache):
+                self.assertEqual(cad.resolve(record),(cache/record['cache_path']).resolve())
+                (cache/record['cache_path']).unlink()
+                with self.assertRaisesRegex(FileNotFoundError,'restore catalog_data/sources') as missing:cad.resolve(record)
+                self.assertIn('KA05TA',str(missing.exception))
+                self.assertIn('PYOPTICL_CAD_CACHE',str(missing.exception))
+
+    def test_paths_cannot_escape_either_store(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outside=Path(directory)/'outside.step';outside.write_bytes(STEP)
+            store=Path(directory)/'sources';store.mkdir()
+            for key in ('../outside.step',str(outside)):
+                with self.assertRaisesRegex(ValueError,'escapes'):
+                    cad.resolve(dict(schema_version=1,cache_path=key),store)
+            (store/'linked.step').symlink_to(outside)
+            with self.assertRaisesRegex(ValueError,'escapes'):
+                cad.resolve(dict(schema_version=1,cache_path='linked.step'),store)
+
+    def test_complete_catalog_is_bundled_and_offline(self):
+        with patch.object(cad,'cache_root',side_effect=AssertionError('No cache required')), \
+                patch.object(cad,'urlopen',side_effect=AssertionError('No network required')):
+            summary=cad.verify_catalog()
+            records=[json.loads(p.read_text()) for p in (cad.source_root().parent/'assets').glob('*.json')]
+            records.extend(json.loads((cad.source_root().parent/'source_references.json').read_text()).values())
+            paths={cad.source_root()/r['cache_path'] for r in records}
+            self.assertGreaterEqual(len(records),42)
+            self.assertEqual(summary['records'],len(records))
+            self.assertEqual(summary['files'],len(paths))
+            self.assertEqual(summary['bytes'],sum(p.stat().st_size for p in paths))
+            self.assertTrue(cad.resolve_reference('alignment-iris').is_relative_to(cad.source_root()))
+            with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(cad.main(['verify','--all']),0)
+
+    def test_complete_catalog_check_cannot_be_satisfied_by_external_cache(self):
+        with tempfile.TemporaryDirectory() as directory,patch.object(cad,'source_root',return_value=Path(directory)), \
+                patch.object(cad,'cache_root',side_effect=AssertionError('Bundled-only verification')):
+            with self.assertRaises(FileNotFoundError):cad.verify_catalog()
+
     def test_cache_validation_and_revision(self):
         with tempfile.TemporaryDirectory() as root:
             r=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step',root=root)

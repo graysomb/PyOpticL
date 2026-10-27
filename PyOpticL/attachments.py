@@ -146,7 +146,23 @@ def bore(operation):
 
 
 def footprint(definition):
-    return Part.makeCompound([bore(op) for op in operations(definition)])
+    return Part.makeCompound([bore(op) for op in operations(definition)] +
+                             [shape for _, shape in clearance_pockets(definition)])
+
+
+def clearance_pockets(definition, placement=None):
+    """Explicit source-measured clearance boxes, separate from mounting bores."""
+    specification = profile(definition) or {}
+    placement = placement or App.Placement()
+    for record in specification.get('clearance_pockets', []):
+        size = record['size_mm']
+        if len(size) != 3 or not all(math.isfinite(v) and v > 0 for v in size):
+            raise ValueError('Clearance pocket dimensions must be positive')
+        shape = Part.makeBox(*size, App.Vector(*record['origin_mm']))
+        shape.Placement = placement * shape.Placement
+        yield dict(record, source_origin_mm=list(record['origin_mm']),
+                   origin_mm=list(placement.multVec(App.Vector(*record['origin_mm']))),
+                   rotation_deg=list(placement.Rotation.toEulerAngles('XYZ'))), shape
 
 
 def plate_attachments(root, relative_to):
@@ -160,3 +176,13 @@ def plate_attachments(root, relative_to):
             placement = inverse * obj.Placement
             for op in operations(obj.Proxy, placement):
                 yield obj, op
+
+
+def plate_clearances(root, relative_to):
+    inverse = relative_to.Placement.inverse()
+    for obj in descendants(root):
+        if obj is relative_to or not profile(obj.Proxy):
+            continue
+        obj.Proxy.compute_placement()
+        for record, shape in clearance_pockets(obj.Proxy, inverse * obj.Placement):
+            yield obj, record, shape

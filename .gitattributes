@@ -1,0 +1,3 @@
+# Preserve pinned source bytes across platforms and keep large CAD diffs binary.
+PyOpticL/catalog_data/sources/**/*.step binary
+PyOpticL/catalog_data/sources/**/*.pdf binary

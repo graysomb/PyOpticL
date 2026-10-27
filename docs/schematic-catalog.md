@@ -53,12 +53,20 @@ Packing uses XY assembly disks, including for vertical roofs. It remains a
 conservative planar packing check; differing heights do not exempt disks or
 beams from XY clearance tests. The canvas uses the same physical coordinates and millimetre scale. XY and XZ projections show the same shared parts.
 
-## Vendor CAD cache
+## Vendor CAD sources
 
-The merge contains pinned asset manifests, not vendor STEP files. These files
-live outside the repository at `~/.cache/pyopticl/cad` by default. Set
-`PYOPTICL_CAD_CACHE` to an existing cache root if it lives elsewhere; that root
-contains the `objects` directory. Restoring the original cache is sufficient.
+The pinned STEP/PDF sources are now [included in Git](../PyOpticL/catalog_data/sources/README.md)
+under `PyOpticL/catalog_data/sources`. A complete checkout works offline without
+a personal CAD cache. Verify every bundled source with:
+
+```sh
+python -m PyOpticL.vendor_cad verify --all
+```
+
+The resolver checks repository bytes first. Missing files can fall back to
+`~/.cache/pyopticl/cad` or `PYOPTICL_CAD_CACHE`; corrupt repository files fail hash
+verification. Restore missing bundled files from Git before retrying. Explicit
+`--cache` selects an external store for registration or individual verification.
 
 If a file is missing, download the exact part's STEP from its official product
 page and register it against the existing manifest, for example:
@@ -74,7 +82,7 @@ python -m PyOpticL.vendor_cad register --vendor thorlabs \
 The command refuses to replace a catalog pin with a different hash. A revised
 download requires separate datum verification. See the repository's
 [vendor CAD workflow](../skills/vendor-optics-cad/SKILL.md). After restoring the
-cache, use **Refresh bounds** in the schematic editor. Editing and portable
+sources, use **Refresh bounds** in the schematic editor. Editing and portable
 Python export work without CAD; displaying bounds, optimizing, and building
 the exported CAD require the selected parts' complete geometry.
 
@@ -91,8 +99,9 @@ vendor assets as explicit skips. The original `tests/schematic_freecad.py`
 full-preset bounds test remains strict and fails until every asset is present.
 
 The [native catalog report](../Designs/schematics/catalog/native-verification.json)
-records partial coverage on this machine: real grating/PBS/iris checks pass,
-while vendor-dependent tests are skipped because the cache is absent. The roof
+records historical coverage before the sources were bundled: real
+grating/PBS/iris checks passed, while vendor-dependent tests were skipped because
+the cache was absent. The roof
 interface check uses real FreeCAD ray propagation with an explicitly analytical
 body fixture; it verifies finite interfaces and path lengths, not purchased
 geometry or assembly bounds.

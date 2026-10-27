@@ -35,6 +35,10 @@ Design optical systems in Python and automatically generate modular CAD models o
 
 [Lab catalog and component contracts](docs/lab-catalog.md) · [Reference measurement report](docs/reference-measurements.md)
 
+The lab catalog's [original CAD sources](PyOpticL/catalog_data/sources/README.md)
+are included in Git. A complete checkout rebuilds offline without a personal CAD
+cache; run `python3 -m PyOpticL.vendor_cad verify --all` to check every source pin.
+
 </div>
 
 <!-- <img height="100" alt="PyOpticL_logo" src="https://github.com/user-attachments/assets/6abdeee1-0d27-4417-b13f-469ae00388c7" /> -->
@@ -186,8 +190,8 @@ QT_QPA_PLATFORM=offscreen python Designs/schematics/multipass/generate.py --rend
 
 The folding example uses explicitly analytical assembly disks. Native checks in
 `tests/schematic_multipass_freecad.py` verify exported interactions and total air
-path; the roof body is an analytical fixture because its vendor CAD cache is not
-available here, while its native finite interfaces are exercised. Earlier
+path; the recorded roof tests use an analytical body fixture to exercise native
+finite interfaces independently of the vendor body geometry. Earlier
 [version 5 optimization examples](Designs/schematics/optimization/) remain historical
 fixtures and require rerunning or clearing their saved optimization after migration.
 
