@@ -157,7 +157,7 @@ class PartSpecTests(unittest.TestCase):
         def constructor(module, name):
             return lambda **kwargs: (module, name, kwargs)
 
-        modules = {name: SimpleNamespace() for name in ("optics", "thorlabs")}
+        modules = {name: SimpleNamespace() for name in ("optics", "thorlabs", "catalog")}
         for kind, symbol in SYMBOLS.items():
             for preset in symbol.presets:
                 document = branched() if kind == "splitter" else chain("source", "stop")
@@ -173,7 +173,7 @@ class PartSpecTests(unittest.TestCase):
                         if hasattr(value, "factory"):
                             register(value)
                 register(spec)
-                with patch("PyOpticL.schematic.parts.import_module", side_effect=lambda name: modules[name.split(".")[-1]]):
+                with patch("PyOpticL.schematic.parts.import_module", side_effect=lambda name: modules["catalog" if name.endswith("catalog_parts") else name.split(".")[-1]]):
                     actual = spec.instantiate()
                 expected = eval(spec.render("parameters"), {**modules, "parameters": dict(spec.parameters)})
                 self.assertEqual(actual, expected, (kind, preset))

@@ -18,7 +18,8 @@ from .model import connection_length, document_from_dict, interface_turn
 from .paths import component_path
 from .effective import EffectiveGraph, identity_graph, effective_document, parse_graph_edits, replay_graph
 from .physical import PhysicalLayout, physical_layout, wrap_angle
-from .registry import MIN_BEAM_TURN
+from .registry import MIN_BEAM_TURN, fixed_turn
+from .kinematics import internal_path, roof_shift, rotate_xy
 from .topology import resolve_topology
 
 LINEAR_TOLERANCE = 1e-6
@@ -124,6 +125,7 @@ class PathProjection:
     target: float
     a: int
     b: int
+    constant: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -133,6 +135,14 @@ class SeparationConstraint:
     b: int
     target: float
     edges: tuple[int, ...] = ()
+    source: int | None = None
+
+
+@dataclass(frozen=True)
+class OffsetOptic:
+    node: int
+    incoming: int
+    shift: tuple[float, float, float]
 
 
 @dataclass(frozen=True)
@@ -154,6 +164,8 @@ class OptimizationProblem:
     source_radii: tuple[tuple[str, float], ...] = ()
     folding_radius: float | None = None
     output_directions: tuple[DirectionConstraint, ...] = ()
+    offsets: tuple[OffsetOptic, ...] = ()
+    physical_scene: bool = False
 
 
 @dataclass(frozen=True)
@@ -244,11 +256,19 @@ def input_fingerprint(document, config, radii, geometry=None, folding_radius=Non
         "radii": radii,
         "geometry": geometry_settings() if geometry is None else geometry,
     }
+    if document.layout is not None or document.passes:
+        for value,edge in zip(edges,document.connections):value['ends']=sorted([(e.node_id,e.port_id,e.visit_id) for e in (edge.a,edge.b)])
+        payload['optical_passes'] = sorted([asdict(p) for p in document.optical_passes()], key=lambda p:p['id'])
+        if document.layout is not None:
+            payload['physical_scene'] = {k:document.layout.get(k,{}) for k in ('poses','splitters')}
     return hashlib.sha256(json.dumps(payload, sort_keys=True, allow_nan=False).encode()).hexdigest()
 
 
 def validate_saved_optimization(config, saved):
     """Validate storage without requiring it to match an unfinished schematic."""
+    if saved is not None and isinstance(saved,dict) and saved.get('input_version') == 6:
+        from .scene_optimization import validate_saved_scene
+        return validate_saved_scene(config,saved)
     try:
         if config is not None:
             if not isinstance(config, dict) or set(config) != {"box", "options"}:
@@ -309,6 +329,10 @@ def build_problem(document, radii, box=None, options=None, folding_radius=None):
     from .compiler import validate_schematic
 
     document = document_from_dict(document.to_dict())
+    from .scene_layout import is_physical
+    if is_physical(document):
+        from .scene_optimization import build_scene_problem
+        return build_scene_problem(document,radii,box,options,folding_radius)
     errors = validate_schematic(document)
     if errors:
         raise ValueError("\n".join(e.message for e in errors))
@@ -403,6 +427,8 @@ def _numeric_problem(
                 turn = (
                     (interface_turn(derived, node, topology) if constrained else None) if reflecting else 0.0
                 )
+                if node.kind in ("roof", "grating"):
+                    turn = fixed_turn(derived, node, topology)
                 angles.append(TurnConstraint(incoming[a], a, b, edge.id, turn))
     edge_indices = {edge.id: i for i, edge in enumerate(edges)}
     path_lengths = tuple(
@@ -412,6 +438,7 @@ def _numeric_problem(
             item.length_mm,
             indices[item.component_a],
             indices[item.component_b],
+            internal_path(derived, component_path(derived, item.component_a, item.component_b)),
         )
         for item in document.path_constraints
     )
@@ -422,6 +449,7 @@ def _numeric_problem(
             indices[edge.b.node_id],
             edge.length,
             tuple(edge_indices[key] for key in component_path(derived, edge.a.node_id, edge.b.node_id)),
+            indices[resolve_topology(document).edges[edge.id].source.node_id],
         )
         for edge in document.connections
         if edge.length is not None and edge.id not in edge_indices
@@ -458,6 +486,15 @@ def _numeric_problem(
         tuple(sorted(radii.items())),
         folding_radius,
         output_directions,
+        tuple(
+            OffsetOptic(
+                indices[node.id],
+                next(i for i, e in enumerate(edges) if e.b == indices[node.id]),
+                roof_shift(node, topology),
+            )
+            for node in derived.nodes
+            if node.kind == "roof"
+        ),
     )
 
 
@@ -545,8 +582,53 @@ def _correct(positions, mobility, indices, gradients, residual, strength=1):
             positions[i][axis] += factor * mobility[i][axis] * g[axis]
 
 
+def beam_points(problem, positions):
+    """Physical leg endpoints, including an assembly's displaced exit port."""
+    if problem.physical_scene:
+        from .scene_optimization import problem_beam_points
+        return problem_beam_points(problem,positions)
+    offsets = {item.node: item for item in problem.offsets}
+    starts = []
+    for edge in problem.edges:
+        point = positions[edge.a]
+        if edge.a in offsets:
+            offset = offsets[edge.a]
+            previous = starts[offset.incoming]
+            heading = degrees(atan2(point[1] - previous[1], point[0] - previous[0]))
+            dx, dy = rotate_xy(offset.shift, heading)
+            point = point[0] + dx, point[1] + dy
+        starts.append(point)
+    return tuple((start, positions[edge.b]) for start, edge in zip(starts, problem.edges))
+
+
+def exit_point(problem, positions, node, points=None):
+    points = beam_points(problem, positions) if points is None else points
+    return next((points[i][0] for i, e in enumerate(problem.edges) if e.a == node), positions[node])
+
+
+def angle_points(problem, positions, constraint, points=None):
+    if not problem.offsets:
+        return tuple(positions[i] for i in (constraint.incoming, constraint.node, constraint.outgoing))
+    points = beam_points(problem, positions) if points is None else points
+    a = next(points[i][0] for i, e in enumerate(problem.edges) if e.b == constraint.node)
+    start, end = next(points[i] for i, e in enumerate(problem.edges) if e.id == constraint.connection_id)
+    b = positions[constraint.node]
+    return a, b, (end[0] - start[0] + b[0], end[1] - start[1] + b[1])
+
+
 def path_value_gradients(problem, positions, constraint):
-    value, gradients = 0.0, {}
+    if problem.offsets:
+        from .offset_constraints import scalar_gradient
+
+        def value(p):
+            points = beam_points(problem, p)
+            return constraint.constant + sum(
+                hypot(points[i][1][0] - points[i][0][0], points[i][1][1] - points[i][0][1])
+                for i in constraint.edges
+            )
+
+        return scalar_gradient(problem, positions, value)
+    value, gradients = constraint.constant, {}
     for index in constraint.edges:
         edge = problem.edges[index]
         a, b = positions[edge.a], positions[edge.b]
@@ -563,6 +645,10 @@ def path_value_gradients(problem, positions, constraint):
 def project_constraints(problem, positions, collision_strength=1, mobility=None):
     """One in-place projection pass. Pinned axes always have zero mobility."""
     mobility = mobility or _mobility(problem)
+    if problem.offsets:
+        from .offset_constraints import project_offsets
+
+        return project_offsets(problem, positions, collision_strength, mobility)
     for edge in problem.edges:
         a, b = positions[edge.a], positions[edge.b]
         nx, ny, distance = _direction(b[0] - a[0], b[1] - a[1], edge.a + edge.b)
@@ -712,6 +798,7 @@ def layout_violations(problem, positions):
             )
 
     gap, half, box = problem.options.clearance_mm, problem.options.beam_diameter_mm / 2, problem.box
+    points = beam_points(problem, positions)
     for i, node in enumerate(problem.nodes):
         x, y = positions[i]
         for axis, pin in enumerate((node.pin_x, node.pin_y)):
@@ -746,8 +833,7 @@ def layout_violations(problem, positions):
                 residual,
                 (i, j),
             )
-    for edge in problem.edges:
-        a, b = positions[edge.a], positions[edge.b]
+    for edge, (a, b) in zip(problem.edges, points):
         distance = hypot(b[0] - a[0], b[1] - a[1])
         add(
             "length",
@@ -771,7 +857,7 @@ def layout_violations(problem, positions):
             error = abs(wrap_angle(degrees(atan2(b[1] - a[1], b[0] - a[0])) - problem.source_direction))
             add("source_direction", "Source direction", error, (edge.a,), (edge.id,), "°")
     for constraint in problem.output_directions:
-        a, b = positions[constraint.a], positions[constraint.b]
+        a, b = points[next(i for i, edge in enumerate(problem.edges) if edge.id == constraint.connection_id)]
         value = degrees(atan2(b[1] - a[1], b[0] - a[0]))
         add(
             "output_direction",
@@ -783,6 +869,9 @@ def layout_violations(problem, positions):
         )
     for constraint in problem.separations:
         a, b = positions[constraint.a], positions[constraint.b]
+        if constraint.source is not None:
+            start = exit_point(problem, positions, constraint.source, points)
+            a, b = (start, b) if constraint.a == constraint.source else (a, start)
         add(
             "separation",
             "Constrained beam endpoint separation",
@@ -791,7 +880,10 @@ def layout_violations(problem, positions):
             tuple(problem.edges[i].id for i in constraint.edges),
         )
     for constraint in problem.path_lengths:
-        value, _, _ = path_value_gradients(problem, positions, constraint)
+        value = constraint.constant + sum(
+            hypot(points[i][1][0] - points[i][0][0], points[i][1][1] - points[i][0][1])
+            for i in constraint.edges
+        )
         add(
             "path_length",
             "Total path length",
@@ -801,7 +893,7 @@ def layout_violations(problem, positions):
             constraints=(constraint.id,),
         )
     for constraint in problem.angles:
-        a, b, c = (positions[i] for i in (constraint.incoming, constraint.node, constraint.outgoing))
+        a, b, c = angle_points(problem, positions, constraint, points)
         value = signed_turn(a, b, c)
         residual = (
             abs(wrap_angle(value - constraint.turn))
@@ -823,10 +915,10 @@ def forces(problem, positions):
     """Hooke attraction and inverse-square repulsion, in characteristic units."""
     scale = median(e.preferred_length for e in problem.edges) if problem.edges else 50
     result = [[0.0, 0.0] for _ in positions]
-    for edge in problem.edges:
+    for edge, (a, b) in zip(problem.edges, beam_points(problem, positions)):
         nx, ny, distance = _direction(
-            positions[edge.b][0] - positions[edge.a][0],
-            positions[edge.b][1] - positions[edge.a][1],
+            b[0] - a[0],
+            b[1] - a[1],
             edge.a + edge.b,
         )
         target = edge.fixed_length if edge.fixed_length is not None else edge.preferred_length
@@ -849,15 +941,10 @@ def forces(problem, positions):
 def reconstruct_candidate(problem, positions, document=None, topology=None):
     document = document or document_from_dict(json.loads(problem.document_json))
     topology = topology or resolve_topology(document)
+    points = beam_points(problem, positions)
     lengths = {
-        e.id: (
-            e.fixed_length
-            if e.fixed_length is not None
-            else max(
-                0.001, hypot(positions[e.b][0] - positions[e.a][0], positions[e.b][1] - positions[e.a][1])
-            )
-        )
-        for e in problem.edges
+        e.id: (e.fixed_length if e.fixed_length is not None else max(0.001, hypot(b[0] - a[0], b[1] - a[1])))
+        for e, (a, b) in zip(problem.edges, points)
     }
     turns = {
         n.id: interface_turn(document, n, topology)
@@ -869,7 +956,7 @@ def reconstruct_candidate(problem, positions, document=None, topology=None):
         node = document.node(node_id)
         edge = topology.edges[angle.connection_id]
         if node.kind == "mirror" or edge.interaction == "reflected":
-            value = signed_turn(positions[angle.incoming], positions[angle.node], positions[angle.outgoing])
+            value = signed_turn(*angle_points(problem, positions, angle, points))
             turns[node_id] = (
                 angle.turn
                 if angle.turn is not None
@@ -1022,6 +1109,9 @@ def _optimize_fixed(problem, options=None, progress=None, cancelled=None):
 
 def optimize_layout(problem, options=None, progress=None, cancelled=None):
     """Optimize geometry and permitted topology; CAD-independent and cancellable."""
+    if problem.physical_scene:
+        from .scene_optimization import optimize_scene_layout
+        return optimize_scene_layout(problem,options,progress,cancelled)
     options = options or problem.options
     if options != problem.options:
         if (
@@ -1086,6 +1176,9 @@ def _saved_candidate(document, saved, config):
 
 def optimized_physical_layout(document, topology=None):
     saved = document.optimized_layout
+    if saved is not None and saved.get('input_version') == 6:
+        from .scene_optimization import saved_scene_layout
+        return saved_scene_layout(document)
     if saved is None:
         return None
     validate_saved_optimization(document.optimization, saved)
@@ -1106,6 +1199,9 @@ def optimized_physical_layout(document, topology=None):
 
 
 def apply_optimization(document, problem, result):
+    if problem.physical_scene:
+        from .scene_optimization import apply_scene_optimization
+        return apply_scene_optimization(document,problem,result)
     if result.status != "feasible" or result.layout is None:
         raise ValueError("Only a verified feasible layout can be applied")
     config = configuration(problem.box, problem.options)

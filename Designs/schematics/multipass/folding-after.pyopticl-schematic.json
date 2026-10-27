@@ -1,0 +1,198 @@
+{
+  "title": "Two-fold physical path",
+  "nodes": [
+    {
+      "id": "source",
+      "reference": "S1",
+      "kind": "source",
+      "preset": "beam",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {
+        "x": 20,
+        "y": 20,
+        "angle": 0
+      },
+      "mirror_role": "turning"
+    },
+    {
+      "id": "output",
+      "reference": "O1",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {
+        "x": 80,
+        "y": 20
+      },
+      "mirror_role": "turning"
+    }
+  ],
+  "connections": [
+    {
+      "id": "span",
+      "a": {
+        "node_id": "source",
+        "port_id": "beam",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "output",
+        "port_id": "beam",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": 60,
+      "turns": {},
+      "allow_folding": true
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 50,
+    "show_bounds": false,
+    "bounds_scale": 4.0
+  },
+  "version": 6,
+  "optimization": {
+    "box": {
+      "x": 0,
+      "y": 0,
+      "width": 100,
+      "height": 100
+    },
+    "options": {
+      "clearance_mm": 1,
+      "beam_diameter_mm": 1,
+      "seed": 0,
+      "starts": 1,
+      "iterations": 2400,
+      "projection_passes": 5,
+      "folding_preset": "bare",
+      "folding_diameter_mm": 12.7,
+      "max_added_mirrors": 2,
+      "max_folds_per_beam": 4,
+      "removal_angle_deg": 110
+    }
+  },
+  "optimized_layout": {
+    "fingerprint": "df5d4785215afff2df248b6c3e12311ef347b71a5292010aeee647ab77465f52",
+    "geometry": {
+      "poses": {
+        "source": [
+          20,
+          20,
+          0.0,
+          0
+        ],
+        "output": [
+          80,
+          20,
+          0.0,
+          0
+        ],
+        "e685273e-dff9-58f7-b76a-05b5bc9a1b9a": [
+          33.07428479593884,
+          46.36312253043163,
+          0.0,
+          1766.7474771500015
+        ],
+        "137c56da-2be9-5f02-8cfa-9d7c2714714b": [
+          88.54627417392314,
+          26.113743763708477,
+          0.0,
+          524.3219917070566
+        ]
+      }
+    },
+    "radii": {},
+    "graph": {
+      "edits": [
+        {
+          "action": "insert",
+          "node_id": "e685273e-dff9-58f7-b76a-05b5bc9a1b9a",
+          "segment_ids": [
+            "span"
+          ]
+        },
+        {
+          "action": "insert",
+          "node_id": "137c56da-2be9-5f02-8cfa-9d7c2714714b",
+          "segment_ids": [
+            "e685273e-dff9-58f7-b76a-05b5bc9a1b9a/in"
+          ]
+        }
+      ]
+    },
+    "input_version": 6,
+    "folding_radius": 9,
+    "manual_poses": {
+      "source": [
+        20,
+        20,
+        0,
+        0
+      ],
+      "output": [
+        80,
+        20,
+        0,
+        0
+      ]
+    }
+  },
+  "path_constraints": [
+    {
+      "id": "total",
+      "component_a": "source",
+      "component_b": "output",
+      "length_mm": 180,
+      "pass_a": "",
+      "pass_b": ""
+    }
+  ],
+  "passes": [],
+  "layout": {
+    "poses": {
+      "source": [
+        20,
+        20,
+        0.0,
+        0
+      ],
+      "output": [
+        80,
+        20,
+        0.0,
+        0
+      ],
+      "e685273e-dff9-58f7-b76a-05b5bc9a1b9a": [
+        33.07428479593884,
+        46.36312253043163,
+        0.0,
+        1766.7474771500015
+      ],
+      "137c56da-2be9-5f02-8cfa-9d7c2714714b": [
+        88.54627417392314,
+        26.113743763708477,
+        0.0,
+        524.3219917070566
+      ]
+    },
+    "splitters": {},
+    "projection": "XY"
+  }
+}

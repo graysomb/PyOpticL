@@ -67,197 +67,129 @@ beam.add(beamsplitter_cube())
 
 ### Optical schematic editor
 
-The PyOpticL workbench includes **New Optical Schematic** and **Open Optical
-Schematic** commands. Draw a planar optical system in a dedicated 2D workspace,
-then use **Export Python…** to generate an ordinary PyOpticL macro. Export does
-not execute the macro or modify an existing CAD layout.
+The workbench includes **New Optical Schematic** and **Open Optical Schematic**.
+The canvas now shows physical optical geometry in millimetres. **Export Python…**
+creates an ordinary PyOpticL macro and checks its actual ray trace when it runs.
 
-- Drag symbols from the palette, or double-click a palette entry to place one.
-  Click any free port, optionally click to add bends, then click another free
-  port to connect. All ports have the same neutral color. Press **Esc** to cancel.
-  Crossing paths stay separate.
-- Passive optics have interchangeable **A/B** ports. Connect either side of a
-  lens, mirror, waveplate, or iris; the editor infers propagation from the beam
-  source, independently of the order in which connections were drawn. Arrows
-  show that inferred direction. Ambiguous paths have no arrows and block export.
-- Cube splitters have four neutral face ports. Transmission connects opposite
-  faces; reflection pairs left/top and right/bottom for the drawn diagonal.
-  Connect the incident face and both resulting branches; the remaining face
-  stays unused in the current single-source model. Rotating a symbol rotates
-  its port positions without changing these optical relationships.
-- Move parts on the drawing grid, rotate with **R**, and use the grid/angle snap
-  controls for 45° or 90° drawing. Double-click a connection to add an editable
-  bend. Select a part, connection, or bend and press **Delete** to remove it.
-- **Part bounds** toggles physical XY bounding circles, **off by default**.
-  Each circle is centered on the part's optical/placement origin and conservatively
-  encloses its modeled body, mounts, adapters, and attached hardware, including
-  hidden hardware. Select an element to read the radius and diameter in mm.
-  With nothing selected, change **Bounds scale (canvas units/mm)** to resize all
-  circles together (default 4); **Refresh bounds** recalculates cached geometry.
-  Visibility and scale are saved with the drawing and support undo/redo.
-  Circle sizes share a scale, while schematic positions remain topological:
-  overlapping circles do not constitute a physical collision check. Missing
-  geometry is reported in the inspector without blocking editing or export.
-- Select a beam connection, enable **Constrain beam length**, and enter its
-  **Length (mm)** in the inspector. The constraint belongs to the beam between
-  the two optical interaction points, independently of connection click order.
-  Uncheck it to use the document's default beam length (or default open beam
-  length for an open output), adjusted when needed to satisfy pinned positions.
-  The beam inspector shows the resolved length. Splitter branches can have independent lengths.
-- Select an optical element and enable **Constrain position** to pin its optical
-  interaction point to absolute physical **X (mm)** and **Y (mm)** coordinates.
-  Unchecking it restores automatic placement; an unconstrained source starts at
-  the origin. Pins persist with the element through drawing edits, save/load,
-  and undo/redo. The compiler adjusts unconstrained beam lengths, keeping them
-  close to their defaults, to reach pinned positions along the current beam
-  directions. Source direction and optic turns keep their existing values or
-  port defaults; this does not solve for new angles. Incompatible pins, explicit
-  lengths, or routing angles block export with a diagnostic on the element.
-  Physical pins and lengths have no effect on the scale of the drawn schematic.
-- Select a mirror or beamsplitter, enable **Constrain angle** in the element's
-  inspector, and enter **Turn (deg)** or **Reflected turn (deg)**. Positive
-  turns counterclockwise and negative clockwise in the physical XY plane;
-  +90° is a right-angle bend, rather than a 90° incidence angle. Fractional
-  angles are supported (absolute value at least 0.001° and less than 180°).
-  The angle belongs to the optical element and stays with it when connections
-  change. Uncheck the constraint to permit optimization; without an applied solution, the resolved port's default turn is used.
-  Transmission stays straight, and single-ended fiber couplers
-  have no direction change to constrain. This controls routing geometry;
-  the current cube model does not simulate refraction through its outer faces.
-- Select a part to edit its optical parameters, compatible part preset, and
-  supported angle constraint. Existing angles from the earlier beam-based
-  controls can also be edited or cleared here.
-  Drawing positions and lengths have no
-  physical scale. **Apply Drawing Directions** explicitly copies drawing
-  tangents into physical routing hints while preserving explicit angle
-  constraints; later drawing edits leave them alone.
-  Default mirror/splitter turns follow the resolved incident port. Explicit
-  physical turn overrides remain unchanged when connections are edited.
-- Save editable drawings as `.pyopticl-schematic.json`. Undo/redo includes parts,
-  connections, settings, and properties. Incomplete drawings can be saved.
-  Version 1–4 drawings load through an in-memory migration that preserves existing
-  port locations, bends, references, and physical settings. Files are written in
-  version 5 format only when saved; opening a drawing does not rewrite it.
-  Older drawings start with no path constraints, folding disabled, and Turning
-  mirror roles. Older applied optimizations remain saved but are stale until
-  rerun or cleared.
-  Old component distances transfer to their incoming beams. An unfinished
-  drawing retains unresolved old distances until source direction is known.
-- **Validate** checks topology and physical origin overlaps. Every branch must
-  end in a fiber output, beam stop, or explicit open output. Export is blocked
-  until errors are resolved; click a message to locate the affected part.
+- Place a part from the palette and select its **Part preset** and optical
+  parameters in the inspector. Each physical optic has one shared position,
+  orientation and body outline, sized from its optical element. Mounts remain
+  part of the assembly rather than inflating the optical body symbol.
+- Click free ports to connect explicit optical passes. A/B connections are
+  reversible; propagation is inferred from one source. Crossings do not connect
+  rays or create visits. Physical beam segments are straight; turns require an optic.
+- To send a return beam through an existing lens, waveplate, mirror or splitter,
+  select that component and click **Add pass**. Select the desired **Optical pass**
+  before wiring it, or right-click the body to choose a pass and port. The physical
+  part is created only once in Python. Removing an extra pass keeps its component.
+  The visit graph must be finite and acyclic; it may revisit physical components.
+- Switch the **XY / XZ** control to inspect the same 3D geometry. Horizontal roofs
+  displace the return sideways; vertical roofs displace it in height. Returning
+  rays can traverse the same lens and waveplate before reaching an explicit pickoff.
+  Finite apertures, single-sided coatings, off-axis lens deflection and roof facets
+  are checked. An unintended interception reports the part and beam and asks you
+  to add a pass or move the optic.
+- Drag a body to solve its new placement while preserving hard constraints.
+  A valid release is one undoable edit; an unresolved release restores the previous
+  layout and reports residuals. **R** requests a yaw rotation. Free geometry changes
+  without checking any constraint boxes. Grid coordinates and sizes use millimetres.
+- **Constrain position** pins the shared component origin in X/Y. Every visit
+  uses that same pose. **Constrain beam length** pins the distance between its
+  optical interaction points. Free lengths and free orientations can adjust.
+- Select a mirror or splitter and the relevant **Optical pass**, then enable
+  **Constrain angle**. This pins the signed change in travel direction in XY:
+  +90° is counterclockwise, −90° clockwise. All passes share the same optic yaw;
+  incompatible per-pass requests cannot be satisfied independently. Splitter
+  transmission remains straight. Uncheck the box to leave the turn free.
+- Sources offer **Constrain source direction**. Open outputs, stops and fiber
+  receivers offer **Constrain output direction** for the arriving travel heading
+  in XY. A returning visit to a source fiber can receive on the same assembly.
+- **Path lengths…** constrains the total geometric distance along a unique route,
+  including across splitter branches and between two passes of the same part.
+  Roof internal air paths are included; refractive-index weighting is not used.
+  The dialog shows targets, measured lengths and route highlighting. Renaming
+  references preserves constraints; deleting an endpoint removes its constraints.
+- **Part bounds**, off by default, shows conservative full-assembly XY circles
+  at the same millimetre scale as the canvas. These include mounts, adapters and
+  hidden hardware. **Refresh bounds** clears the geometry cache. The inspector
+  shows radius/diameter or the reason bounds are unavailable. XY bounds are hidden
+  in the XZ view. Circle overlaps are conservative indicators, not CAD collision tests.
+- **Validate** lists local redundancy warnings and unresolved constraint errors.
+  Redundant, satisfied equations do not block export. Contradictory explicit
+  length equations are identified separately from numerical residuals. The status
+  shows locally free degrees of freedom. Incomplete or inconsistent drafts remain saveable.
 
-Use **Path lengths…** to constrain the total geometric beam length between any
-two connected components. Selecting two symbols prefills the endpoints. The
-dialog lists target and current lengths, satisfaction status, and highlights the
-unique route, including routes between splitter branches. Length is measured
-between optical origins without refractive-index weighting. These constraints
-also work with ordinary Python generation: free beam lengths adjust while
-explicit lengths, positions, and the current routing angles remain fixed.
-Conflicting or disconnected constraints block generation and optimization;
-unfinished drawings remain saveable. References can be renamed without losing
-constraints, and deleting an endpoint removes its constraints in the same edit.
+The merged lab catalog is available through **Part preset**, including POLARIS/MHV
+mirror mounts, POLARIS lens mounts, FBR/ELL16 waveplate mounts, fiber assemblies,
+PBS, alignment iris, slit, grating and roof presets. See the
+[catalog guide](docs/schematic-catalog.md) for parameters and vendor CAD cache setup.
+Some symbols mark only the known optical aperture; their inspectors say so rather
+than inventing a vendor body size. Physical packing still requires complete assembly bounds.
 
-Use **Optimize physical layout…** to fit the physical system into a rectangular
-region in millimetres. Adjust X/Y, width/height, the assembly clearance (default
-1 mm), and the constant beam keep-out diameter (default 1 mm). The live preview
-shows full assembly disks and beam capsules independently of the schematic scale
-and **Part bounds** display. Physical bounds must be available for every physical
-part; **Refresh bounds** retries failed geometry resolution. The initial region
-uses the current physical extents plus 10 mm, or the previous applied rectangle.
+**Optimize physical layout…** fits the current physical system into an XY rectangle.
+The dialog resolves assembly geometry on the GUI thread, then runs an immutable
+numerical snapshot in a cancellable worker. The independent preview shows assembly
+disks, beam capsules and violations. Defaults are 1 mm clearance and 1 mm beam
+keep-out diameter. Differing heights do not exempt parts from conservative XY packing.
+The region starts at current extents plus 10 mm, or the previous applied rectangle.
 
-**Run** searches up to eight deterministic starts with force-directed motion and
-constraint projection. Pins (including partial X/Y pins), explicit lengths and
-signed turns remain hard constraints. Lenses, waveplates, irises, and splitter
-transmission stay straight. Free mirror/reflected turns, lengths, and source pose
-may change. The source inspector's **Constrain source direction** checkbox pins
-its travel direction; existing explicit source angles remain constrained.
-Outputs, fiber receivers, and beam stops have **Constrain output direction** in
-their inspectors. It pins the arriving beam's absolute XY travel direction
-(0° right, +90° up), independently of the drawn symbol rotation and position
-constraint. It is off by default. Ordinary generation reports a conflict when
-the upstream optical angles disagree; optimization can change free angles to
-meet the target, including after inserting folding mirrors. Changing or clearing
-this constraint makes an applied optimization stale. Export also checks the
-actual traced output direction at runtime.
-Beam crossings are allowed; unrelated assemblies must clear each beam capsule.
-The packing model uses conservative full-assembly circles and a constant beam
-width; it does not propagate Gaussian beam envelopes or perform a CAD collision
-test.
+**Run** uses damped force-directed motion, constraint projection and deterministic
+multi-start search. Pins, explicit lengths, selected-pass turns and source/output
+headings remain hard constraints. Native-like optical relationships, finite
+apertures and declared visits are rechecked before a result can be applied.
+Bounds must be available for every physical part. Beam crossings are allowed;
+unrelated assemblies must clear each capsule. Gaussian beam envelopes and exact
+CAD collision detection are outside the packing model.
 
-Enable **Allow folding** on individual beams to let optimization add mirrors.
-The beam's length constraint continues to mean **endpoint separation**, while a
-path-length constraint controls the total routed length through inserted mirrors.
-The inspector displays both measurements and the added mirrors' references and
-physical positions. For example, an 80 mm endpoint separation and a 120 mm total
-path can be satisfied by folding; an 80 mm separation and 80 mm path cannot have
-a nonzero fold.
+Enable **Allow folding** on individual original beams to permit generated mirrors.
+A constrained original beam still pins its endpoint separation; a path constraint
+controls its routed length. The inspector shows both. Schematic mirrors default
+to **Turning** and are retained. **Folding** mirrors may be omitted unless protected
+by a position/angle constraint, incident fixed length, path endpoint or use by
+multiple optical passes. Generated mirrors are marked as added; omitted parts are
+listed in the inspector and have no fabricated physical position.
 
-Each schematic mirror has a **Turning** (default) or **Folding** role. Turning
-mirrors are always retained; their angle controls work as before. Folding mirrors
-may be omitted unless protected by a position constraint, angle constraint,
-incident explicit beam length, or use as a path-constraint endpoint. The inspector
-explains protection. Omitted mirrors keep their drawing symbols and have no
-current physical position. Adding a constraint makes the applied result stale
-and protects that mirror on the next run.
+The search defaults to mounted 12.7 mm mirrors, at most four added per original
+beam and eight overall. Candidates share each start's 5,000-iteration budget and
+20 projection passes, in 200-iteration batches. It tries both sides of stressed
+spans, keeps infeasible intermediate candidates, and explores occupied mirror-count
+groups fairly. Removal defaults to interior angles above 110° (180° is straight),
+with 10° hysteresis and a 200-iteration cooldown. Verified feasible results prefer
+fewer Folding mirrors, then lower normalized spring energy.
 
-The optimizer's added-mirror controls default to mounted 12.7 mm mirrors, at most
-four per original beam and eight overall. Bare mirrors allow other diameters.
-Their complete assembly bounds must resolve before Run. The bounded search
-relaxes candidates in 200-iteration batches, prioritizes stressed permitted spans,
-and tries offsets on both sides. It retains two candidates per active folding
-count, including infeasible intermediate layouts. All candidates share each
-start's 5,000-iteration budget and 20 projection passes per iteration. A folding
-mirror becomes eligible for removal above the configured **interior arm angle**
-(default 110°; 180° is straight), with 10° insertion/removal hysteresis and a
-200-iteration cooldown. Removal preserves every hard constraint. Feasible results
-are ranked by fewest active Folding mirrors, then normalized spring energy.
+**Apply** updates physical geometry in one undoable edit and preserves all explicit
+constraint boxes. Export creates retained parts and added mirrors once each,
+omits bypassed mirrors, and verifies the ordered finite pass trace and final
+open-beam lengths. **Cancel** leaves the document unchanged. **Clear optimized
+layout** restores the pre-optimization physical poses. Numerical exhaustion says
+**No feasible layout found**, with remaining violations; it does not prove impossibility.
 
-**Apply** is enabled only after reconstructing exact optical geometry and checking
-all constraints and clearances to 1e-6 mm / 1e-6 degrees. It is one undoable edit,
-preserves the topological drawing, and stores free values separately from hard
-constraints. The inspectors show these effective values with their constraint
-checkboxes still unchecked. Export uses the applied source pose, lengths, turns,
-and part orientations and retains the generated script's runtime trace check.
-Generated mirrors and bypassed schematic mirrors belong to the applied physical
-graph: the preview and export identify additions and omissions, while the
-schematic drawing and explicit constraints remain unchanged. Export uses the
-actual final open-beam segment lengths.
-**Cancel** closes without changing the schematic. **Clear optimized layout**
-restores deterministic generation without removing constraints.
+Changes to topology, pass assignments, physical poses, parts, constraints or packing
+settings make an applied solution stale and block export until rerun or cleared.
+Reference renames, projection changes and display settings preserve it. Stale
+snapshots remain saveable and undoable. Version 6 stores shared parts, explicit
+passes and physical poses. Versions 1–5 migrate on load without rewriting the
+original file: valid existing physical geometry is used as the initial pose,
+decorative bends are removed with a conversion note, and older applied optimizations
+remain stale until rerun or cleared. Unresolved legacy drafts receive editable
+estimated poses. Existing explicit source directions and constraints are preserved.
 
-Part, topology, constraint, folding permission, mirror role, default-length,
-packing, search, or geometry-setting changes
-make an applied solution stale and block export until it is rerun or cleared.
-Stale results survive save/load and undo/redo. Drawing edits, reference renames,
-and display settings preserve a solution. If the search budget expires, the dialog
-reports **No feasible layout found** and its largest remaining violations; this is
-not a proof that the requested packing is impossible.
+[Shared-optic examples](Designs/schematics/multipass/) include horizontal and vertical
+lens/waveplate returns with pickoffs, plus a two-fold packing example that keeps
+60 mm endpoint separation and a 180 mm routed path. They include editable documents,
+Python exports, actual editor screenshots and separate numerical/native verification
+reports. Reproduce them with:
 
-Reproducible optimizer examples include a [pinned Turning mirror](Designs/schematics/optimization/pinned-mirror.png),
-a [folded splitter system](Designs/schematics/optimization/splitter-fold.png),
-[two automatically added mirrors](Designs/schematics/optimization/adaptive-multiple-folds.png),
-[removal of a Folding mirror](Designs/schematics/optimization/adaptive-remove-fold.png),
-and a [constrained +90° splitter with an added branch mirror](Designs/schematics/optimization/adaptive-splitter-90.png).
-Each comparison shows the unchanged topological drawing and physical layouts
-before and after packing. Editable `*-before.pyopticl-schematic.json` and
-`*-after.pyopticl-schematic.json` files, generated Python, and
-[verification results](Designs/schematics/optimization/verification.json) are in
-the same folder. Before files retain the target rectangle, ready for **Run**.
-The pinned-mirror draft intentionally fails its output position constraints;
-its after file satisfies them. The splitter example explicitly constrains BS1's
-reflected turn to +90°; both branch directions are checked from optimized and
-exported coordinates. The adaptive examples also independently measure their
-total paths from exported coordinates and check constrained endpoint separations.
-These examples use analytical bounds of the bare primitive models. The separate
-[native FreeCAD report](Designs/schematics/optimization/native-verification.json)
-records 27 passing integration tests, including real assembly bounds and CAD
-traces of all five saved examples. Those checks measure actual segment lengths
-and interaction coordinates, including the two added mirrors and constrained
-splitter branch. Reproduce the solver and actual Qt Run/Apply/undo/redo checks
-with `QT_QPA_PLATFORM=offscreen python Designs/schematics/optimization/generate.py --render`.
-Inside a FreeCAD-capable environment, add `--cad` to resolve actual geometry and
-execute each exported layout's runtime trace check.
+```sh
+QT_QPA_PLATFORM=offscreen python Designs/schematics/multipass/generate.py --render
+```
+
+The folding example uses explicitly analytical assembly disks. Native checks in
+`tests/schematic_multipass_freecad.py` verify exported interactions and total air
+path; the roof body is an analytical fixture because its vendor CAD cache is not
+available here, while its native finite interfaces are exercised. Earlier
+[version 5 optimization examples](Designs/schematics/optimization/) remain historical
+fixtures and require rerunning or clearing their saved optimization after migration.
 
 Open [the branched example](Designs/schematics/branched.pyopticl-schematic.json)
 to try a mirror, lens, beamsplitter, fiber output, and beam stop. Its
@@ -265,19 +197,14 @@ to try a mirror, lens, beamsplitter, fiber output, and beam stop. Its
 Run exported `.py` files using the same FreeCAD macro workflow as existing
 designs. The script builds a `Layout`, places parts, computes a `BeamPath`, and
 checks the resulting optical connections. Refine its `PLACEMENTS` (mm/degrees),
-`PARAMETERS`, and `SOURCE` dictionaries as needed. Changes to those dictionaries
+`EXPECTED_PASSES`, and `SOURCE` dictionaries as needed. Changes to those dictionaries
 are explicit: moving the source does not automatically relocate the other parts.
 Regeneration replaces exported Python; Python edits do not update the schematic.
 
-The first version supports one source and acyclic chains/splitter branches in a
-single optical plane, with curated half-inch mounted optics and bare alternatives.
-Mounted presets require a 12.7 mm optic. Bare spherical lenses support positive
-or negative focal lengths. Splitter ratios must be strictly between zero and one.
-Double passes, beam merging, multiple sources, PBS/AOM routing, module links,
-nonrectangular packing regions, and fabrication constraints are not yet supported.
-Default spacing produces a draft; a trace mismatch identifies connections whose
-physical placements need adjustment. A separate FreeCAD document is convenient
-for trying generated drafts alongside existing designs.
+The current model supports one emitting source with finite branches and explicit
+shared-component visits, including displaced returns. Multiple independent sources,
+beam merging, automatic recirculating cavities, AOM routing, nonrectangular packing
+regions and fabrication constraints remain outside this editor.
 
 The document model and compiler can also be used without FreeCAD:
 
@@ -320,9 +247,12 @@ API is `optimize_layout(problem, options=None, progress=None, cancelled=None)`;
 and callbacks run on the calling worker thread without CAD operations.
 `resolve_topology(schematic)` returns source-oriented connections, incident
 ports, interaction roles, and diagnostics without modifying the document.
-Source/fiber-source symbols remain emitters; receiver, stop, and open-output
-symbols remain terminals. Neutral optic ports do not add double-pass or
-counterpropagating-beam support to the current compiler.
+`document.add_pass(component_id)` adds an explicit visit. Use
+`Endpoint(component_id, port_id, pass_id)` for its connections; an empty pass ID
+addresses the primary visit. `PathLengthConstraint` accepts optional `pass_a` and
+`pass_b` endpoint identities. `document.layout["poses"]` stores shared XYZ/yaw free
+values, and `solve_scene` is the CAD-independent constrained scene solver.
+
 
 ### Used by researchers at:
 

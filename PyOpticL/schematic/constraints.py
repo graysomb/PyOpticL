@@ -9,6 +9,8 @@ from math import cos, radians, sin, sqrt
 
 from .model import connection_length
 from .paths import component_path
+from .physical import physical_layout
+from .kinematics import internal_path
 from .topology import Diagnostic
 
 POSITION_TOLERANCE = 1e-6  # mm; includes rounding to six decimals in the inspector
@@ -49,6 +51,7 @@ def _fit_lengths(defaults, basis):
 def resolve_position_lengths(document, topology, headings):
     """Return effective lengths and diagnostics, leaving the document untouched."""
     source = document.node(topology.source_id)
+    geometry = physical_layout(document,topology)
     lengths = {edge.id: connection_length(document, edge) for edge in document.connections}
     free = {edge.id: index for index, edge in enumerate(
         edge for edge in document.connections if edge.length is None)}
@@ -60,6 +63,8 @@ def resolve_position_lengths(document, topology, headings):
         for edge in topology.outgoing[node_id]:
             direction = (cos(radians(headings[edge.id])), sin(radians(headings[edge.id])))
             target_offset = offset[:]
+            for axis in (0,1):
+                target_offset[axis] += geometry.origins[edge.id][axis]-geometry.positions[node_id][axis]
             target_rows = [row[:] for row in rows]
             for axis in (0, 1):
                 if edge.id in free:
@@ -87,7 +92,7 @@ def resolve_position_lengths(document, topology, headings):
             route = component_path(document, constraint.component_a, constraint.component_b)
         except ValueError as error:
             return lengths, [Diagnostic(str(error), constraint.component_a, constraint_id=constraint.id)]
-        row, target = [0.0] * len(free), constraint.length_mm
+        row, target = [0.0] * len(free), constraint.length_mm-internal_path(document,route)
         for edge_id in route:
             if edge_id in free:
                 row[free[edge_id]] += 1

@@ -626,7 +626,7 @@ class Beamsplitter_Cube:
                 position=(0, 0, 0),
                 rotation=(0, 0, 45 if self.rotate_cube else -45),
                 width=self.side_length * np.sqrt(2),
-                height=self.side_length * np.sqrt(2),
+                height=self.side_length,
                 ref_polarization=self.ref_polarization,
                 ref_ratio=self.ref_ratio,
             )

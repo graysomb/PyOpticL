@@ -1,0 +1,31 @@
+{
+  "bounds": "Analytical 9 mm generated-mirror fixture disks; no vendor CAD resolution.",
+  "examples": {
+    "shared-horizontal": {
+      "parts": 6,
+      "passes": 8,
+      "native_like_trace_valid": true,
+      "roof_internal_air_length_mm": 25.4
+    },
+    "shared-vertical": {
+      "parts": 6,
+      "passes": 8,
+      "native_like_trace_valid": true,
+      "roof_internal_air_length_mm": 25.4
+    },
+    "splitter-fold": {
+      "constrained_reflected_turn_deg": 89.99999999999932,
+      "generated_mirrors": 1
+    },
+    "folding": {
+      "status": "feasible",
+      "iterations": 2400,
+      "generated_mirrors": 2,
+      "endpoint_separation_mm": 60,
+      "measured_routed_length_mm": 180.00000000001737,
+      "path_target_mm": 180,
+      "violations": 0,
+      "unchanged_hard_constraints": true
+    }
+  }
+}

@@ -9,7 +9,8 @@ from .model import connection_length, document_from_dict, _finite
 from .parts import part_spec
 from .physical import PhysicalLayout, physical_layout, wrap_angle
 from .paths import component_path, path_length
-from .registry import MIN_BEAM_TURN, SYMBOLS, parameter_values, supports_beam_turn
+from .kinematics import ROOF_AIR_PATH_MM, roof_shift, rotate_xy
+from .registry import COUPLING_MOUNTS, MIN_BEAM_TURN, SYMBOLS, grating_turn, parameter_specs, parameter_values, supports_beam_turn
 from .topology import Diagnostic, resolve_topology
 
 
@@ -39,21 +40,27 @@ def validate_schematic(document):
     diagnostics.extend(topology.diagnostics)
     for constraint in document.path_constraints:
         try:
-            component_path(document, constraint.component_a, constraint.component_b)
+            component_path(document, constraint.pass_a or constraint.component_a, constraint.pass_b or constraint.component_b)
         except ValueError as error:
             diagnostics.append(Diagnostic(str(error), constraint.component_a, constraint_id=constraint.id))
     constrained_nodes = {node_id for edge in document.connections for node_id in edge.turns}
     for node in document.nodes:
         symbol = SYMBOLS[node.kind]
+        specs = parameter_specs(node)
         for name in node.parameters:
-            if name not in symbol.parameters:
+            if name not in specs:
                 diagnostics.append(Diagnostic(f"{node.reference}: unsupported parameter {name}", node.id))
-        for name, spec in symbol.parameters.items():
+        for name, spec in specs.items():
             value = parameter_values(node)[name]
             lower_bad = spec.minimum is not None and (value <= spec.minimum if spec.exclusive else value < spec.minimum)
             upper_bad = spec.maximum is not None and (value >= spec.maximum if spec.exclusive else value > spec.maximum)
-            if not _finite(value) or lower_bad or upper_bad or (name == "focal_length" and value == 0):
+            if not _finite(value) or lower_bad or upper_bad or (spec.integer and type(value) is not int) or (name == "focal_length" and value == 0):
                 diagnostics.append(Diagnostic(f"{node.reference}: invalid {spec.label}", node.id))
+        if node.kind == "grating" and topology.ok:
+            try:
+                grating_turn(document,node,topology)
+            except ValueError as error:
+                diagnostics.append(Diagnostic(f"{node.reference}: {error}",node.id))
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
         allowed = {"x", "y", "angle"} if symbol.role in ("source", "terminal") else {"x", "y"}
@@ -69,6 +76,12 @@ def validate_schematic(document):
                 turn is not None and not MIN_BEAM_TURN <= abs(turn) < 180):
             diagnostics.append(Diagnostic(f"{node.reference}: absolute turn must be at least {MIN_BEAM_TURN:g}° and less than 180°; straight/grazing and retracing paths are unsupported", node.id))
 
+    for visit in document.passes:
+        node=document.node(visit.component_id)
+        if visit.turn is not None and (node.kind not in ('mirror','splitter') or not MIN_BEAM_TURN <= abs(visit.turn)<180):
+            diagnostics.append(Diagnostic(f'{node.reference}: invalid constrained pass turn',node.id,pass_id=visit.id))
+        if visit.direction is not None and visit.mode!='receive':
+            diagnostics.append(Diagnostic(f'{node.reference}: output direction belongs to a receiving pass',node.id,pass_id=visit.id))
     constrained_turns = {}
     for edge in document.connections:
         if edge.length is not None and (not _finite(edge.length) or edge.length <= 0):
@@ -85,6 +98,13 @@ def validate_schematic(document):
         if max(turn for _, turn in constraints) - min(turn for _, turn in constraints) > 1e-6:
             node = document.node(node_id)
             diagnostics.append(Diagnostic(f"{node.reference}: conflicting legacy angle constraints; set or clear the angle on this optical element", node_id))
+    for node in document.nodes:
+        visit=document.optical_pass(node.id)
+        turns=[node.physical['turn']] if 'turn' in node.physical else []
+        if visit.turn is not None:turns.append(visit.turn)
+        turns.extend(turn for _,turn in constrained_turns.get(node.id,[]))
+        if (document.layout is not None or document.passes) and turns and max(turns)-min(turns)>1e-6 and not any(d.node_id==node.id and "angle constraints" in d.message for d in diagnostics):
+            diagnostics.append(Diagnostic(f'{node.reference}: conflicting angle constraints on the primary pass; set or clear the element angle',node.id,pass_id=node.id))
     return diagnostics
 
 
@@ -112,8 +132,12 @@ def compile_schematic(document):
     except ValueError as error:
         return Compilation("", [Diagnostic(str(error))])
     diagnostics = validate_schematic(document)
-    if diagnostics:
+    if any(d.severity == "error" for d in diagnostics):
         return Compilation("", diagnostics)
+    from .scene_layout import is_physical
+    if is_physical(document):
+        from .scene_export import compile_scene
+        return compile_scene(document, diagnostics)
     original = document
     topology = resolve_topology(document)
     source, order, placements, headings = _placements(document, topology)
@@ -182,6 +206,9 @@ def compile_schematic(document):
     source_settings = {**parameter_values(source), "x": _number(sx), "y": _number(sy),
                        "angle": _number(geometry.source_direction),
                        "open_length": document.settings["open_length"]}
+    polarized = "polarization_angle" in source.parameters
+    if not polarized:
+        source_settings.pop("polarization_angle",None)
     part_placements = {node.reference: placements[node.reference] for node in physical_nodes
                        if node.kind != "fiber_source"}
     lines = [
@@ -200,9 +227,18 @@ def compile_schematic(document):
         "", "", "def build_layout():",
         f"    layout = Layout({document.title!r})", "    objects = {}",
     ]
+    if any("catalog" in part_spec(document,node,topology,geometry.turns).modules for node in physical_nodes):
+        lines[4:4] = ["from PyOpticL.schematic import catalog_parts as catalog"]
+    if polarized:
+        index = lines.index("from PyOpticL.beam_path import BeamPath")
+        lines[index] += ", linear_polarization"
     if output_directions:
         index = lines.index("def build_layout():")
         lines[index:index] = [f"OUTPUT_DIRECTIONS = {pformat(output_directions, sort_dicts=True)}", "", ""]
+    elevated = any(abs(z)>1e-9 for z in geometry.heights.values())
+    if elevated:
+        index = lines.index("def build_layout():")
+        lines[index:index] = [f"HEIGHTS = {pformat({node.reference:_number(geometry.heights[node.id]) for node in order})}","",""]
     if geometry.graph is not None and geometry.graph.edits:
         added = sorted(nodes[item.id].reference for item in geometry.graph.generated)
         omitted = sorted(original.node(node_id).reference for node_id in geometry.graph.bypassed)
@@ -216,14 +252,15 @@ def compile_schematic(document):
         lines.extend([
             f"    # {node.reference!r}: {SYMBOLS[node.kind].title} ({node.preset})",
             f"    {variable} = Component(label={node.reference!r}, definition={_definition(document, node, topology, geometry.turns)})",
-            "    x, y, angle = SOURCE['x'], SOURCE['y'], SOURCE['angle'] + 180" if node.kind == "fiber_source" else
+            ("    x, y, angle = SOURCE['x'], SOURCE['y'], SOURCE['angle']" + ("" if node.preset in COUPLING_MOUNTS else " + 180")) if node.kind == "fiber_source" else
             f"    x, y, angle = PLACEMENTS[{node.reference!r}]",
-            f"    objects[{node.reference!r}] = layout.add({variable}, position=(x, y, 0), rotation=angle)",
+            f"    objects[{node.reference!r}] = layout.add({variable}, position=(x, y, " + (f"HEIGHTS[{node.reference!r}]" if elevated else "0") + "), rotation=angle)",
         ])
     splitters = sorted(node.reference for node in order if node.kind == "splitter")
     lines.extend([
         "    beam = layout.add(",
         f"        BeamPath(label={source.reference!r}, wavelength=SOURCE['wavelength'],",
+        *(["                 polarization=linear_polarization(SOURCE['polarization_angle']),"] if polarized else []),
         "                 power=SOURCE['power'], waist=SOURCE['waist'],",
         "                 final_distance=SOURCE['open_length']),",
         "        position=(SOURCE['x'], SOURCE['y'], 0), rotation=SOURCE['angle'],",
@@ -236,11 +273,22 @@ def compile_schematic(document):
     measured_paths = {item.id: path_length(document, item.component_a, item.component_b, geometry.lengths)
                       for item in document.path_constraints}
     logical_lengths, routed_lengths = {}, {}
+    original_topology = resolve_topology(original)
     for edge in original.connections:
         if edge.a.node_id in geometry.positions and edge.b.node_id in geometry.positions:
             a, b = geometry.positions[edge.a.node_id], geometry.positions[edge.b.node_id]
+            resolved = original_topology.edges[edge.id]
+            # A roof's outgoing optical port is displaced from its input origin.
+            if original.node(resolved.source.node_id).kind == "roof":
+                source_node = original.node(resolved.source.node_id)
+                shift = rotate_xy(roof_shift(source_node,original_topology),geometry.orientations[source_node.id])
+                point = geometry.positions[source_node.id]
+                shifted = (point[0]+shift[0],point[1]+shift[1])
+                a,b = (shifted,b) if edge.a.node_id == source_node.id else (a,shifted)
             logical_lengths[edge.id] = hypot(b[0]-a[0], b[1]-a[1])
             routed_lengths[edge.id] = path_length(document, edge.a.node_id, edge.b.node_id, geometry.lengths)
+            if original.node(resolved.source.node_id).kind == "roof":
+                routed_lengths[edge.id] -= ROOF_AIR_PATH_MM
     if original.optimized_layout is None:
         logical_lengths = lengths
     return Compilation("\n".join(lines), [], object_map, placements, logical_lengths, geometry, measured_paths, routed_lengths)

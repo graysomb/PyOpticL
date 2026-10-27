@@ -16,7 +16,7 @@ from PyOpticL.schematic import Connection, Endpoint, PathLengthConstraint, Schem
 from PyOpticL.schematic.bounds import BoundsProvider
 from PyOpticL.schematic.model import new_id
 from PyOpticL.schematic.parts import part_spec
-from PyOpticL.schematic.registry import REFLECTION, TRANSMISSION, SYMBOLS
+from PyOpticL.schematic.registry import REFLECTION, TRANSMISSION, SYMBOLS, select_preset
 from PyOpticL.schematic.topology import resolve_topology
 
 
@@ -355,7 +355,7 @@ class FreeCADSchematicTests(unittest.TestCase):
         self.assertEqual(len(branches), 2)
         self.assertAlmostEqual(sum(segment.Distance.Value for segment in branches), 240, delta=1e-6)
 
-    def test_generated_example_files_build_and_reach_path_targets(self):
+    def test_historical_exported_example_files_build_and_reach_path_targets(self):
         from PyOpticL.schematic.effective import effective_document
         from PyOpticL.schematic.optimization import OptimizationOptions
         from PyOpticL.schematic.paths import path_length
@@ -370,16 +370,24 @@ class FreeCADSchematicTests(unittest.TestCase):
             with self.subTest(example=path.stem):
                 example_document = App.newDocument("SchematicExampleTrace")
                 try:
-                    document = load_schematic(path)
-                    compiled = compile_schematic(document)
-                    self.assertTrue(compiled.ok, compiled.diagnostics)
+                    # Version-5 applied snapshots deliberately migrate as stale.
+                    # Validate their already exported macros as historical artifacts;
+                    # portable migration tests separately require revalidation for export.
+                    import json
+                    from PyOpticL.schematic.model import document_from_dict
+                    from PyOpticL.schematic.optimization import _saved_candidate
+                    document=document_from_dict(json.loads(path.read_text()))
+                    geometry=_saved_candidate(document,document.optimized_layout,document.optimization)
                     physical = effective_document(
                         document,
-                        compiled.geometry.graph,
+                        geometry.graph,
                         OptimizationOptions(**document.optimization["options"]),
                     )
                     topology = resolve_topology(physical)
-                    layout = self.build(document)
+                    namespace={'__name__':'historical_native_example'}
+                    exported=path.with_name(path.name.removesuffix('.pyopticl-schematic.json')+'.py')
+                    exec(compile(exported.read_text(),str(exported),'exec'),namespace)
+                    layout=namespace['build_layout']()
                     beam = next(
                         child for child in layout.get_object().Children if hasattr(child, "BeamSegments")
                     )
@@ -388,7 +396,7 @@ class FreeCADSchematicTests(unittest.TestCase):
                         source, target = physical.node(edge.source.node_id), physical.node(
                             edge.target.node_id
                         )
-                        a, b = compiled.geometry.positions[source.id], compiled.geometry.positions[target.id]
+                        a, b = geometry.positions[source.id], geometry.positions[target.id]
                         dx, dy = b[0] - a[0], b[1] - a[1]
                         matches = []
                         for segment in beam.BeamSegments:
@@ -474,7 +482,7 @@ class FreeCADSchematicTests(unittest.TestCase):
                 with self.subTest(kind=kind, preset=preset):
                     document = Schematic()
                     node = document.add_node(kind)
-                    node.preset = preset
+                    select_preset(node, preset)
                     spec = part_spec(document, node, resolve_topology(document))
                     if spec is None:
                         continue

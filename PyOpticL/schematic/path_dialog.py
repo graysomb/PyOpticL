@@ -5,6 +5,7 @@ from copy import deepcopy
 from .compiler import compile_schematic
 from .model import PathLengthConstraint, connection_length, document_from_dict, new_id
 from .paths import component_path, path_length
+from .topology import resolve_topology
 from .qt import QtCore, QtWidgets
 
 Qt = QtCore.Qt
@@ -40,9 +41,16 @@ class PathLengthsDialog(QtWidgets.QDialog):
         self.b = QtWidgets.QComboBox()
         self.a.setObjectName("pathLengthFrom")
         self.b.setObjectName("pathLengthTo")
-        for node in self.document.nodes:
-            self.a.addItem(node.reference, node.id)
-            self.b.addItem(node.reference, node.id)
+        for visit in self.document.optical_passes():
+            node = self.document.node(visit.component_id)
+            visits = [p for p in self.document.optical_passes() if p.component_id == node.id]
+            label = (
+                node.reference
+                if len(visits) == 1
+                else f"{node.reference} · pass {next(i+1 for i,p in enumerate(visits) if p.id==visit.id)}"
+            )
+            self.a.addItem(label, visit.id)
+            self.b.addItem(label, visit.id)
         ids = list(selected)[:2]
         if len(ids) == 2:
             self.a.setCurrentIndex(self.a.findData(ids[0]))
@@ -86,11 +94,20 @@ class PathLengthsDialog(QtWidgets.QDialog):
         self.endpoints_changed()
 
     def current_length(self, a, b):
-        if self.geometry is None or a not in self.geometry.positions or b not in self.geometry.positions:
+        if self.geometry is None:
             return None
         try:
+            if self.geometry.visits:
+                topology = resolve_topology(self.current_document)
+                route = component_path(self.current_document, a, b)
+                routed = set(route)
+                return sum(self.geometry.lengths[key] for key in route) + sum(
+                    self.geometry.internal_lengths.get(v, 0)
+                    for v in topology.order
+                    if any(e.id in routed for e in topology.outgoing[v])
+                )
             return path_length(self.current_document, a, b, self.geometry.lengths)
-        except ValueError:
+        except (ValueError, KeyError):
             return None
 
     def refresh(self, selected_id=None):
@@ -98,9 +115,9 @@ class PathLengthsDialog(QtWidgets.QDialog):
         self.table.setRowCount(len(self.constraints))
         for row, item in enumerate(self.constraints):
             a, b = self.document.node(item.component_a), self.document.node(item.component_b)
-            current = self.current_length(a.id, b.id)
+            current = self.current_length(item.pass_a or a.id, item.pass_b or b.id)
             try:
-                component_path(self.document, a.id, b.id)
+                component_path(self.document, item.pass_a or a.id, item.pass_b or b.id)
                 status = (
                     "Unavailable / rerun required"
                     if current is None
@@ -109,8 +126,8 @@ class PathLengthsDialog(QtWidgets.QDialog):
             except ValueError:
                 status = "Disconnected route"
             values = (
-                a.reference,
-                b.reference,
+                self.a.itemText(self.a.findData(item.pass_a or a.id)),
+                self.b.itemText(self.b.findData(item.pass_b or b.id)),
                 f"{item.length_mm:.6f}",
                 "Unavailable" if current is None else f"{current:.6f}",
                 status,
@@ -135,7 +152,12 @@ class PathLengthsDialog(QtWidgets.QDialog):
             return
         self.add_button.setEnabled(True)
         existing = next(
-            (item for item in self.constraints if {item.component_a, item.component_b} == {a, b}), None
+            (
+                item
+                for item in self.constraints
+                if {item.pass_a or item.component_a, item.pass_b or item.component_b} == {a, b}
+            ),
+            None,
         )
         current = self.current_length(a, b)
         target = (
@@ -166,8 +188,8 @@ class PathLengthsDialog(QtWidgets.QDialog):
         constraint = next(item for item in self.constraints if item.id == items[0].data(Qt.UserRole))
         self.a.blockSignals(True)
         self.b.blockSignals(True)
-        self.a.setCurrentIndex(self.a.findData(constraint.component_a))
-        self.b.setCurrentIndex(self.b.findData(constraint.component_b))
+        self.a.setCurrentIndex(self.a.findData(constraint.pass_a or constraint.component_a))
+        self.b.setCurrentIndex(self.b.findData(constraint.pass_b or constraint.component_b))
         self.a.blockSignals(False)
         self.b.blockSignals(False)
         self.endpoints_changed()
@@ -176,13 +198,26 @@ class PathLengthsDialog(QtWidgets.QDialog):
         a, b = self.a.currentData(), self.b.currentData()
         component_path(self.document, a, b)
         existing = next(
-            (item for item in self.constraints if {item.component_a, item.component_b} == {a, b}), None
+            (
+                item
+                for item in self.constraints
+                if {item.pass_a or item.component_a, item.pass_b or item.component_b} == {a, b}
+            ),
+            None,
         )
         if existing:
             existing.length_mm = self.target.value()
             selected = existing.id
         else:
-            item = PathLengthConstraint(new_id(), a, b, self.target.value())
+            ap, bp = self.document.optical_pass(a), self.document.optical_pass(b)
+            item = PathLengthConstraint(
+                new_id(),
+                ap.component_id,
+                bp.component_id,
+                self.target.value(),
+                "" if a == ap.component_id else a,
+                "" if b == bp.component_id else b,
+            )
             self.constraints.append(item)
             selected = item.id
         self.refresh(selected)

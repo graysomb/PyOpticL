@@ -10,6 +10,13 @@ from PyOpticL import vendor_cad as cad
 
 STEP=b"ISO-10303-21;\nHEADER;FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));ENDSEC;DATA;ENDSEC;END-ISO-10303-21;"
 class DownloadTests(unittest.TestCase):
+    def test_missing_asset_identifies_the_part_and_cache_recovery(self):
+        with tempfile.TemporaryDirectory() as root:
+            record=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step',root=root)
+            cad.resolve(record,root).unlink()
+            with self.assertRaisesRegex(FileNotFoundError,'Missing pinned CAD asset for KA05TA.*PYOPTICL_CAD_CACHE'):
+                cad.resolve(record,root)
+
     def test_cache_validation_and_revision(self):
         with tempfile.TemporaryDirectory() as root:
             r=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step',root=root)

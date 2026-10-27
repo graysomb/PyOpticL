@@ -12,7 +12,7 @@ from test_schematic import chain
 from test_schematic_editor import QT_AVAILABLE
 
 if QT_AVAILABLE:
-    from PyOpticL.schematic.editor import SchematicEditor
+    from PyOpticL.schematic.editor import LegacySchematicEditor as SchematicEditor
     from PyOpticL.schematic.qt import QtCore, QtWidgets
     from test_schematic_editor import QtTest
 

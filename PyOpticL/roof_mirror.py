@@ -65,41 +65,12 @@ class RoofGeometry:
         Used to guard the entrance. Actual BeamPath propagation still traverses
         each reflection and each free-space segment independently.
         """
-        p = self.canonical(origin)
-        d = self.matrix.T @ np.asarray(direction, dtype=float)
-        norm = np.linalg.norm(d)
-        if not np.isfinite(norm) or norm < 1e-12:
+        from PyOpticL.ray_math import trace_roof
+        result = trace_roof(tuple(origin),tuple(direction),tuple(self.center),self.orientation=='vertical',reference()['facet_model'])
+        if result is None:
             return None
-        d = d / norm
-        if abs(p[0]) > 1e-6 or d[0] <= 1e-8:
-            return None
-        hits, order = [], []
-        for _ in range(2):
-            candidates = []
-            for i, n in enumerate(self.normals):
-                denom = d @ n
-                if denom >= -1e-8:
-                    continue
-                distance = (self.centers[i] - p) @ n / denom
-                q = p + distance * d
-                if distance > 1e-6 and self.inside_face(q, i, clear=False):
-                    candidates.append((distance, i, q))
-            if not candidates:
-                return None
-            _, i, q = min(candidates, key=lambda item: item[0])
-            if i in order or not self.inside_face(q, i):
-                return None
-            hits.append(self.point(q)); order.append(i)
-            n = self.normals[i]
-            d = d - 2 * (d @ n) * n
-            p = q
-        if d[0] >= -1e-8:
-            return None
-        distance = -p[0] / d[0]
-        exit_point = p + distance * d
-        if distance <= 1e-6 or max(abs(exit_point[1]), abs(exit_point[2])) >= 12.7:
-            return None
-        return dict(hits=hits, exit=self.point(exit_point), direction=self.matrix @ d)
+        points,direction,_ = result
+        return dict(hits=[np.asarray(p) for p in points[1:-1]],exit=np.asarray(points[-1]),direction=np.asarray(direction))
 
     @property
     def input_height(self):

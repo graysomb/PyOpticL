@@ -529,8 +529,8 @@ def connection_interfaces():
     }
 
 
-def create(catalog_id, label, **parameters):
-    """Construct an ordinary Component. Recompute it using the existing API.
+def definition(catalog_id, **parameters):
+    """Construct a definition shared by create() and schematic part specifications.
 
     Parameters select mounts, optic thickness (mm), waveplate retardance/axis,
     iris aperture_diameter (mm), slit_width (mm), or roof orientation and
@@ -546,18 +546,18 @@ def create(catalog_id, label, **parameters):
             raise TypeError('Unsupported parameters: '+', '.join(sorted(unknown)))
         definition = (MountedGrating(**parameters) if catalog_id == 'grating' else
                       GratingOptic(**parameters) if catalog_id == 'LightSmyth-1336552' else MK05SMount())
-        return Component(label,definition)
+        return definition
     if catalog_id in ('roof', 'HRS1015-P01'):
         from PyOpticL.roof_mirror import RoofGeometry, RoofOptic, MountedRoof
         unknown = set(parameters) - {'orientation', 'beam_separation'}
         if unknown:
             raise TypeError('Unsupported parameters: ' + ', '.join(sorted(unknown)))
         geometry = RoofGeometry(**parameters)
-        return Component(label, MountedRoof(geometry) if catalog_id == 'roof' else RoofOptic(geometry))
+        return MountedRoof(geometry) if catalog_id == 'roof' else RoofOptic(geometry)
     if catalog_id in VENDOR_IDS:
         if parameters:
             raise TypeError('Bare vendor mounts do not accept assembly parameters')
-        return Component(label, VendorPart(catalog_id))
+        return VendorPart(catalog_id)
     if catalog_id not in CATALOG_IDS:
         raise KeyError('Unknown lab catalog ID: ' + catalog_id)
     allowed = {'mirror': {'thickness', 'mount'}, 'rotation': {'thickness', 'retardance', 'mount', 'fast_axis_angle'},
@@ -567,7 +567,7 @@ def create(catalog_id, label, **parameters):
     if 'thickness' in parameters and (not math.isfinite(parameters['thickness']) or parameters['thickness'] <= 0):
         raise ValueError('Thickness must be positive')
     if catalog_id == 'iris':
-        return Component(label, AlignmentIris(**parameters))
+        return AlignmentIris(**parameters)
     if catalog_id == 'mirror':
         thickness = parameters.get('thickness', 3.)
         part = parameters.get('mount', 'POLARIS-K05VS2')
@@ -582,7 +582,7 @@ def create(catalog_id, label, **parameters):
         definition = optics.Circular_Mirror(diameter=spec.get('optic_diameter_mm', 12.7),
             thickness=thickness, mount_definition=mount, mount_offset=offset)
         definition.contract = lambda: replace(_contract('mirror', part, ('tip', 'tilt')), procurement='generic')
-        return Component(label, definition)
+        return definition
     if catalog_id == 'slit':
         definition = VariableSlit(parameters.get('slit_width', 1.))
         bracket = VA100Bracket()
@@ -597,7 +597,7 @@ def create(catalog_id, label, **parameters):
             frames=(Frame('optical'), Frame('native_mounting_face', tuple(bracket.seat)),
                     Frame('mounting_face', tuple(bracket.seat - App.Vector(0, 0, 10)))),
             optical_reference='optical', provenance=definition.contract().provenance)
-        return Component(label, Assembly(contract, children))
+        return Assembly(contract, children)
     if catalog_id == 'coupling':
         part = parameters.get('mount', 'POLARIS-K05T6')
         if part not in ('KA05TA', 'POLARIS-K05T6'):
@@ -632,7 +632,7 @@ def create(catalog_id, label, **parameters):
             mount_definition=mount, mount_offset=(thickness / 2 if part == 'FBR' else 0, 0, 0))
         if part == 'FBR':
             contract = _contract('rotation', part, ('rotation',))
-            return Component(label, Assembly(contract, [('optic', definition, (0, 0, 0), (0, 0, 0))]))
+            return Assembly(contract, [('optic', definition, (0, 0, 0), (0, 0, 0))])
         children = [('optic', definition, (0, 0, 0), (0, 0, 0)),
                     ('holder', HOMHolder('rotation-holder'), (0, 0, 0), (0, 0, 0))]
         children.extend((f'cage screw {y} {z}', NominalScrew('4-40 UNC x 3/16 in',2.8448,.635,4.7625,4.76,2.84), (13,y,z),(0,90,0)) for y in (-15,15) for z in (-15,15))
@@ -641,7 +641,12 @@ def create(catalog_id, label, **parameters):
         children = [('stage', VendorPart('XR25C'), (0, 0, 0), (0, 0, 0))]
         contract = _contract('translation', 'XR25C', ('translation',),
             (Frame('origin'), Frame('stage'), Frame('payload', (0, 0, 23))))
-    return Component(label, Assembly(contract, children))
+    return Assembly(contract, children)
+
+
+def create(catalog_id, label, **parameters):
+    """Construct an ordinary Component through the common definition factory."""
+    return Component(label, definition(catalog_id, **parameters))
 
 
 def bom(component):

@@ -364,7 +364,7 @@ class OptimizationStorageTests(unittest.TestCase):
                     }
                 ]
             loaded = document_from_dict(old)
-            self.assertEqual(loaded.version, 5)
+            self.assertEqual(loaded.version, 6)
             self.assertIsNone(loaded.optimized_layout)
 
     def test_drawing_reference_and_display_edits_preserve_solution(self):

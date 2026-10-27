@@ -5,7 +5,14 @@ from threading import Event
 from .bounds import resolve_layout_bounds
 from .compiler import validate_schematic
 from .model import document_from_dict
-from .optimization import OptimizationOptions, PackingBox, build_problem, initial_box, optimize_layout
+from .optimization import (
+    OptimizationOptions,
+    PackingBox,
+    beam_points,
+    build_problem,
+    initial_box,
+    optimize_layout,
+)
 from .qt import QtCore, QtGui, QtWidgets
 
 Qt = QtCore.Qt
@@ -48,8 +55,7 @@ class PhysicalPreview(QtWidgets.QGraphicsView):
         scene.addRect(
             box.x, -box.y - box.height, box.width, box.height, QtGui.QPen(QtGui.QColor("#46556b"), 0)
         )
-        for edge in problem.edges:
-            a, b = positions[edge.a], positions[edge.b]
+        for edge, (a, b) in zip(problem.edges, beam_points(problem, positions)):
             color = QtGui.QColor("#d83939" if edge.id in bad_edges else "#d58e24")
             pen = QtGui.QPen(color, problem.options.beam_diameter_mm)
             pen.setCapStyle(Qt.RoundCap)
@@ -179,7 +185,7 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         self.folding_preset.currentTextChanged.connect(self.folding_settings_changed)
         form.addRow(self.refresh_button)
         note = QtWidgets.QLabel(
-            "Physical XY preview in millimetres. Disks include mounts and hardware. Beam crossings are allowed. Applying preserves the topological drawing and your constraint checkboxes."
+            "Physical XY preview in millimetres. Disks include mounts and hardware. Beam crossings are allowed. Applying updates physical geometry and preserves explicit constraints."
         )
         note.setWordWrap(True)
         form.addRow(note)
@@ -208,7 +214,7 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         area = window.mdiArea() if isinstance(window, QtWidgets.QMdiSubWindow) else None
         previous = area.activeSubWindow() if area is not None else None
         try:
-            errors = validate_schematic(self.document)
+            errors = [item for item in validate_schematic(self.document) if item.severity == "error"]
             if errors:
                 return {}, [item.message for item in errors]
             radii, errors = resolve_layout_bounds(self.document, self.bounds_provider)

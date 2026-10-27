@@ -1,0 +1,19 @@
+{
+  "runtime": "Native FreeCAD application macro",
+  "freecad_version": [
+    "1",
+    "1",
+    "4",
+    "20260928 (Git shallow)",
+    "Unknown",
+    "2026/09/28 13:46:34",
+    "(HEAD detached at 4fd3bf320)",
+    "4fd3bf320d9566a27e60069fc8387448aaa3a094"
+  ],
+  "coverage": "Native finite-interface trace parity: horizontal/vertical shared lens and waveplate returns, splitter and grating. Roof body is an analytical fixture; roof facets and all traced optics use native interfaces.",
+  "tests_run": 6,
+  "successful": true,
+  "failures": [],
+  "errors": [],
+  "skipped": []
+}

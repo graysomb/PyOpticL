@@ -536,6 +536,8 @@ class BeamPath(Layout):
         rayleigh_range: dim = None,
         bound_parent: Layout = None,
         final_distance: dim = dim(50, "mm"),
+        trace_limit: int = None,
+        trace_ends: tuple = (),
     ):
         super().__init__(
             label=label,
@@ -569,6 +571,14 @@ class BeamPath(Layout):
         if waist is not None:
             self.rayleigh_range = np.pi * waist**2 / (wavelength * 1e-6)
 
+        if trace_limit is not None and (type(trace_limit) is not int or trace_limit < 1):
+            raise ValueError("Trace limit must be a positive integer")
+        self.trace_ends = tuple((tuple(origin), tuple(direction), float(length)) for origin,direction,length in trace_ends)
+        for origin,direction,length in getattr(self,"trace_ends",()):
+            if len(origin)!=3 or len(direction)!=3 or not all(np.isfinite(v) for v in (*origin,*direction,length)) or length<=0 or abs(np.linalg.norm(direction)-1)>1e-6:
+                raise ValueError("Trace ends require finite XYZ, unit direction and positive distance")
+        self.trace_limit = trace_limit
+        self._trace_steps = 0
         self.final_distance = final_distance
 
     def set_parent(self, parent: Layout):
@@ -805,6 +815,7 @@ class BeamPath(Layout):
             super().add(input_beam, position=(0, 0, 0), rotation=(0, 0, 0))
             obj.BeamSegments += [input_beam.get_object()]
 
+        self._trace_steps = 0
         # check for loose ends and start simulation from there
         for beam in obj.BeamSegments:
             beam.Proxy.compute_placement()
@@ -997,6 +1008,19 @@ class BeamPath(Layout):
                     beam_path.purgeTouched()
 
     def step(self, input_beam: BeamSegment):
+        if getattr(self,"trace_limit",None) is None:
+            return self._step_one(input_beam)
+        if getattr(self, '_trace_queue', None) is not None:
+            self._trace_queue.append(input_beam)
+            return
+        self._trace_queue = [input_beam]
+        try:
+            while self._trace_queue:
+                self._step_one(self._trace_queue.pop())
+        finally:
+            self._trace_queue = None
+
+    def _step_one(self, input_beam: BeamSegment):
         """
         Perform a single calculation step for the beam path
 
@@ -1007,12 +1031,21 @@ class BeamPath(Layout):
         obj = self.get_object()
         beam_obj = input_beam.get_object()
 
+        self._trace_steps = getattr(self,"_trace_steps",0)+1
+        limit=getattr(self,"trace_limit",None)
+        if limit is not None and self._trace_steps > limit:
+            raise RuntimeError("Optical trace exceeds the declared finite-pass budget; check for unintended recirculation")
         # get next global object
         next_global = self.get_next_global(input_beam)
         # get next beam child object
         next_child = self.get_next_child(input_beam)
 
         global_distance, child_distance = next_global[2], next_child[2]
+        for origin,direction,length in getattr(self,"trace_ends",()):
+            if np.linalg.norm(input_beam.get_global_position()-origin)<=1e-6 and np.linalg.norm(input_beam.get_global_direction()-direction)<=1e-6 and min(global_distance,child_distance)>length+1e-6:
+                input_beam.distance=length
+                input_beam.recompute()
+                return
 
         if global_distance == np.inf and child_distance == np.inf:
             # no more interactions, clip beam to bound parent
@@ -1056,7 +1089,7 @@ class BeamPath(Layout):
         beam_obj.EndInterfaceName = getattr(next_interface, 'name', '')
         beam_obj.EndInterfaceRole = getattr(next_interface, 'role', '')
         input_beam.recompute()
-        for beam in output_beams:
+        for beam in (reversed(output_beams) if limit is not None else output_beams):
             new_beam_obj = beam.get_object()
             new_beam_obj.StartObject = next_object
             new_beam_obj.StartInterfaceName = getattr(next_interface, 'name', '')
@@ -1242,8 +1275,8 @@ class Interface:
                 return None
         elif self.shape == "rectangular":
             if (
-                abs(offset_vec[0]) > self.width / 2
-                or abs(offset_vec[1]) > self.height / 2
+                abs(np.dot(offset_vec, self.get_global_transverse())) > self.width / 2
+                or abs(np.dot(offset_vec, np.cross(global_normal, self.get_global_transverse()))) > self.height / 2
             ):
                 return None
 
@@ -1530,10 +1563,8 @@ class Reflection(Interface):
                 index = incident_beam.index
 
             # calculate reflected direction
-            direction = (
-                beam_direction
-                - 2 * np.dot(beam_direction, global_normal) * global_normal
-            )
+            from PyOpticL.ray_math import reflect
+            direction = np.asarray(reflect(beam_direction, global_normal))
             local_direction = incident_beam.get_relative_direction(direction)
             reflect_beam = BeamSegment(
                 index=index,
@@ -1605,28 +1636,9 @@ class Lens(Interface):
         local_origin = incident_beam.get_relative_position(intercept)
         waist_position, rayleigh_range = self.apply_abcd(incident_beam)
 
-        # handle off-center interactions
-        radial_vector = intercept - self.get_global_position()
-        if np.isclose(np.linalg.norm(radial_vector), 0):
-            direction = beam_direction  # on-axis beam, no change in direction
-        else:
-            # calculate new beam direction using thin lens approximation
-            normal_component = np.dot(beam_direction, global_normal)
-            radial_direction = radial_vector / np.linalg.norm(radial_vector)
-            tangent_direction = np.cross(radial_direction, global_normal)
-            tangent_component = np.dot(beam_direction, tangent_direction)
-            tangent_slope = tangent_component / normal_component
-            radial_slope = np.dot(beam_direction, radial_direction) / normal_component
-            radial_slope -= (
-                np.linalg.norm(radial_vector)
-                / self.focal_length
-                * np.sign(normal_component)
-            )
-            # construct new direction vector
-            direction = global_normal * normal_component
-            direction += tangent_direction * tangent_slope * normal_component
-            direction += radial_direction * radial_slope * normal_component
-            direction /= np.linalg.norm(direction)
+        from PyOpticL.ray_math import lens_direction
+        direction = np.asarray(lens_direction(beam_direction, global_normal,
+                                              intercept-self.get_global_position(), self.focal_length))
 
         local_direction = incident_beam.get_relative_direction(direction)
 
@@ -1807,14 +1819,9 @@ class TransmissionGrating(Interface):
         if not np.all(np.isfinite(d)) or np.linalg.norm(d) < 1e-12:
             raise ValueError('Ray direction must be finite and nonzero')
         d = d/np.linalg.norm(d)
-        dn = d@n
-        if abs(dn) < 1e-8:
-            return None
-        tangent = d-dn*n + self.order*wavelength_nm*1e-6*self.grooves_per_mm*u
-        normal_squared = 1.-tangent@tangent
-        if normal_squared <= 1e-14:
-            return None
-        return tangent + np.copysign(np.sqrt(normal_squared),dn)*n
+        from PyOpticL.ray_math import grating_direction
+        result = grating_direction(d,n,u,wavelength_nm,self.order,self.grooves_per_mm)
+        return None if result is None else np.asarray(result)
 
     def get_output_beams(self, incident_beam):
         point = self.get_intercept(incident_beam)

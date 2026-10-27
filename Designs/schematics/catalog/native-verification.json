@@ -1,0 +1,104 @@
+{
+  "runtime": "Native FreeCAD application macro",
+  "freecad_version": [
+    "1",
+    "1",
+    "4",
+    "20260928 (Git shallow)",
+    "Unknown",
+    "2026/09/28 13:46:34",
+    "(HEAD detached at 4fd3bf320)",
+    "4fd3bf320d9566a27e60069fc8387448aaa3a094"
+  ],
+  "coverage": "Partial: vendor-dependent checks skipped; full-preset bounds acceptance blocked by missing CAD cache. Roof interface fixture uses an analytical body, not vendor CAD.",
+  "tests_run": 55,
+  "successful": true,
+  "failures": [],
+  "errors": [],
+  "skipped": [
+    {
+      "test": "test_preset_fiber_output_KA05TA (native_integration.CatalogFreeCADTests.test_preset_fiber_output_KA05TA)",
+      "reason": "BoundsUnavailable: collimator: Missing pinned CAD asset for F260FC-1550: /Users/migr4479/.cache/pyopticl/cad/objects/7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_fiber_output_POLARIS_K05T6 (native_integration.CatalogFreeCADTests.test_preset_fiber_output_POLARIS_K05T6)",
+      "reason": "BoundsUnavailable: collimator: Missing pinned CAD asset for F260FC-1550: /Users/migr4479/.cache/pyopticl/cad/objects/7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_fiber_source_KA05TA (native_integration.CatalogFreeCADTests.test_preset_fiber_source_KA05TA)",
+      "reason": "BoundsUnavailable: collimator: Missing pinned CAD asset for F260FC-1550: /Users/migr4479/.cache/pyopticl/cad/objects/7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_fiber_source_POLARIS_K05T6 (native_integration.CatalogFreeCADTests.test_preset_fiber_source_POLARIS_K05T6)",
+      "reason": "BoundsUnavailable: collimator: Missing pinned CAD asset for F260FC-1550: /Users/migr4479/.cache/pyopticl/cad/objects/7902d75dda5a42470809d7b5bc33e452a9d52d5da1f229ba94d5d8c105c57eda/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_grating_MK05S (native_integration.CatalogFreeCADTests.test_preset_grating_MK05S)",
+      "reason": "BoundsUnavailable: MK05S: Missing pinned CAD asset for MK05S: /Users/migr4479/.cache/pyopticl/cad/objects/530ed2a20d8d81be649e457a1a6e0c4c82868f2f22b730888abcb0fdb34697fe/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_hwp_ELL16 (native_integration.CatalogFreeCADTests.test_preset_hwp_ELL16)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for ELL16: /Users/migr4479/.cache/pyopticl/cad/objects/6943f8afc88081751275eb216dc62acb0e5805320eb7064bda564cb96fe92da3/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_hwp_FBR (native_integration.CatalogFreeCADTests.test_preset_hwp_FBR)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for FBR: /Users/migr4479/.cache/pyopticl/cad/objects/913755158e43a2b803703ac76e13af0024d244a66f5cfd9668d2b20cfc0c9d72/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_lens_POLARIS_L05G (native_integration.CatalogFreeCADTests.test_preset_lens_POLARIS_L05G)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for POLARIS-L05G: /Users/migr4479/.cache/pyopticl/cad/objects/8318b18cc1c38310475b5c9f54eddf69f144b947d86bb87155ab5850dd887d4a/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_lens_POLARIS_L1G (native_integration.CatalogFreeCADTests.test_preset_lens_POLARIS_L1G)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for POLARIS-L1G: /Users/migr4479/.cache/pyopticl/cad/objects/363ab43223650ca4a61f10727a32c89ecdab429103a79362037cc9d36a0f4fa2/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_mirror_MHV_12.7L_R (native_integration.CatalogFreeCADTests.test_preset_mirror_MHV_12.7L_R)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for MHV-12.7L-R: /Users/migr4479/.cache/pyopticl/cad/objects/be1bbf3df5c5a01cb0c497b7f6bb5a1fb72c8485ca27bc835c5088c22bebd422/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_mirror_MHV_25.4L_R (native_integration.CatalogFreeCADTests.test_preset_mirror_MHV_25.4L_R)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for MHV-25.4L-R: /Users/migr4479/.cache/pyopticl/cad/objects/cdfdb75b4db4d55ea550674ecb454fb739aca1498fb6e39cffd1bb28b3815e81/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_mirror_POLARIS_K05VS2 (native_integration.CatalogFreeCADTests.test_preset_mirror_POLARIS_K05VS2)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for POLARIS-K05VS2: /Users/migr4479/.cache/pyopticl/cad/objects/aef29c1f76d51e0cd03fe568bc1e315162525c2e8f160302eb7586bca7709708/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_mirror_POLARIS_K1VS2 (native_integration.CatalogFreeCADTests.test_preset_mirror_POLARIS_K1VS2)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for POLARIS-K1VS2: /Users/migr4479/.cache/pyopticl/cad/objects/45daa0030a7a8a226187c51684a2d81563c520aa358956d3ade124f546b2545e/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_qwp_ELL16 (native_integration.CatalogFreeCADTests.test_preset_qwp_ELL16)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for ELL16: /Users/migr4479/.cache/pyopticl/cad/objects/6943f8afc88081751275eb216dc62acb0e5805320eb7064bda564cb96fe92da3/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_qwp_FBR (native_integration.CatalogFreeCADTests.test_preset_qwp_FBR)",
+      "reason": "BoundsUnavailable: mounts: Missing pinned CAD asset for FBR: /Users/migr4479/.cache/pyopticl/cad/objects/913755158e43a2b803703ac76e13af0024d244a66f5cfd9668d2b20cfc0c9d72/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_roof_bare_horizontal (native_integration.CatalogFreeCADTests.test_preset_roof_bare_horizontal)",
+      "reason": "BoundsUnavailable: PhysicalBounds: Missing pinned CAD asset for HRS1015-P01: /Users/migr4479/.cache/pyopticl/cad/objects/1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_roof_bare_vertical (native_integration.CatalogFreeCADTests.test_preset_roof_bare_vertical)",
+      "reason": "BoundsUnavailable: PhysicalBounds: Missing pinned CAD asset for HRS1015-P01: /Users/migr4479/.cache/pyopticl/cad/objects/1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_roof_horizontal (native_integration.CatalogFreeCADTests.test_preset_roof_horizontal)",
+      "reason": "BoundsUnavailable: HRS1015-P01: Missing pinned CAD asset for HRS1015-P01: /Users/migr4479/.cache/pyopticl/cad/objects/1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_roof_vertical (native_integration.CatalogFreeCADTests.test_preset_roof_vertical)",
+      "reason": "BoundsUnavailable: HRS1015-P01: Missing pinned CAD asset for HRS1015-P01: /Users/migr4479/.cache/pyopticl/cad/objects/1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_preset_slit_VA100 (native_integration.CatalogFreeCADTests.test_preset_slit_VA100)",
+      "reason": "BoundsUnavailable: slit: Missing pinned CAD asset for VA100: /Users/migr4479/.cache/pyopticl/cad/objects/ecb5c011ed5a343f98ac24343e2ca31bc9598b1ad8fcde4558bf45a088dce81d/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    },
+    {
+      "test": "test_roof_trace_and_internal_air_path (native_integration.CatalogFreeCADTests.test_roof_trace_and_internal_air_path)",
+      "reason": "Missing pinned CAD asset for HRS1015-P01: /Users/migr4479/.cache/pyopticl/cad/objects/1cf02ed60ba1044b1b83d67ca778a668f5a69b9124b6f18354fb8c9c4cd560d7/source.step. Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download with python -m PyOpticL.vendor_cad register."
+    }
+  ]
+}

@@ -15,7 +15,7 @@ from test_schematic_editor import QT_AVAILABLE
 from test_schematic_folding import fold_span, removable_mirror, RADIUS
 
 if QT_AVAILABLE:
-    from PyOpticL.schematic.editor import SchematicEditor
+    from PyOpticL.schematic.editor import LegacySchematicEditor as SchematicEditor
     from PyOpticL.schematic.path_dialog import PathLengthsDialog
     from PyOpticL.schematic.optimize_dialog import OptimizeLayoutDialog
     from PyOpticL.schematic.qt import QtCore, QtGui, QtWidgets

@@ -125,7 +125,7 @@ class PathLengthTests(unittest.TestCase):
             data = deepcopy(original)
             data["version"] = version
             loaded = document_from_dict(data)
-            self.assertEqual(loaded.version, 5)
+            self.assertEqual(loaded.version, 6)
             self.assertFalse(loaded.path_constraints)
             self.assertEqual(loaded.nodes[1].mirror_role, "turning")
             self.assertFalse(any(edge.allow_folding for edge in loaded.connections))

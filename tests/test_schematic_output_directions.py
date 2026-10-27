@@ -28,7 +28,7 @@ from test_schematic_editor import QT_AVAILABLE
 from test_schematic_folding import fold_span, folded_splitter, RADIUS
 
 if QT_AVAILABLE:
-    from PyOpticL.schematic.editor import SchematicEditor
+    from PyOpticL.schematic.editor import LegacySchematicEditor as SchematicEditor
     from PyOpticL.schematic.optimize_dialog import OptimizeLayoutDialog
     from PyOpticL.schematic.qt import QtCore, QtWidgets
     from test_schematic_editor import QtTest

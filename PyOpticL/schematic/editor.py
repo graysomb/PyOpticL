@@ -12,7 +12,7 @@ from .model import (
 )
 from .qt import Action, QtCore, QtGui, QtWidgets
 from .parts import part_spec
-from .registry import SYMBOLS, parameter_values
+from .registry import SYMBOLS, parameter_specs, parameter_values, select_preset
 from .topology import resolve_topology
 
 Qt = QtCore.Qt
@@ -35,7 +35,8 @@ class Palette(QtWidgets.QListWidget):
         self.setMaximumWidth(190)
         self.setToolTip("Drag a symbol to the canvas, or double-click to place it")
         for kind, symbol in SYMBOLS.items():
-            item = QtWidgets.QListWidgetItem(symbol.title)
+            item = QtWidgets.QListWidgetItem(symbol.title.partition(" (")[0])
+            item.setToolTip(symbol.title)
             item.setData(Qt.UserRole, kind)
             self.addItem(item)
         self.itemDoubleClicked.connect(lambda item: editor.add_symbol(item.data(Qt.UserRole)))
@@ -127,6 +128,18 @@ class SymbolItem(QtWidgets.QGraphicsObject):
             painter.drawLine(0, -25, 0, -6)
             painter.drawLine(0, 6, 0, 25)
             painter.drawEllipse(QtCore.QRectF(-15, -15, 30, 30))
+        elif kind == "slit":
+            for y in (-23,7):
+                painter.drawRect(QtCore.QRectF(-10,y,20,16))
+        elif kind == "grating":
+            painter.drawRect(QtCore.QRectF(-9,-25,18,50))
+            for y in range(-20,24,7):
+                painter.drawLine(-9,y,9,y-5)
+        elif kind == "roof":
+            path = QtGui.QPainterPath(QtCore.QPointF(-20,-22))
+            path.lineTo(20,0)
+            path.lineTo(-20,22)
+            painter.drawPath(path)
         elif kind == "stop":
             painter.fillRect(QtCore.QRectF(-6, -23, 12, 46), ink)
         elif kind in ("fiber_source", "fiber_output"):
@@ -419,6 +432,12 @@ class SchematicView(QtWidgets.QGraphicsView):
 
 
 class SchematicEditor(QtWidgets.QWidget):
+    def __new__(cls,*args,**kwargs):
+        if cls is SchematicEditor:
+            from .physical_editor import PhysicalSchematicEditor
+            return QtWidgets.QWidget.__new__(PhysicalSchematicEditor)
+        return QtWidgets.QWidget.__new__(cls)
+
     def __init__(self, document=None, path=None, parent=None, bounds_provider=None):
         super().__init__(parent)
         self.document = document or Schematic()
@@ -508,7 +527,7 @@ class SchematicEditor(QtWidgets.QWidget):
         cancel = Action(self)
         cancel.setShortcut("Esc")
         cancel.setShortcutContext(Qt.WidgetWithChildrenShortcut)
-        cancel.triggered.connect(self.scene.cancel_connection)
+        cancel.triggered.connect(lambda:self.scene.cancel_connection())
         self.addAction(cancel)
         self.scene.rebuild()
         self.update_title()
@@ -530,7 +549,7 @@ class SchematicEditor(QtWidgets.QWidget):
         saved = self.document.optimized_layout
         if saved is not None:
             from .optimization import input_fingerprint
-            current = saved.get("input_version") == 5 and input_fingerprint(
+            current = saved.get("input_version") == (6 if self.document.layout is not None else 5) and input_fingerprint(
                 self.document,self.document.optimization,saved["radii"],folding_radius=saved.get("folding_radius")) == saved["fingerprint"]
             if not current:
                 self.status.setText("Optimized layout is stale. Rerun Optimize physical layout or Clear optimized layout before export.")
@@ -784,7 +803,7 @@ class SchematicEditor(QtWidgets.QWidget):
             from .optimization import input_fingerprint
 
             saved = self.document.optimized_layout
-            current = saved.get("input_version") == 5 and input_fingerprint(self.document, self.document.optimization, saved["radii"], folding_radius=saved.get("folding_radius")) == saved["fingerprint"]
+            current = saved.get("input_version") == (6 if self.document.layout is not None else 5) and input_fingerprint(self.document, self.document.optimization, saved["radii"], folding_radius=saved.get("folding_radius")) == saved["fingerprint"]
             self.note("Optimized physical values are shown below; free values remain unconstrained." if current else
                       "Optimized layout is stale. Rerun Optimize physical layout or Clear optimized layout before export.")
         selected = self.scene.selectedItems()
@@ -811,14 +830,39 @@ class SchematicEditor(QtWidgets.QWidget):
         reference.editingFinished.connect(lambda: self.set_reference(node.id, reference.text()))
         self.form.addRow("Reference", reference)
         presets = QtWidgets.QComboBox()
-        presets.addItems(symbol.presets)
-        presets.setCurrentText(node.preset)
-        presets.currentTextChanged.connect(lambda value: self.set_node_value(node.id, "preset", value))
+        labels = {("splitter","displacement_pbs"):"Displacement PBS + integral seat",
+                  ("iris","alignment"):"Fixed alignment iris",
+                  ("grating","MK05S"):"MK05S + plate adapter",
+                  ("roof","horizontal"):"Horizontal + supports",
+                  ("roof","vertical"):"Vertical + supports",
+                  ("roof","bare_horizontal"):"Horizontal, bare",
+                  ("roof","bare_vertical"):"Vertical, bare"}
+        presets.setObjectName("partPreset")
+        for preset in symbol.presets:
+            presets.addItem(labels.get((node.kind,preset),preset),preset)
+        presets.setCurrentIndex(presets.findData(node.preset))
+        presets.currentIndexChanged.connect(lambda index: self.set_node_value(node.id,"preset",presets.itemData(index)))
         self.form.addRow("Part preset", presets)
         for name, value in parameter_values(node).items():
-            spec = symbol.parameters[name]
-            self.number_field(spec.label, value,
-                              lambda value, name=name: self.set_node_dict(node.id, "parameters", name, value))
+            spec = parameter_specs(node)[name]
+            callback = lambda value, name=name: self.set_node_dict(node.id,"parameters",name,value)
+            if spec.integer:
+                field = QtWidgets.QSpinBox()
+                field.setRange(int(spec.minimum if spec.minimum is not None else -1000000),
+                               int(spec.maximum if spec.maximum is not None else 1000000))
+                field.setValue(int(value))
+                field.setKeyboardTracking(False)
+                field.valueChanged.connect(callback)
+                self.form.addRow(spec.label,field)
+            else:
+                field = self.number_field(spec.label,value,callback)
+            if spec.minimum is not None and spec.minimum == spec.maximum:
+                field.setEnabled(False)
+            field.setObjectName("componentParameter_"+name)
+        if node.kind == "roof":
+            self.note("Fixed two-reflection return with separate entry/exit points. Vertical presets change beam height; packing uses conservative XY bounds.")
+        elif node.kind == "grating":
+            self.note("Diffraction direction follows source wavelength, incidence and order. These are fixed optical relationships during optimization.")
         if node.kind not in ("source", "output"):
             self.bounds_info = self.note("")
             self.update_bounds_info()
@@ -1104,7 +1148,10 @@ class SchematicEditor(QtWidgets.QWidget):
         self.set_node_value(node_id, "reference", value)
 
     def set_node_value(self, node_id, key, value):
-        setattr(self.document.node(node_id), key, value)
+        if key == "preset":
+            select_preset(self.document.node(node_id),value)
+        else:
+            setattr(self.document.node(node_id), key, value)
         self.commit()
 
     def set_node_dict(self, node_id, group, key, value):
@@ -1211,6 +1258,11 @@ class SchematicEditor(QtWidgets.QWidget):
         event.accept()
 
 
+class LegacySchematicEditor(SchematicEditor):
+    """Compatibility canvas for historical document/rendering regression tests."""
+    pass
+
+
 class SchematicWindow(QtWidgets.QMdiSubWindow):
     """Let the editor veto a workspace-tab close when it has unsaved edits."""
 
@@ -1245,7 +1297,8 @@ def open_editor(path=None):
             if isinstance(widget, SchematicEditor) and widget.path and widget.path.resolve() == Path(path).resolve():
                 mdi.setActiveSubWindow(window)
                 return widget
-    editor = SchematicEditor(document, path)
+    from .physical_editor import PhysicalSchematicEditor
+    editor = PhysicalSchematicEditor(document, path)
     window = SchematicWindow(mdi)
     window.setAttribute(Qt.WA_DeleteOnClose)
     window.setWidget(editor)

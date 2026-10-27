@@ -13,6 +13,7 @@ from .optimization import (
     OptimizationProgress,
     OptimizationResult,
     candidate_problem,
+    beam_points,
     forces,
     project_constraints,
     reconstruct_candidate,
@@ -128,8 +129,7 @@ def _step(candidate, cancelled):
     candidate.age += 1
     candidate.assess()
     bad_nodes = {node_id for violation in candidate.violations for node_id in violation.node_ids}
-    for edge in problem.edges:
-        a, b = candidate.positions[edge.a], candidate.positions[edge.b]
+    for edge,(a,b) in zip(problem.edges,beam_points(problem,candidate.positions)):
         stretch = abs(hypot(b[0] - a[0], b[1] - a[1]) - edge.preferred_length)
         value = (stretch + correction[edge.a] + correction[edge.b]) / max(edge.preferred_length, 1)
         for violation in candidate.violations:
@@ -185,7 +185,8 @@ def _proposals(root, candidate, source, elapsed, cancelled):
     segment = spans[0]
     candidate.proposed.add(("insert", segment.id))
     edge = candidate.topology.edges[segment.id]
-    a, b = positions[edge.source.node_id], positions[edge.target.node_id]
+    index = next(i for i,e in enumerate(candidate.problem.edges) if e.id == segment.id)
+    a,b = beam_points(candidate.problem,candidate.positions)[index]
     dx, dy = b[0] - a[0], b[1] - a[1]
     distance = hypot(dx, dy)
     if distance < 1e-9:

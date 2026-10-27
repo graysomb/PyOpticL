@@ -87,6 +87,10 @@ def folding_protection(document, node_id):
     node = document.node(node_id)
     if node.kind != "mirror" or node.mirror_role != "folding":
         return "Turning mirrors are retained"
+    if sum(p.component_id == node_id for p in document.optical_passes()) > 1:
+        return "Mirrors shared by multiple optical passes are retained"
+    if any(p.component_id == node_id and p.turn is not None for p in document.passes):
+        return "Angle-constrained mirrors are retained"
     if any(key in node.physical for key in ("x", "y")):
         return "Position-constrained mirrors are retained"
     if "turn" in node.physical or any(node_id in edge.turns for edge in document.connections):
@@ -186,6 +190,8 @@ def effective_document(document, graph, options):
     result = Schematic(document.title, settings=deepcopy(document.settings))
     result.nodes = [deepcopy(node) for node in document.nodes if node.id not in graph.bypassed]
     result.path_constraints = deepcopy(document.path_constraints)
+    result.passes = [deepcopy(p) for p in document.passes if p.component_id not in graph.bypassed]
+    result.layout = deepcopy(document.layout)
     if any(edge.turns for edge in document.connections):
         topology = resolve_topology(document)
         for node in result.nodes:

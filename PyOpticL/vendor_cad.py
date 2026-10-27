@@ -148,7 +148,14 @@ def resolve(record, root=None):
     path = (root / record["cache_path"]).resolve()
     if not path.is_relative_to(root):
         raise ValueError("Asset path escapes cache")
-    data = path.read_bytes()
+    try:
+        data = path.read_bytes()
+    except FileNotFoundError as error:
+        raise FileNotFoundError(
+            f"Missing pinned CAD asset for {record.get('part_number', 'component')}: {path}. "
+            "Restore the CAD cache (PYOPTICL_CAD_CACHE), or register the matching vendor download "
+            "with python -m PyOpticL.vendor_cad register."
+        ) from error
     if hashlib.sha256(data).hexdigest() != record["sha256"]:
         raise ValueError("Asset hash differs from catalog pin")
     validate(data, record["kind"])
