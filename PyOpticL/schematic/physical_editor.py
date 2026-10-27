@@ -898,6 +898,8 @@ class PhysicalSchematicEditor(BaseEditor):
             row.addWidget(remove)
             self.form.insertRow(3, buttons)
             visit = self.document.optical_pass(self.active_pass(node.id))
+            if visit.id != node.id and visit.mode == "pass":
+                self.note("Additional passes allow displaced return hits. Enable Centered hit only when this pass must use the same center; clear-aperture limits still apply.")
             if visit.mode != "emit" and node.kind != "output":
                 centered = QtWidgets.QCheckBox("Centered hit")
                 centered.setObjectName("passCenteredHit")

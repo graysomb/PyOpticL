@@ -132,7 +132,10 @@ class Schematic:
             raise ValueError("This endpoint has only one optical interaction")
         if SYMBOLS[node.kind].role in ("source", "terminal"):
             mode = "receive"
-        item = OpticalPass(new_id(), component_id, mode)
+        # Additional visits through an optic may be displaced by a roof or
+        # another return path. Receiving fibers and roof entrance ports retain
+        # their centered default; a shared optic's primary visit stays centered.
+        item = OpticalPass(new_id(), component_id, mode, centered=mode != "pass" or node.kind == "roof")
         self.passes.append(item)
         return item
 

@@ -120,11 +120,17 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   beam for straight-through transmission. Their body faces perpendicular to
   the beam, from either propagation direction. A half-wave plate's **Fast axis**
   parameter still sets its polarization rotation independently of its body yaw.
-- **Centered hit** is enabled by default for each receiving or interacting pass.
+- **Centered hit** is enabled by default for each component's primary pass and
+  for fiber receivers and roof entrance ports. **Add pass** starts additional
+  passes through a shared optic with centering off, so a roof's displaced return
+  can hit a different point on the same physical part. Enable it explicitly for
+  a coaxial return that must use the same center.
   Dragging and optimization keep the ray at the optic's nominal interaction center
-  in both transverse directions. Uncheck it on a selected **Optical pass** only
-  for intentional off-center paths, such as a displaced return through a shared
-  lens or waveplate. Clear-aperture checks still apply. A roof's center refers to
+  in both transverse directions when centering is enabled. Existing saved
+  constraints are preserved: clear **Centered hit** on an older return pass if
+  it conflicts with a displaced return. Clear-aperture checks still apply;
+  reduce roof beam separation or select a larger optic if the return misses it.
+  A roof's center refers to
   its entrance port; its internal geometry retains the displaced exit.
 - **Constrain position** pins the shared component origin in X/Y. Every visit
   uses that same pose. **Constrain beam length** pins the distance between its

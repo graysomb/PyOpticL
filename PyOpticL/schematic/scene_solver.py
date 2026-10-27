@@ -50,8 +50,28 @@ def variables(document, *, pins=True):
     return result
 
 
+def _place_on_ray(document, poses, baseline, edge, origin, direction, free, requested):
+    """Place free coordinates on a ray without replacing pins or drag targets."""
+    target_id = edge.target.node_id
+    point = poses[target_id][:3]
+    connection = document.connection(edge.id)
+    distance = connection.length
+    if distance is None:
+        distance = norm(sub(baseline[target_id][:3], baseline[edge.source.node_id][:3]))
+        distance = distance or connection_length(document, connection)
+        for axis in range(3):
+            key = (target_id, axis)
+            if (key not in free or key in requested) and abs(direction[axis]) > 1e-8:
+                distance = (point[axis] - origin[axis]) / direction[axis]
+                break
+    for axis in range(3):
+        key = (target_id, axis)
+        if key in free and key not in requested:
+            poses[target_id][axis] = origin[axis] + distance * direction[axis]
+
+
 def _orientation_seed(document, poses, topology, targets):
-    """Estimate single-pass centered poses from the connected optical path.
+    """Estimate primary poses and follow displaced returns through shared parts.
 
     Plane intersections are singular at grazing incidence, and a mirror's
     equivalent back-facing normal is separated from its coating by 180 degrees.
@@ -76,7 +96,7 @@ def _orientation_seed(document, poses, topology, targets):
         for visit_id in (a, b):
             visit = topology.passes[visit_id]
             node = document.node(visit.component_id)
-            if node.kind == "roof" or (visit.mode != "emit" and not visit.centered):
+            if (node.kind == "roof" and visit_id == a) or (visit.mode != "emit" and not visit.centered):
                 return None
         delta = sub(seed[topology.passes[b].component_id][:3],
                     seed[topology.passes[a].component_id][:3])
@@ -89,21 +109,8 @@ def _orientation_seed(document, poses, topology, targets):
             if counts[target.component_id] != 1 or not target.centered:
                 return
             target_node = document.node(target.component_id)
-            origin, point = seed[edge.source.node_id][:3], seed[target.component_id][:3]
-            connection = document.connection(edge.id)
-            distance = connection.length
-            if distance is None:
-                distance = norm(sub(poses[target.component_id][:3], poses[edge.source.node_id][:3]))
-                distance = distance or connection_length(document, connection)
-                for axis in range(3):
-                    position_key = (target.component_id, axis)
-                    if (position_key not in free or position_key in requested) and abs(direction[axis]) > 1e-8:
-                        distance = (point[axis] - origin[axis]) / direction[axis]
-                        break
-            for axis in range(3):
-                position_key = (target.component_id, axis)
-                if position_key in free and position_key not in requested:
-                    seed[target.component_id][axis] = origin[axis] + distance * direction[axis]
+            _place_on_ray(document, seed, poses, edge, seed[edge.source.node_id][:3],
+                          direction, free, requested)
             exits = topology.outgoing[target.id]
             if len(exits) != 1 or target.mode != "pass":
                 return
@@ -134,7 +141,9 @@ def _orientation_seed(document, poses, topology, targets):
         visit = topology.passes[visit_id]
         node = document.node(visit.component_id)
         key = (node.id, 3)
-        if counts[node.id] != 1 or key not in free or key in requested:
+        shared_primary = (visit_id == node.id and visit.centered
+                          and (node.kind in ("mirror", "lens", "qwp") or node.kind in AXIS_ALIGNED_KINDS))
+        if (counts[node.id] != 1 and not shared_primary) or key not in free or key in requested:
             continue
         outgoing = topology.outgoing[visit_id]
         angle = None
@@ -163,14 +172,43 @@ def _orientation_seed(document, poses, topology, targets):
             direction = leg(incoming[visit_id].source.visit_id, visit_id)
             if direction is not None:
                 angle = heading(direction) + 180
-        elif node.kind in AXIS_ALIGNED_KINDS:
+        elif node.kind in AXIS_ALIGNED_KINDS or node.kind in ("lens", "qwp"):
             direction = leg(incoming[visit_id].source.visit_id, visit_id)
             if direction is not None:
                 # Transmission works from either side; retain the nearer body
                 # orientation instead of turning its mount by 180 degrees.
                 angle = seed[node.id][3] + wrap_axis_angle(heading(direction) - seed[node.id][3])
+        elif node.kind == "roof":
+            direction = leg(incoming[visit_id].source.visit_id, visit_id)
+            if direction is not None:
+                angle = heading(direction)
         if angle is not None:
             seed[node.id][3] += wrap_angle(angle - seed[node.id][3])
+    # The roof's exit and a shared return's contact are not component centers.
+    # Trace those actual points before placing free downstream receiving parts.
+    active = set()
+    for visit_id in topology.order:
+        visit = topology.passes[visit_id]
+        node = document.node(visit.component_id)
+        if node.kind != "roof" and visit_id not in active:
+            continue
+        trace = trace_scene(document, seed, check_interceptions=False, topology=topology)
+        if visit_id in active:
+            edge = incoming[visit_id]
+            previous = trace.layout.visits[edge.source.visit_id]
+            direction = previous.outputs[edge.interaction]
+            if counts[node.id] == 1 and visit.centered:
+                _place_on_ray(document, seed, poses, edge, previous.exit, direction, free, requested)
+                key = (node.id, 3)
+                if key in free and key not in requested:
+                    if node.kind in ("fiber_output", "stop"):
+                        seed[node.id][3] += wrap_angle(heading(direction) + 180 - seed[node.id][3])
+                    elif node.kind in AXIS_ALIGNED_KINDS:
+                        seed[node.id][3] += wrap_axis_angle(heading(direction) - seed[node.id][3])
+                trace = trace_scene(document, seed, check_interceptions=False, topology=topology)
+        state = trace.layout.visits[visit_id]
+        if (node.kind == "roof" and state.path) or (visit_id in active and node.kind != "roof"):
+            active.update(edge.target.visit_id for edge in topology.outgoing[visit_id])
     return seed
 
 
@@ -330,6 +368,21 @@ def explicit_conflicts(document):
     from .paths import component_path
 
     conflicts = []
+    topology = resolve_topology(document)
+    if topology.ok:
+        incoming = {edge.target.visit_id: edge for edge in topology.edges.values()}
+        for visit_id, visit in topology.passes.items():
+            if document.node(visit.component_id).kind != "roof":
+                continue
+            before = topology.passes[incoming[visit_id].source.visit_id]
+            for edge in topology.outgoing[visit_id]:
+                after = topology.passes[edge.target.visit_id]
+                if (before.component_id == after.component_id and before.centered and after.centered):
+                    node = document.node(after.component_id)
+                    conflicts.append(Diagnostic(
+                        f"{node.reference}: a roof return is displaced; uncheck Centered hit on the return pass",
+                        node.id, edge.id, pass_id=after.id,
+                    ))
     for constraint in document.path_constraints:
         try:
             route = component_path(

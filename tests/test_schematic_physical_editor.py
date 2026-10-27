@@ -170,6 +170,50 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertEqual(len(copied), 2)
         self.assertTrue(all(not p.centered for p in copied))
 
+    def test_existing_centered_roof_return_can_be_repaired_and_undone(self):
+        from test_schematic_roof_return import shared_mirror_roof_scene
+
+        document = shared_mirror_roof_scene()
+        document.optical_pass("mirror-return").centered = True
+        mirror_id = document.nodes[1].id
+        e = self.open(document)
+        self.assertTrue(any("uncheck Centered hit" in e.messages.item(i).text()
+                            for i in range(e.messages.count())))
+        self.select(mirror_id)
+        e.set_active_pass(mirror_id, "mirror-return")
+        self.settle()
+        toggle = e.findChild(QtWidgets.QCheckBox, "passCenteredHit")
+        self.assertTrue(toggle.isChecked())
+        toggle.setChecked(False)
+        self.settle()
+        self.assertTrue(compile_schematic(e.document).ok)
+        self.assertEqual(len(e.scene.symbols), 4)
+        e.undo()
+        self.settle()
+        self.assertTrue(e.document.optical_pass("mirror-return").centered)
+        self.assertFalse(compile_schematic(e.document).ok)
+        e.redo()
+        self.settle()
+        self.assertFalse(e.document.optical_pass("mirror-return").centered)
+        self.assertTrue(compile_schematic(e.document).ok)
+
+    def test_wiring_a_displaced_roof_return_uses_the_selected_shared_pass(self):
+        from test_schematic_roof_return import shared_mirror_roof_scene
+
+        document = shared_mirror_roof_scene()
+        missing = document.connections.pop()
+        e = self.open(document)
+        self.select(document.nodes[1].id)
+        e.set_active_pass(document.nodes[1].id, "mirror-return")
+        self.settle()
+        self.assertFalse(e.findChild(QtWidgets.QCheckBox, "passCenteredHit").isChecked())
+        e.scene.wire(missing.a)
+        e.scene.wire(missing.b)
+        self.settle()
+        self.assertTrue(compile_schematic(e.document).ok)
+        self.assertEqual(len(e.document.connections), 4)
+        self.assertEqual(len(e.scene.symbols), 4)
+
     def test_successful_drag_is_one_undoable_edit_and_preserves_constraints(self):
         e = self.open()
         before = deepcopy(e.document.to_dict())

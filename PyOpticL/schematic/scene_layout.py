@@ -313,6 +313,14 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                     edge.id,
                     equality=False,
                 )
+                if (node.kind == "mirror" and visit_id != node.id
+                        and spec.aperture[0] == "circle" and aperture_excess(spec, local) > 1e-6):
+                    result.diagnostics.append(Diagnostic(
+                        f"{node.reference}: return spot is {hypot(local[1], local[2]):.3f} mm from center, "
+                        f"outside the {spec.aperture[1]:.3f} mm clear radius; reduce the return offset "
+                        "or use a larger mirror",
+                        node.id, edge.id, pass_id=visit_id,
+                    ))
                 residual(
                     f"grazing/{visit_id}",
                     max(0, 1e-5 - abs(dot(direction, normal))),

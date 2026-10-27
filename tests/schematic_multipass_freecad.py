@@ -208,6 +208,48 @@ class NativeMultipassTests(unittest.TestCase):
                     delta=1e-6,
                 )
 
+    def test_solved_shared_mirror_roof_returns_match_native_finite_hits(self):
+        from test_schematic_roof_return import shared_mirror_roof_scene
+        from PyOpticL.schematic.scene_solver import solve_scene
+        from PyOpticL.schematic.registry import select_preset
+
+        cases = ((False, None, "bare"), (True, None, "bare"),
+                 (False, "hwp", "bare"), (False, "lens", "bare"),
+                 (False, None, "POLARIS-K05VS2"))
+        for index, (vertical, transmission, preset) in enumerate(cases):
+            if index:
+                self.tearDown()
+                self.setUp()
+            with self.subTest(vertical=vertical, transmission=transmission, preset=preset), patch.object(
+                RoofOptic, "shape", lambda self: Part.makeBox(1, 1, 1)
+            ):
+                document = shared_mirror_roof_scene(vertical=vertical, transmission=transmission)
+                select_preset(document.nodes[1], preset)
+                solution = solve_scene(document, iterations=40)
+                self.assertTrue(solution.ok, solution.diagnostics)
+                document.layout["poses"] = solution.poses
+                layout = self.build(document)
+                children = layout.get_object().Children
+                self.assertEqual(sum(child.Label == "M1" for child in children), 1)
+                mirror = next(child for child in children if child.Label == "M1")
+                beam = next(child for child in children if hasattr(child, "BeamSegments"))
+                owned, pending = set(), [mirror]
+                while pending:
+                    child = pending.pop()
+                    owned.add(child.Name)
+                    pending.extend(getattr(child, "Children", ()))
+                arrivals = [segment for segment in beam.BeamSegments
+                            if segment.EndObject and segment.EndObject.Name in owned]
+                self.assertEqual(len(arrivals), 2)
+                hits = [App.Vector(*(segment.Proxy.get_global_position()
+                        + segment.Proxy.get_global_direction() * segment.Proxy.distance))
+                        for segment in arrivals]
+                self.assertGreater((hits[0] - hits[1]).Length, 3)
+                self.assertLess((hits[0] - hits[1]).Length, 6.35)
+                for hit, visit_id in zip(hits, (document.nodes[1].id, "mirror-return")):
+                    expected = App.Vector(*solution.layout.visits[visit_id].entry)
+                    self.assertLess((hit - expected).Length, 1e-6)
+
     def test_physical_single_pass_splitter_and_reversed_grating(self):
         from schematic_freecad import branched
 

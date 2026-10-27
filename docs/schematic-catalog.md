@@ -65,7 +65,17 @@ resolved entrance origin; the return beam leaves the displaced exit and turns
 180°. The horizontal preset offsets the return beam sideways. The vertical
 preset changes its height; exported downstream components follow that height.
 Reversing A/B reverses the offset. Beam lengths measure the external legs
-between actual ports. Total-path constraints also include the actual internal air path between finite roof facets (25.4 mm for nominal axial incidence). The ray solver and native export share the same roof-facet math. Add explicit return passes to the existing lens or waveplate to reuse those parts; a pickoff must also be wired explicitly.
+between actual ports. Total-path constraints also include the actual internal air path between finite roof facets (25.4 mm for nominal axial incidence). The ray solver and native export share the same roof-facet math.
+
+Add explicit return passes to reuse a mirror, lens or waveplate. Additional
+optic passes default to off-center hits so the displaced return can cross the
+same aperture at a different point; the primary pass remains centered. For a
+shared turning mirror, wire source → M1 pass 1 → roof → M1 pass 2 → receiver.
+Adding a pass does not create these connections automatically. Existing saved
+**Centered hit** constraints remain in force; clear that box on a displaced
+return pass. The return must still fit the optic's clear aperture. The solver
+aims the roof and positions free receiving parts using the actual return hit.
+A pickoff, if used, must also be wired explicitly.
 
 Packing uses XY assembly disks, including for vertical roofs. It remains a
 conservative planar packing check; differing heights do not exempt disks or
