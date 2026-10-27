@@ -9,7 +9,7 @@ from time import monotonic
 from .model import document_from_dict, connection_length
 from .topology import resolve_topology
 from .scene_layout import poses_for, trace_scene, initialize_layout
-from .scene_solver import solve_scene, _rows
+from .scene_solver import solve_scene, _rows, _face_mirrors
 from .effective import (
     identity_graph,
     replay_graph,
@@ -259,24 +259,6 @@ class Candidate:
             document_json=json.dumps(data, sort_keys=True),
             initial_positions=tuple(tuple(self.poses[n.id][:2]) for n in self.problem.nodes),
         )
-
-
-def _face_mirrors(document, poses):
-    # Reflection is unchanged by n -> -n, but physical mirrors have one coated
-    # face. Choose the equivalent front-facing yaw before numerical projection.
-    trace = trace_scene(document, poses, check_interceptions=False)
-    for node in document.nodes:
-        if node.kind != "mirror":
-            continue
-        states = [
-            state
-            for key, state in trace.layout.visits.items()
-            if document.optical_pass(key).component_id == node.id
-        ]
-        if states and all(
-            dot(state.incoming, yaw((1.0, 0.0, 0.0), poses[node.id][3])) > 0 for state in states
-        ):
-            poses[node.id][3] += 180
 
 
 def _relax(candidate, cancelled):

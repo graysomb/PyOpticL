@@ -108,6 +108,9 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   A valid release is one undoable edit; an unresolved release restores the previous
   layout and reports residuals. **R** requests a yaw rotation. Free geometry changes
   without checking any constraint boxes. Grid coordinates and sizes use millimetres.
+  When connecting or moving a centered mirror, its starting orientation is
+  calculated from the two beam legs, including a turn to the coated face when
+  needed. Position, direction and turn constraints still apply.
 - **Centered hit** is enabled by default for each receiving or interacting pass.
   Dragging and optimization keep the ray at the optic's nominal interaction center
   in both transverse directions. Uncheck it on a selected **Optical pass** only

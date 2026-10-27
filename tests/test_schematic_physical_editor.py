@@ -217,6 +217,38 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertAlmostEqual(e.document.layout["poses"][source.id][1], 20, delta=1e-6)
         check_alignment()
 
+    def test_wiring_and_drag_can_turn_a_mirror_through_its_back_face(self):
+        from test_schematic_mirror_orientation import mirror_scene
+        from PyOpticL.ray_math import dot, yaw
+
+        document = mirror_scene(90, 90, mirror_yaw=45)
+        source, mirror, receiver = document.nodes
+        for node in (source, receiver):
+            pose = document.layout["poses"][node.id]
+            node.physical.update(x=pose[0], y=pose[1])
+        edge = document.connections.pop()
+        e = self.open(document)
+        self.assertFalse(e.scene.topology.ok)
+        index = e.history.index
+        # Wire in reverse click order, with the mirror initially on its back face.
+        e.scene.wire(edge.b)
+        e.scene.wire(edge.a)
+        self.settle()
+        self.assertEqual(e.history.index, index + 1)
+        compiled = compile_schematic(document)
+        self.assertTrue(compiled.ok, compiled.diagnostics)
+        state = compiled.geometry.visits[mirror.id]
+        self.assertLess(dot(state.incoming, yaw((1, 0, 0), document.layout["poses"][mirror.id][3])), 0)
+        e.begin_drag()
+        e.start_solve(((mirror.id, 0, -100), (mirror.id, 1, -100)), True)
+        self.settle()
+        self.assertEqual(document.layout["poses"][mirror.id][:2], [-100, -100])
+        self.assertTrue(compile_schematic(document).ok)
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.layout["poses"][mirror.id][:2], [0, 0])
+        self.assertTrue(compile_schematic(e.document).ok)
+
     def test_pinned_drag_is_rejected_and_reports_residual(self):
         doc = double_pass()
         doc.nodes[3].physical["x"] = 200

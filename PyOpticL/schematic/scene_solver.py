@@ -9,7 +9,8 @@ from math import hypot, isfinite, radians
 from .scene_layout import Residual, trace_scene, poses_for, source_offset
 from .topology import Diagnostic, resolve_topology
 from .registry import SYMBOLS
-from PyOpticL.ray_math import norm, sub
+from .physical import wrap_angle
+from PyOpticL.ray_math import norm, sub, unit, heading, dot, yaw
 
 
 @dataclass
@@ -44,6 +45,83 @@ def variables(document, *, pins=True):
                 continue
             result.append((node.id, axis))
     return result
+
+
+def _orientation_seed(document, poses, topology, targets):
+    """Aim single-pass centered parts from their connected nominal centers.
+
+    Plane intersections are singular at grazing incidence, and a mirror's
+    equivalent back-facing normal is separated from its coating by 180 degrees.
+    Starting on the geometric reflection branch avoids asking a local gradient
+    to cross either barrier. This is only a candidate; all constraints and the
+    exact finite ray trace still decide whether it can be accepted.
+    """
+    seed = deepcopy(poses)
+    free = set(variables(document))
+    requested = {(node_id, axis) for node_id, axis, _ in targets}
+    for node_id, axis, value in targets:
+        if (node_id, axis) in free:
+            seed[node_id][axis] = value
+    incoming = {edge.target.visit_id: edge for edge in topology.edges.values()}
+    counts = {}
+    for visit in topology.passes.values():
+        counts[visit.component_id] = counts.get(visit.component_id, 0) + 1
+
+    def leg(a, b):
+        # Roof exits and deliberate off-center visits need their traced ports,
+        # rather than the component origins used by this initial estimate.
+        for visit_id in (a, b):
+            visit = topology.passes[visit_id]
+            node = document.node(visit.component_id)
+            if node.kind == "roof" or (visit.mode != "emit" and not visit.centered):
+                return None
+        delta = sub(seed[topology.passes[b].component_id][:3],
+                    seed[topology.passes[a].component_id][:3])
+        return unit(delta) if norm(delta) > 1e-6 else None
+
+    for visit_id in topology.order:
+        visit = topology.passes[visit_id]
+        node = document.node(visit.component_id)
+        key = (node.id, 3)
+        if counts[node.id] != 1 or key not in free or key in requested:
+            continue
+        outgoing = topology.outgoing[visit_id]
+        angle = None
+        if visit.mode == "emit" and len(outgoing) == 1:
+            direction = leg(visit_id, outgoing[0].target.visit_id)
+            if direction is not None:
+                angle = heading(direction) + source_offset(node)
+        elif node.kind == "mirror" and visit.mode == "pass" and len(outgoing) == 1:
+            before = leg(incoming[visit_id].source.visit_id, visit_id)
+            after = leg(visit_id, outgoing[0].target.visit_id)
+            if before is not None and after is not None:
+                normal = sub(after, before)
+                if hypot(normal[0], normal[1]) > 1e-6:
+                    # out - in chooses the coated face: in dot normal < 0.
+                    angle = heading(normal)
+        elif visit.mode == "receive" and node.kind in ("fiber_output", "stop"):
+            direction = leg(incoming[visit_id].source.visit_id, visit_id)
+            if direction is not None:
+                angle = heading(direction) + 180
+        if angle is not None:
+            seed[node.id][3] += wrap_angle(angle - seed[node.id][3])
+    return seed
+
+
+def _face_mirrors(document, poses, topology=None, targets=()):
+    """Select the coated face without changing a mirror's reflection plane."""
+    requested = {(node_id, axis) for node_id, axis, _ in targets}
+    trace = trace_scene(document, poses, check_interceptions=False, topology=topology)
+    for node in document.nodes:
+        if node.kind != "mirror" or (node.id, 3) in requested:
+            continue
+        states = [state for key, state in trace.layout.visits.items()
+                  if document.optical_pass(key).component_id == node.id]
+        normal = yaw((1.0, 0.0, 0.0), poses[node.id][3])
+        if states and all(dot(state.incoming, normal) > 1e-8 for state in states):
+            # n and -n reflect identically, but only one faces the incoming ray.
+            # All visits must agree before flipping a shared physical mirror.
+            poses[node.id][3] = wrap_angle(poses[node.id][3] + 180)
 
 
 def _rows(document, poses, topology, targets=(), packing=None):
@@ -294,6 +372,17 @@ def solve_scene(
     conflicts = explicit_conflicts(document)
     if conflicts:
         return SceneSolution("inconsistent", trace_scene(document, points).layout, points, conflicts)
+    if iterations > 0 and not cancelled():
+        _face_mirrors(document, points, topology, targets)
+        rows, _ = _rows(document, points, topology, targets, packing)
+        if any(abs(row.value) > 1e-6 for row in rows):
+            seed = _orientation_seed(document, points, topology, targets)
+            _face_mirrors(document, seed, topology, targets)
+            seeded_rows, _ = _rows(document, seed, topology, targets, packing)
+            if sum((r.value * _scale(r)) ** 2 for r in seeded_rows) < sum(
+                (r.value * _scale(r)) ** 2 for r in rows
+            ):
+                points = seed
     keys = variables(document)
     damping = 1e-5
     count = 0
@@ -332,6 +421,7 @@ def solve_scene(
             candidate = deepcopy(points)
             for (node_id, axis), delta in zip(keys, step):
                 candidate[node_id][axis] += factor * delta
+            _face_mirrors(document, candidate, topology, targets)
             new_rows, _ = _rows(document, candidate, topology, targets, packing)
             score = sum((row.value * _scale(row)) ** 2 for row in new_rows)
             if isfinite(score) and score < old_score:

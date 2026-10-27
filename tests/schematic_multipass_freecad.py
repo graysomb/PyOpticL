@@ -19,6 +19,27 @@ class NativeMultipassTests(unittest.TestCase):
     tearDown = FreeCADSchematicTests.tearDown
     build = FreeCADSchematicTests.build
 
+    def test_mirror_can_turn_around_and_exports_its_coated_face(self):
+        from test_schematic_mirror_orientation import mirror_scene
+        from PyOpticL.schematic.scene_solver import solve_scene
+
+        for index, (incoming, turn) in enumerate(((90, 90), (-150, -90), (170, 30))):
+            with self.subTest(incoming=incoming, turn=turn):
+                if index:
+                    self.tearDown()
+                    self.setUp()
+                document = mirror_scene(incoming, turn, mirror_yaw=45)
+                solution = solve_scene(document, iterations=40)
+                self.assertTrue(solution.ok, solution.diagnostics)
+                document.layout["poses"] = solution.poses
+                layout = self.build(document)
+                mirror = next(child for child in layout.get_object().Children if child.Label == "M1")
+                beam = next(child for child in layout.get_object().Children if hasattr(child, "BeamSegments"))
+                arriving = next(segment.Proxy.get_global_direction() for segment in beam.BeamSegments
+                                if segment.EndObject == mirror)
+                normal = mirror.getGlobalPlacement().Rotation.multVec(App.Vector(1, 0, 0))
+                self.assertLess(normal.dot(App.Vector(*arriving)), 0)
+
     def test_centered_coupler_mirror_contacts_match_native_trace_after_drag(self):
         from test_schematic_centering import coupler_scene
         from PyOpticL.schematic.scene_solver import solve_scene
