@@ -911,6 +911,8 @@ class PhysicalSchematicEditor(BaseEditor):
             self.note(f"Physical Z: {pose[2]:.6f} mm · yaw: {pose[3]:.6f}°")
             if node.kind in AXIS_ALIGNED_KINDS:
                 self.note("The optical axis automatically follows the beam for straight-through transmission from either side.")
+            if node.kind == "grating":
+                self.note("Incidence angle is fixed relative to the incoming beam. Free downstream parts adjust to the diffracted path.")
             spec = element_spec(node, self.scene.topology)
             if spec and spec.aperture_only:
                 self.note("Optical aperture outline only; the full body requires vendor geometry.")

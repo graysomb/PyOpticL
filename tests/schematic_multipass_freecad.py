@@ -19,6 +19,36 @@ class NativeMultipassTests(unittest.TestCase):
     tearDown = FreeCADSchematicTests.tearDown
     build = FreeCADSchematicTests.build
 
+    def test_fixed_grating_moves_free_mirror_and_receiver_and_matches_native_diffraction(self):
+        from test_schematic_grating_constraints import grating_chain
+        from PyOpticL.schematic.registry import grating_turn, select_preset
+        from PyOpticL.schematic.scene_solver import solve_scene
+        from PyOpticL.schematic.topology import resolve_topology
+        from PyOpticL.schematic.physical import wrap_angle
+        from PyOpticL.ray_math import heading
+
+        for index, (preset, reverse) in enumerate((("bare", False), ("MK05S", True))):
+            with self.subTest(preset=preset, reverse=reverse):
+                if index:
+                    self.tearDown()
+                    self.setUp()
+                document = grating_chain(reverse=reverse, transmission=("hwp", "iris") if not reverse else ())
+                grating = document.nodes[2]
+                select_preset(grating, preset)
+                solution = solve_scene(document, iterations=40)
+                self.assertTrue(solution.ok, solution.diagnostics)
+                document.layout["poses"] = solution.poses
+                layout = self.build(document)
+                children = layout.get_object().Children
+                part = next(child for child in children if child.Label == grating.reference)
+                beam = next(child for child in children if hasattr(child, "BeamSegments"))
+                incoming = next(segment.Proxy.get_global_direction() for segment in beam.BeamSegments
+                                if segment.EndObject == part)
+                outgoing = next(segment.Proxy.get_global_direction() for segment in beam.BeamSegments
+                                if segment.StartObject == part)
+                turn = grating_turn(document, grating, resolve_topology(document))
+                self.assertAlmostEqual(wrap_angle(heading(outgoing) - heading(incoming) - turn), 0, delta=1e-6)
+
     def test_half_wave_plate_and_iris_export_with_axes_parallel_to_the_beam(self):
         from test_schematic_transmission_alignment import transmission_scene
         from PyOpticL.schematic.registry import select_preset

@@ -46,7 +46,10 @@ retain their reflected-power setting.
 ## Gratings and roof mirrors
 
 The grating's outgoing direction follows source wavelength, incidence angle,
-and diffraction order. Unsupported nonpropagating/grazing orders block export
+and diffraction order. The incidence angle is a hard constraint relative to
+the incoming beam: free downstream components move to meet the diffracted ray,
+while position, beam-length and mirror-turn pins remain enforced.
+Unsupported nonpropagating/grazing orders block export
 and optimization with a diagnostic. The optimizer preserves this optical
 relationship. A/B connections remain reversible. The model is the catalog's
 ideal single-order thin grating; it does not add substrate displacement or

@@ -17,7 +17,10 @@ from PyOpticL.ray_math import (
     grating_direction,
 )
 from .optic_geometry import element_spec, aperture_excess, roof_trace
-from .registry import SYMBOLS, COUPLING_MOUNTS, AXIS_ALIGNED_KINDS, parameter_values, default_turn
+from .registry import (
+    SYMBOLS, COUPLING_MOUNTS, AXIS_ALIGNED_KINDS, parameter_values, default_turn,
+    grating_input_heading,
+)
 from .physical import PhysicalLayout, wrap_angle, wrap_axis_angle
 from .topology import Diagnostic, resolve_topology
 from .paths import component_path
@@ -259,6 +262,21 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                 spec = None
             else:
                 distance, hit, normal, local, spec = intersect(document, node, pose, origin, direction, topo)
+                if node.kind == "grating":
+                    try:
+                        target_heading = pose[3] + grating_input_heading(document, node, topo, visit_id)
+                        for axis, value in (
+                            ("yaw", wrap_angle(heading(direction) - target_heading)),
+                            ("pitch", degrees(atan2(direction[2], hypot(direction[0], direction[1])))),
+                        ):
+                            residual(
+                                f"incidence/{visit_id}/{axis}", value,
+                                f"{node.reference}: constrained grating incidence angle",
+                                node.id, visit_id, edge.id, "°",
+                            )
+                    except ValueError as error:
+                        result.diagnostics.append(Diagnostic(f"{node.reference}: {error}", node.id,
+                                                             pass_id=visit_id))
                 if node.kind in AXIS_ALIGNED_KINDS:
                     for axis, value in (
                         ("yaw", wrap_axis_angle(heading(direction) - pose[3])),

@@ -8,7 +8,10 @@ from dataclasses import dataclass, field
 from math import hypot, isfinite, radians
 from .scene_layout import Residual, trace_scene, poses_for, source_offset
 from .topology import Diagnostic, resolve_topology
-from .registry import SYMBOLS, AXIS_ALIGNED_KINDS
+from .registry import (
+    SYMBOLS, AXIS_ALIGNED_KINDS, MIN_BEAM_TURN, grating_input_heading, grating_turn, default_turn,
+)
+from .model import connection_length
 from .physical import wrap_angle, wrap_axis_angle
 from PyOpticL.ray_math import norm, sub, unit, heading, dot, yaw
 
@@ -48,7 +51,7 @@ def variables(document, *, pins=True):
 
 
 def _orientation_seed(document, poses, topology, targets):
-    """Aim single-pass centered parts from their connected nominal centers.
+    """Estimate single-pass centered poses from the connected optical path.
 
     Plane intersections are singular at grazing incidence, and a mirror's
     equivalent back-facing normal is separated from its coating by 180 degrees.
@@ -79,6 +82,54 @@ def _orientation_seed(document, poses, topology, targets):
                     seed[topology.passes[a].component_id][:3])
         return unit(delta) if norm(delta) > 1e-6 else None
 
+    def follow_grating(edge, direction):
+        """Reflow a free downstream chain, retaining its preferred leg lengths."""
+        while True:
+            target = topology.passes[edge.target.visit_id]
+            if counts[target.component_id] != 1 or not target.centered:
+                return
+            target_node = document.node(target.component_id)
+            origin, point = seed[edge.source.node_id][:3], seed[target.component_id][:3]
+            connection = document.connection(edge.id)
+            distance = connection.length
+            if distance is None:
+                distance = norm(sub(poses[target.component_id][:3], poses[edge.source.node_id][:3]))
+                distance = distance or connection_length(document, connection)
+                for axis in range(3):
+                    position_key = (target.component_id, axis)
+                    if (position_key not in free or position_key in requested) and abs(direction[axis]) > 1e-8:
+                        distance = (point[axis] - origin[axis]) / direction[axis]
+                        break
+            for axis in range(3):
+                position_key = (target.component_id, axis)
+                if position_key in free and position_key not in requested:
+                    seed[target.component_id][axis] = origin[axis] + distance * direction[axis]
+            exits = topology.outgoing[target.id]
+            if len(exits) != 1 or target.mode != "pass":
+                return
+            next_edge = exits[0]
+            if target_node.kind == "mirror":
+                next_id = next_edge.target.node_id
+                if any((next_id, axis) not in free or (next_id, axis) in requested for axis in range(3)):
+                    return  # A free mirror can instead aim at a pinned next part.
+                turn = target.turn
+                if turn is None:
+                    turn = target_node.physical.get("turn")
+                    legacy = [e.turns[target.component_id] for e in document.connections
+                              if target.component_id in e.turns]
+                    if legacy:
+                        turn = legacy[0]
+                if turn is None:
+                    before = sub(poses[target.component_id][:3], poses[edge.source.node_id][:3])
+                    after = sub(poses[next_id][:3], poses[target.component_id][:3])
+                    turn = wrap_angle(heading(after) - heading(before))
+                    if norm(before) < 1e-6 or norm(after) < 1e-6 or not MIN_BEAM_TURN < abs(turn) < 180 - MIN_BEAM_TURN:
+                        turn = default_turn("mirror", topology.incident_ports.get(target.id))
+                direction = yaw(direction, turn)
+            elif target_node.kind not in ("lens", "hwp", "qwp", "iris", "slit"):
+                return  # Other deflectors need their own optical trace/frame.
+            edge = next_edge
+
     for visit_id in topology.order:
         visit = topology.passes[visit_id]
         node = document.node(visit.component_id)
@@ -91,6 +142,15 @@ def _orientation_seed(document, poses, topology, targets):
             direction = leg(visit_id, outgoing[0].target.visit_id)
             if direction is not None:
                 angle = heading(direction) + source_offset(node)
+        elif node.kind == "grating" and len(outgoing) == 1:
+            before = leg(incoming[visit_id].source.visit_id, visit_id)
+            if before is not None:
+                try:
+                    angle = heading(before) - grating_input_heading(document, node, topology, visit_id)
+                    turn = grating_turn(document, node, topology, visit_id)
+                except ValueError:
+                    continue  # Invalid nominal orders remain validation errors.
+                follow_grating(outgoing[0], yaw((1, 0, 0), heading(before) + turn))
         elif node.kind == "mirror" and visit.mode == "pass" and len(outgoing) == 1:
             before = leg(incoming[visit_id].source.visit_id, visit_id)
             after = leg(visit_id, outgoing[0].target.visit_id)

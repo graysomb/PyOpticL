@@ -286,6 +286,44 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertEqual(e.document.nodes[1].parameters["fast_axis_angle"], 42)
         check_alignment()
 
+    def test_grating_incidence_change_moves_free_downstream_optics_and_is_undoable(self):
+        from test_schematic_grating_constraints import grating_chain
+        from PyOpticL.schematic.registry import grating_turn
+        from PyOpticL.schematic.topology import resolve_topology
+        from PyOpticL.ray_math import heading
+        from PyOpticL.schematic.physical import wrap_angle
+
+        e = self.open(grating_chain())
+        source, first, grating, second, receiver = e.document.nodes
+
+        def check():
+            compiled = compile_schematic(e.document)
+            self.assertTrue(compiled.ok, compiled.diagnostics)
+            state = compiled.geometry.visits[grating.id]
+            turn = grating_turn(e.document, e.document.node(grating.id), resolve_topology(e.document))
+            self.assertAlmostEqual(wrap_angle(heading(state.outputs["out"]) - heading(state.incoming) - turn),
+                                   0, delta=1e-6)
+            self.assertEqual(e.document.node(second.id).physical, {})
+            self.assertEqual(e.document.node(receiver.id).physical, {})
+
+        check()
+        before = deepcopy(e.document.to_dict())
+        self.select(grating.id)
+        field = e.findChild(QtWidgets.QDoubleSpinBox, "componentParameter_incidence_angle")
+        field.setValue(60)
+        self.settle()
+        check()
+        self.assertNotEqual(e.document.layout["poses"][second.id][:2], before["layout"]["poses"][second.id][:2])
+        for node in (source, first, grating):
+            self.assertEqual(e.document.layout["poses"][node.id][:2], before["layout"]["poses"][node.id][:2])
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), before)
+        check()
+        e.redo()
+        self.settle()
+        check()
+
     def test_pinned_drag_is_rejected_and_reports_residual(self):
         doc = double_pass()
         doc.nodes[3].physical["x"] = 200

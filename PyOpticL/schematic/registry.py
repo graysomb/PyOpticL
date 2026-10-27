@@ -214,7 +214,7 @@ def select_preset(node, preset):
             node.parameters[key] = spec.default
 
 
-def grating_turn(document, node, topology):
+def grating_turn(document, node, topology, pass_id=None):
     p = parameter_values(node)
     source = document.node(topology.source_id)
     wavelength = parameter_values(source)["wavelength"]
@@ -225,7 +225,15 @@ def grating_turn(document, node, topology):
     if not -1 < sine < 1:
         raise ValueError("Selected grating order is nonpropagating or grazing at the source wavelength")
     turn = alpha + degrees(asin(sine))
-    return -turn if topology.incident_ports.get(node.id) == "B" else turn
+    return -turn if topology.incident_ports.get(pass_id or node.id) == "B" else turn
+
+
+def grating_input_heading(document, node, topology, pass_id=None):
+    """Nominal incoming heading in the assembly frame, including reverse use."""
+    turn = grating_turn(document, node, topology, pass_id)
+    # The assembly's +X denotes the nominal A input. Entering B retraces its
+    # nominal diffracted output; its local heading is therefore 180 - turn_B.
+    return 180 - turn if topology.incident_ports.get(pass_id or node.id) == "B" else 0.0
 
 
 def fixed_turn(document, node, topology):
