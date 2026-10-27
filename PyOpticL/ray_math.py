@@ -46,17 +46,14 @@ def reflect(direction, normal):
 
 def lens_direction(direction, normal, radial, focal_length):
     """Native thin-lens chief-ray rule, including reverse and off-axis passes."""
-    radius = norm(radial)
-    if radius < 1e-12:
-        return tuple(direction)
     nc = dot(direction, normal)
     if abs(nc) < 1e-12:
         return tuple(direction)
-    r = mul(radial, 1 / radius)
-    t = cross(r, normal)
-    ts = dot(direction, t) / nc
-    rs = dot(direction, r) / nc - radius / focal_length * (1 if nc >= 0 else -1)
-    return unit(add(add(mul(normal, nc), mul(t, ts * nc)), mul(r, rs * nc)))
+    # Intersections computed in world space retain roundoff along the normal.
+    # Project it away without normalizing the radial offset: near the optical
+    # center, a radial unit basis amplifies that roundoff by 1 / norm(radial).
+    radial = sub(radial, mul(normal, dot(radial, normal) / dot(normal, normal)))
+    return unit(sub(direction, mul(radial, abs(nc) / focal_length)))
 
 
 def grating_direction(direction, normal, transverse, wavelength_nm, order, grooves_per_mm=1000):
