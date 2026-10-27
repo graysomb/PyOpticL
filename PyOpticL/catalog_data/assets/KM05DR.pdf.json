@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KM05DR",
+  "product_url": "https://www.thorlabs.com/item/KM05DR",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/k/km/km0/km05dr/ttn099623-e0w.pdf?v=0116115940",
+  "vendor_filename": "TTN099623-E0W.pdf",
+  "document_id": "TTN099623-E0W",
+  "revision": "A",
+  "retrieved_at": "2026-10-27T17:30:04.629350+00:00",
+  "sha256": "e3fac5fdd62e8069f928d89b9c6c3eddeef963233f31c21fac9bcc03321660ec",
+  "kind": "pdf",
+  "cache_path": "objects/e3fac5fdd62e8069f928d89b9c6c3eddeef963233f31c21fac9bcc03321660ec/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

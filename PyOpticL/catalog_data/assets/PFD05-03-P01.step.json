@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "PFD05-03-P01",
+  "product_url": "https://www.thorlabs.com/item/PFD05-03-P01",
+  "asset_url": null,
+  "vendor_filename": "PFD05-03-P01-Step.step",
+  "document_id": "15651-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-27T17:30:04.631937+00:00",
+  "sha256": "d900887eecff235068c9f28d66e667dea7b67ea5690983d7265ae9a21c41eb25",
+  "kind": "step",
+  "cache_path": "objects/d900887eecff235068c9f28d66e667dea7b67ea5690983d7265ae9a21c41eb25/source.step",
+  "units": "requires_cad_inspection",
+  "identity_evidence": "product-page document association; not inferred from shape",
+  "acquisition_note": "Downloaded from the exact SKU page Support Documents STEP control."
+}

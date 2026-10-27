@@ -388,3 +388,13 @@ no CAM/tool-access or physical manufacturing-fit certification is inferred.
 PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python examples/all_components_baseplate.py
 PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python tests/catalog/freecad_all_components_baseplate_acceptance.py
 ```
+
+## D-shaped pickoff mirrors
+
+See [D mirrors and matching holders](d-mirrors.md) for exact KM05DR/PFD05-03-P01
+and KM100D/PFD10-03-P01 pairs, native datum conventions, finite D-shaped
+reflection, selected plate attachments, source evidence, and rebuild commands.
+Use `create('d_mirror', label, mount='KM05DR')` or
+`create('d_mirror', label, mount='KM100D')`. Bare parts are available by part
+number. Neither holder has locating dowels; KM05DR retains its imperial 8-32
+thread. KM100D includes a small plate relief for its removable knob.

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KM100D",
+  "product_url": "https://www.thorlabs.com/item/KM100D",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/k/km/km1/km100d/21737-e0w.step?v=0116120001",
+  "vendor_filename": "21737-E0W.step",
+  "document_id": "21737-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-27T17:28:02.006038+00:00",
+  "sha256": "76f52dac4effddbdedf2e1ce6d53b0ea66208b4b40386c8c80958449c725e163",
+  "kind": "step",
+  "cache_path": "objects/76f52dac4effddbdedf2e1ce6d53b0ea66208b4b40386c8c80958449c725e163/source.step",
+  "units": "requires_cad_inspection",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

@@ -1637,5 +1637,209 @@
       50.8
     ],
     "clear_aperture_mm": 13.589
+  },
+  "KM100D": {
+    "origin": [
+      21.58663209712441,
+      29.734,
+      6.35
+    ],
+    "rotation": [
+      90,
+      0,
+      90
+    ],
+    "datums": {
+      "optic_seat": [
+        21.58663209712441,
+        29.734,
+        0.35
+      ],
+      "circle_center": [
+        21.58663209712441,
+        30.734,
+        6.35
+      ],
+      "mounting_face": [
+        28.190632097122943,
+        -1.27,
+        -7.6073
+      ]
+    },
+    "holes": [
+      {
+        "name": "post_bottom",
+        "center": [
+          28.190632097122943,
+          -1.27,
+          -7.6073
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.7625,
+        "depth": 12.192,
+        "thread": null,
+        "counterbore_mm": 7.9375
+      },
+      {
+        "name": "post_side",
+        "center": [
+          53.59063209712294,
+          24.13,
+          -7.6073
+        ],
+        "axis": [
+          -1,
+          0,
+          0
+        ],
+        "diameter": 4.7625,
+        "depth": 12.192,
+        "thread": null,
+        "counterbore_mm": 7.9375
+      }
+    ],
+    "dofs": [
+      "tip",
+      "tilt"
+    ],
+    "optic_diameter_mm": 25.4,
+    "optic_thickness_range_mm": [
+      6,
+      6
+    ],
+    "reference_optic_solids": [
+      22
+    ],
+    "d_mirror": "PFD10-03-P01"
+  },
+  "KM05DR": {
+    "origin": [
+      -17.526,
+      16.526,
+      8.6558
+    ],
+    "rotation": [
+      90,
+      0,
+      -90
+    ],
+    "datums": {
+      "optic_seat": [
+        -17.526,
+        16.526,
+        14.6558
+      ],
+      "circle_center": [
+        -17.526,
+        17.526,
+        8.6558
+      ],
+      "mounting_face": [
+        -14.732,
+        0,
+        3.937
+      ]
+    },
+    "holes": [
+      {
+        "name": "post_bottom",
+        "center": [
+          -14.732,
+          0,
+          3.937
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.1656,
+        "depth": 8.226325,
+        "thread": "8-32 UNC"
+      },
+      {
+        "name": "post_side",
+        "center": [
+          0,
+          14.732,
+          3.937
+        ],
+        "axis": [
+          -1,
+          0,
+          0
+        ],
+        "diameter": 4.1656,
+        "depth": 8.226325,
+        "thread": "8-32 UNC"
+      }
+    ],
+    "dofs": [
+      "tip",
+      "tilt"
+    ],
+    "optic_diameter_mm": 12.7,
+    "optic_thickness_range_mm": [
+      6,
+      6
+    ],
+    "reference_optic_solids": [],
+    "d_mirror": "PFD05-03-P01"
+  },
+  "PFD05-03-P01": {
+    "origin": [
+      27.86891551141935,
+      15.03333441686409,
+      -23.39713531613097
+    ],
+    "rotation": [
+      -90,
+      0,
+      -90
+    ],
+    "datums": {
+      "circle_center": [
+        27.86891551141935,
+        14.03333441686409,
+        -23.39713531613097
+      ],
+      "back_center": [
+        27.86891551141935,
+        15.03333441686409,
+        -29.39713531613097
+      ]
+    },
+    "holes": [],
+    "solidify_closed_shells": false
+  },
+  "PFD10-03-P01": {
+    "origin": [
+      0,
+      1.0,
+      3
+    ],
+    "rotation": [
+      -90,
+      0,
+      -90
+    ],
+    "datums": {
+      "circle_center": [
+        0,
+        0,
+        3
+      ],
+      "back_center": [
+        0,
+        1.0,
+        -3
+      ]
+    },
+    "holes": [],
+    "solidify_closed_shells": true
   }
 }

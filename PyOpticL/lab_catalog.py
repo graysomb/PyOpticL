@@ -19,8 +19,9 @@ from PyOpticL import attachments
 
 DATA = Path(__file__).with_name('catalog_data')
 VENDOR_IDS = ('POLARIS-L05G', 'POLARIS-L1G', 'POLARIS-K1VS2',
-              'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating')
+              'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6',
+              'KM100D', 'KM05DR')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating', 'd_mirror')
 
 
 def asset_record(part):
@@ -28,8 +29,12 @@ def asset_record(part):
 
 
 @lru_cache(maxsize=16)
-def _read_shape(path, digest):
+def _read_shape(path, digest, solidify_closed_shells=False):
     shape = Part.read(path)
+    if solidify_closed_shells and not shape.Solids and shape.Shells:
+        if not all(shell.isClosed() and shell.isValid() for shell in shape.Shells):
+            raise ValueError('Vendor STEP shell is not closed and valid: ' + path)
+        shape = Part.makeCompound([Part.makeSolid(shell) for shell in shape.Shells])
     if shape.isNull() or not shape.Solids or not shape.isValid():
         raise ValueError('Vendor STEP did not import as valid solids: ' + path)
     return shape
@@ -38,7 +43,9 @@ def _read_shape(path, digest):
 def vendor_shape(part):
     record = asset_record(part)
     path = resolve(record)  # Always check the pin, even on a shape-cache hit.
-    return _read_shape(str(path), record['sha256']).copy()
+    specification = json.loads((DATA / 'normalization.json').read_text()).get(part, {})
+    return _read_shape(str(path), record['sha256'],
+                       specification.get('solidify_closed_shells', False)).copy()
 
 
 def transform(shape, origin=(0, 0, 0), rotation=(0, 0, 0)):
@@ -80,7 +87,7 @@ class VendorPart:
         specification = json.loads((DATA / 'normalization.json').read_text())[part]
         self.origin, self.rotation = specification['origin'], specification['rotation']
         self._contract = contract
-        self.exclude_solids = tuple(exclude_solids)
+        self.exclude_solids = tuple(exclude_solids or specification.get('reference_optic_solids', ()))
         self.optic_thickness = optic_thickness
 
     def baseplate_profile(self):
@@ -125,7 +132,7 @@ class VendorPart:
             angles = App.Rotation(App.Vector(0,0,1), direction).toEulerAngles('XYZ')
             frames.append(Frame(h['name'], point(h['center']), tuple(angles)))
             holes.append(Hole(h['name'], h['name'], h['diameter'], h['depth'], h['thread'],
-                              source=record['product_url']))
+                              counterbore_mm=h.get('counterbore_mm'), source=record['product_url']))
         pairs = connection_interfaces()
         interfaces = {'F260FC-1550': (replace(pairs['F260FC-1550'], frame='thread_end', seating='Barrel front datum; M11 thread-end datum aligned with adapter opening, 2.9972 mm from barrel front; user-specified nominal convention.'), pairs['fiber']),
                       'AD1109F': (replace(pairs['AD1109F-in'], frame='collimator_opening', seating='M11 end faces the collimator; opposed to mount end.'), replace(pairs['AD1109F-out'], frame='mount_seat', engagement_mm=3.175, seating='Shoulder against selected SM05 mount front; remove its front retaining ring as specified by the assembly.')),
@@ -535,8 +542,21 @@ def create(catalog_id, label, **parameters):
     Parameters select mounts, optic thickness (mm), waveplate retardance/axis,
     iris aperture_diameter (mm), slit_width (mm), or roof orientation and
     beam_separation (mm), or grating design_wavelength (nm), incidence_angle
-    (degrees) and integer order. Unknown options fail explicitly.
+    (degrees) and integer order. D mirrors select a matching mount/optic pair;
+    their purchased thickness is fixed at 6 mm. Unknown options fail explicitly.
     """
+    if catalog_id in ('d_mirror', 'PFD05-03-P01', 'PFD10-03-P01') or (
+            catalog_id == 'mirror' and parameters.get('mount') in ('KM05DR', 'KM100D')):
+        from PyOpticL.d_mirror import DMirror, MountedDMirror
+        bare = catalog_id in ('PFD05-03-P01', 'PFD10-03-P01')
+        allowed = {'edge_distance'} if bare else {'mount', 'optic', 'edge_distance'}
+        # These exact purchased mirrors have fixed 6 mm thickness.
+        if catalog_id == 'mirror' and parameters.get('thickness') == 6:
+            parameters.pop('thickness')
+        unknown = set(parameters) - allowed
+        if unknown:
+            raise TypeError('Unsupported D-mirror parameters: ' + ', '.join(sorted(unknown)))
+        return Component(label, DMirror(catalog_id, **parameters) if bare else MountedDMirror(**parameters))
     if catalog_id in ('grating', 'MK05S', 'LightSmyth-1336552'):
         from PyOpticL.grating import MountedGrating, MK05SMount, GratingOptic
         allowed = ({'mount','design_wavelength','incidence_angle','order'} if catalog_id == 'grating'
@@ -662,8 +682,10 @@ def bom(component):
                     if mounting:
                         row['mounting_hardware'] = []
                         if mounting['screws']:
-                            row['mounting_hardware'].append(dict(kind='M4 mounting screws', quantity=len(mounting['screws']),
-                                note='Length/head selected for installation stack; plate uses M4 threads.'))
+                            screw = mounting.get('screw', {})
+                            row['mounting_hardware'].append(dict(kind=screw.get('hardware', 'M4 mounting screws'),
+                                quantity=len(mounting['screws']), note=screw.get('note',
+                                'Length/head selected for installation stack; plate uses M4 threads.')))
                         if mounting['dowels']:
                             row['mounting_hardware'].append(dict(kind=mounting['dowel']['pin'],
                                 quantity=len(mounting['dowels']), included=c.part_number == 'FBR'))

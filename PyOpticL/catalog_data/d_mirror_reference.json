@@ -1,0 +1,220 @@
+{
+  "units": "mm",
+  "datum_convention": "Default origin is 1 mm below the straight edge, inside the reflective area; edge_distance selects another valid nominal hit without changing geometry. +X is outward surface normal, straight edge along Y at Z=edge_distance. Substrate lies at X<=0. Selected bottom mounting face only.",
+  "parts": {
+    "KM100D": {
+      "source_step_sha256": "76f52dac4effddbdedf2e1ce6d53b0ea66208b4b40386c8c80958449c725e163",
+      "source_drawing_sha256": "c7ccf1c4871ac36d508842d4666139026885888165a230e466b8c44918225a85",
+      "drawing_revision": "A",
+      "source_solid_count": 23,
+      "source_volume_mm3": 21390.654086301096,
+      "source_bounds_mm": [
+        1.7746320971227574,
+        -1.9050000000000527,
+        -30.92925022083698,
+        54.225632097122755,
+        50.54599999999997,
+        7.493000100000003
+      ],
+      "circle_center_native": [
+        21.58663209712441,
+        30.734,
+        6.35
+      ],
+      "back_seating_plane_native_z_mm": 0.35,
+      "front_plane_native_z_mm": 6.35,
+      "native_circle_center_height_mm": 32.004000000000005,
+      "native_beam_height_mm": 31.003999999999998,
+      "physical_mounting_features": [
+        {
+          "name": "post_bottom",
+          "center": [
+            28.190632097122943,
+            -1.27,
+            -7.6073
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.7625,
+          "depth": 12.192,
+          "thread": null,
+          "counterbore_mm": 7.9375
+        },
+        {
+          "name": "post_side",
+          "center": [
+            53.59063209712294,
+            24.13,
+            -7.6073
+          ],
+          "axis": [
+            -1,
+            0,
+            0
+          ],
+          "diameter": 4.7625,
+          "depth": 12.192,
+          "thread": null,
+          "counterbore_mm": 7.9375
+        }
+      ],
+      "reference_optic_solids": [
+        22
+      ],
+      "source_note": "Vendor example optic is not included; remove reference solid 22 from working holder geometry."
+    },
+    "KM05DR": {
+      "source_step_sha256": "363556f440fdaed91cf85bca41a7069f7a6b2a8b2563d4acfacd6a141d4fb229",
+      "source_drawing_sha256": "e3fac5fdd62e8069f928d89b9c6c3eddeef963233f31c21fac9bcc03321660ec",
+      "drawing_revision": "A",
+      "source_solid_count": 26,
+      "source_volume_mm3": 5694.8387151707075,
+      "source_bounds_mm": [
+        -29.464,
+        -1.0000000355271367e-07,
+        -2.362199999999985,
+        1e-07,
+        29.464000000000002,
+        15.798800000000021
+      ],
+      "circle_center_native": [
+        -17.526,
+        17.526,
+        8.6558
+      ],
+      "back_seating_plane_native_z_mm": 14.6558,
+      "front_plane_native_z_mm": 8.6558,
+      "native_circle_center_height_mm": 17.526,
+      "native_beam_height_mm": 16.526,
+      "physical_mounting_features": [
+        {
+          "name": "post_bottom",
+          "center": [
+            -14.732,
+            0,
+            3.937
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.1656,
+          "depth": 8.226325,
+          "thread": "8-32 UNC"
+        },
+        {
+          "name": "post_side",
+          "center": [
+            0,
+            14.732,
+            3.937
+          ],
+          "axis": [
+            -1,
+            0,
+            0
+          ],
+          "diameter": 4.1656,
+          "depth": 8.226325,
+          "thread": "8-32 UNC"
+        }
+      ],
+      "reference_optic_solids": [],
+      "source_note": "No example optic in supplier compound. Cylinders model 8-32 major diameter; thread identity is from drawing."
+    },
+    "PFD05-03-P01": {
+      "source_step_sha256": "d900887eecff235068c9f28d66e667dea7b67ea5690983d7265ae9a21c41eb25",
+      "source_drawing_sha256": "e08e59bc6c03adf4aa5cde7d6e387c75e166efbfc43245a7636f01662187809a",
+      "drawing_revision": "C",
+      "source_solid_count": 1,
+      "source_shell_count": 1,
+      "source_volume_mm3": 270.46091079896956,
+      "source_bounds_mm": [
+        21.518915411419343,
+        14.03333431686409,
+        -29.397135416130972,
+        34.21891561141935,
+        20.383334516864096,
+        -23.39713521613097
+      ],
+      "native_front_circle_center": [
+        27.86891551141935,
+        14.03333441686409,
+        -23.39713531613097
+      ],
+      "radius_mm": 6.35,
+      "thickness_mm": 6.0,
+      "clear_radius_mm": 5.715,
+      "straight_edge_bevel_mm": 0.1,
+      "source_note": "One valid source solid; preserve its wedge and bevels."
+    },
+    "PFD10-03-P01": {
+      "source_step_sha256": "b869e9b3a1ab3bad76d85f55c634ad1965ca515d4526e4102bda7126b4cf0c85",
+      "source_drawing_sha256": "e06d4755268b11017c65d76fe4611649c23a8a7a4ae592dc122cbbc527ef9837",
+      "drawing_revision": "C",
+      "source_solid_count": 0,
+      "source_shell_count": 1,
+      "source_volume_mm3": 1297.1708406228333,
+      "source_bounds_mm": [
+        -12.700000100000002,
+        -1.0000000386218835e-07,
+        -3.0000001,
+        12.7000001,
+        12.700000099999999,
+        3.0000001
+      ],
+      "native_front_circle_center": [
+        0,
+        0,
+        3
+      ],
+      "radius_mm": 12.7,
+      "thickness_mm": 6.0,
+      "clear_radius_mm": 11.43,
+      "straight_edge_bevel_mm": 0.1,
+      "source_note": "One valid closed shell; promote to a solid using unchanged source faces, without sewing, healing, or geometry edits."
+    }
+  },
+  "pairs": {
+    "KM100D": {
+      "optic": "PFD10-03-P01",
+      "radius_mm": 12.7,
+      "clear_radius_mm": 11.43,
+      "straight_edge_bevel_mm": 0.1,
+      "native_beam_height_mm": 31.003999999999998,
+      "mirror_seating_depth_mm": 6.0,
+      "orientation": "Straight edge along local Y, open side toward +Z.",
+      "coating": "Protected silver P01; ideal reflection only, no measured efficiency or coating phase.",
+      "clearance_note": "Removable knob source solid 6 extends 0.635 mm below the selected mounting face. A 0.885 mm-deep plate relief includes 0.25 mm extra clearance; native height is unchanged.",
+      "default_edge_distance_mm": 1.0
+    },
+    "KM05DR": {
+      "optic": "PFD05-03-P01",
+      "radius_mm": 6.35,
+      "clear_radius_mm": 5.715,
+      "straight_edge_bevel_mm": 0.1,
+      "native_beam_height_mm": 16.526,
+      "mirror_seating_depth_mm": 6.0,
+      "orientation": "Straight edge along local Y, open side toward +Z.",
+      "coating": "Protected silver P01; ideal reflection only, no measured efficiency or coating phase.",
+      "seated_clamp_offsets_mm": {
+        "24": [
+          0.44375,
+          0,
+          0
+        ],
+        "25": [
+          0.44375,
+          0,
+          0
+        ]
+      },
+      "clamp_pose_note": "Supplier 4-40 nylon tips end at native Z=9.09955 mm; retract each existing screw by 0.44375 mm along native -Z to contact the actual 6 mm optic front at Z=8.6558 mm. Dimensions and source bytes unchanged.",
+      "default_edge_distance_mm": 1.0
+    }
+  }
+}

@@ -55,9 +55,13 @@ class DownloadTests(unittest.TestCase):
         with patch.object(cad,'cache_root',side_effect=AssertionError('No cache required')), \
                 patch.object(cad,'urlopen',side_effect=AssertionError('No network required')):
             summary=cad.verify_catalog()
-            self.assertEqual(summary['records'],42)
-            self.assertEqual(summary['files'],41)
-            self.assertEqual(summary['bytes'],186896893)
+            records=[json.loads(p.read_text()) for p in (cad.source_root().parent/'assets').glob('*.json')]
+            records.extend(json.loads((cad.source_root().parent/'source_references.json').read_text()).values())
+            paths={cad.source_root()/r['cache_path'] for r in records}
+            self.assertGreaterEqual(len(records),42)
+            self.assertEqual(summary['records'],len(records))
+            self.assertEqual(summary['files'],len(paths))
+            self.assertEqual(summary['bytes'],sum(p.stat().st_size for p in paths))
             self.assertTrue(cad.resolve_reference('alignment-iris').is_relative_to(cad.source_root()))
             with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(cad.main(['verify','--all']),0)
 
