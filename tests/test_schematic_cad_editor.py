@@ -7,7 +7,9 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
-from PyOpticL.schematic import Schematic, compile_schematic
+from PyOpticL.schematic import Schematic, compile_schematic, load_schematic, save_schematic
+from PyOpticL.schematic.model import document_from_dict
+from PyOpticL.schematic.cad import generation_source
 from test_schematic_editor import QT_AVAILABLE
 import test_schematic_physical_editor as physical_editor_tests
 from test_schematic import chain
@@ -35,7 +37,7 @@ class CadGenerationEditorTests(unittest.TestCase):
             with patch.object(QtWidgets.QFileDialog, "getSaveFileName", return_value=(str(path), "")) as dialog, \
                  patch("PyOpticL.schematic.cad.build_cad", return_value=cad) as build:
                 editor.actions["generate_cad"].trigger()
-            source = compile_schematic(editor.document).source
+            source = generation_source(compile_schematic(editor.document).source, editor.document.settings)
             build.assert_called_once_with(source, editor.document.title)
             self.assertEqual(Path(dialog.call_args.args[2]), path)
             self.assertEqual(path.read_bytes(), b"CAD")
@@ -80,7 +82,8 @@ class CadGenerationEditorTests(unittest.TestCase):
                 confirm.return_value = True
                 self.assertTrue(editor.generate_cad())
             self.assertTrue(path.with_suffix(".FCStd").exists())
-            self.assertEqual(python_path.read_text(), compile_schematic(editor.document).source)
+            self.assertEqual(python_path.read_text(),
+                             generation_source(compile_schematic(editor.document).source, editor.document.settings))
 
     def test_build_failure_preserves_existing_files_and_restores_controls(self):
         editor = self.open(chain("source", "lens", "output"))
@@ -123,3 +126,53 @@ class CadGenerationEditorTests(unittest.TestCase):
              patch.object(QtWidgets.QMessageBox, "warning"):
             self.assertFalse(editor.generate_cad())
         build.assert_not_called()
+
+    def test_baseplate_settings_toggle_undo_and_save_load(self):
+        editor = self.open(chain("source", "lens", "output"))
+        self.assertTrue(editor.baseplate_toggle.isChecked())
+        editor.change_setting("plate_thickness", 25.4)
+        self.settle()
+        editor.change_setting("plate_margin", 20)
+        self.settle()
+        source = compile_schematic(editor.document).source
+        generated = generation_source(source, editor.document.settings)
+        self.assertIn("BASEPLATE = {'thickness': 25.4, 'margin': 20}", generated)
+        with TemporaryDirectory() as folder:
+            path = Path(folder) / "plate.pyopticl-schematic.json"
+            save_schematic(editor.document, path)
+            restored = load_schematic(path)
+            self.assertEqual(restored.settings, editor.document.settings)
+        editor.baseplate_toggle.setChecked(False)
+        self.settle()
+        self.assertEqual(generation_source(source, editor.document.settings), source)
+        editor.undo()
+        self.settle()
+        self.assertTrue(editor.baseplate_toggle.isChecked())
+        editor.redo()
+        self.settle()
+        self.assertFalse(editor.baseplate_toggle.isChecked())
+
+
+class BaseplateSourceTests(unittest.TestCase):
+    def test_exported_main_builds_optics_and_plate_once_with_either_guard_style(self):
+        for quote in ('"', "'"):
+            source = ("calls = 0\ndef build_layout():\n"
+                      "    global calls\n    calls += 1\n    return 'layout'\n\n"
+                      f"if __name__ == {quote}__main__{quote}:\n    build_layout()\n")
+            namespace = {"__name__": "__main__"}
+            with patch("PyOpticL.schematic.cad.add_baseplate") as add:
+                exec(generation_source(source, Schematic().settings), namespace)
+            self.assertEqual(namespace["calls"], 1)
+            add.assert_called_once_with("layout", thickness=12.7, margin=15.0)
+
+    def test_settings_have_compatible_defaults_and_reject_invalid_dimensions(self):
+        raw = Schematic().to_dict()
+        for name in ("generate_baseplate", "plate_thickness", "plate_margin"):
+            raw["settings"].pop(name)
+        self.assertTrue(document_from_dict(raw).settings["generate_baseplate"])
+        for key, value in (("plate_thickness", 10), ("plate_thickness", float('nan')),
+                           ("plate_margin", 2), ("generate_baseplate", 1)):
+            data = deepcopy(raw)
+            data["settings"][key] = value
+            with self.assertRaises(ValueError):
+                document_from_dict(data)

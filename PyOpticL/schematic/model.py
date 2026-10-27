@@ -93,6 +93,9 @@ class Schematic:
             "open_length": 50,
             "show_bounds": False,
             "bounds_scale": 4.0,
+            "generate_baseplate": True,
+            "plate_thickness": 12.7,
+            "plate_margin": 15.0,
         }
     )
     version: int = VERSION
@@ -215,12 +218,14 @@ def document_from_dict(data, *, migrate_lengths=True):
         if not isinstance(data.get("settings", {}), dict):
             raise ValueError("Invalid schematic settings")
         settings.update(data.get("settings", {}))
-        for key in ("grid", "spacing", "open_length", "bounds_scale"):
+        for key in ("grid", "spacing", "open_length", "bounds_scale", "plate_thickness", "plate_margin"):
             if not _finite(settings[key]) or settings[key] <= 0:
                 raise ValueError(f"{key} must be positive")
         if settings["angle"] not in (45, 90):
             raise ValueError("Angle snap must be 45 or 90 degrees")
-        for key in ("snap_grid", "snap_angle", "show_bounds"):
+        if settings["plate_thickness"] <= 10 or settings["plate_margin"] < 3:
+            raise ValueError("Baseplate needs thickness >10 mm and margin >=3 mm")
+        for key in ("snap_grid", "snap_angle", "show_bounds", "generate_baseplate"):
             if not isinstance(settings[key], bool):
                 raise ValueError(f"{key} must be true or false")
         document = Schematic(data["title"], settings=settings)

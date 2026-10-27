@@ -498,6 +498,12 @@ class SchematicEditor(QtWidgets.QWidget):
             "Build a new 3D assembly and save a FreeCAD file with its generated Python."
         )
         self.toolbar.addSeparator()
+        self.baseplate_toggle = QtWidgets.QCheckBox("Baseplate")
+        self.baseplate_toggle.setObjectName("generateBaseplate")
+        self.baseplate_toggle.setChecked(self.document.settings["generate_baseplate"])
+        self.baseplate_toggle.setToolTip("Include a machined plate beneath supported mounted components.")
+        self.baseplate_toggle.toggled.connect(lambda value: self.change_setting("generate_baseplate", value))
+        self.toolbar.addWidget(self.baseplate_toggle)
         self.grid_toggle = QtWidgets.QCheckBox("Grid snap")
         self.grid_toggle.setChecked(self.document.settings["snap_grid"])
         self.grid_toggle.toggled.connect(lambda value: self.change_setting("snap_grid", value))
@@ -610,6 +616,7 @@ class SchematicEditor(QtWidgets.QWidget):
 
     def restore(self):
         for widget, value in ((self.grid_toggle, self.document.settings["snap_grid"]),
+                              (self.baseplate_toggle, self.document.settings["generate_baseplate"]),
                               (self.angle_toggle, self.document.settings["snap_angle"]),
                               (self.bounds_toggle, self.document.settings["show_bounds"])):
             widget.blockSignals(True)
@@ -820,6 +827,10 @@ class SchematicEditor(QtWidgets.QWidget):
             title = QtWidgets.QLineEdit(self.document.title)
             title.editingFinished.connect(lambda: self.set_title(title.text()))
             self.form.addRow("Schematic title", title)
+            self.number_field("Plate thickness (mm)", self.document.settings["plate_thickness"],
+                              lambda value: self.change_setting("plate_thickness", value), 10.001)
+            self.number_field("Plate edge margin (mm)", self.document.settings["plate_margin"],
+                              lambda value: self.change_setting("plate_margin", value), 3)
             for key, label in (("grid", "Drawing grid"), ("spacing", "Default beam length (mm)"),
                                ("open_length", "Default open beam length (mm)"),
                                ("bounds_scale", "Bounds scale (canvas units/mm)")):
@@ -1244,7 +1255,9 @@ class SchematicEditor(QtWidgets.QWidget):
             if path.exists() and not self.confirm_overwrite(path):
                 return False
         try:
-            path.write_text(result.source, encoding="utf-8")
+            from .cad import generation_source
+
+            path.write_text(generation_source(result.source, self.document.settings), encoding="utf-8")
         except OSError as error:
             QtWidgets.QMessageBox.warning(self, "Cannot export Python", str(error))
             return False
@@ -1276,15 +1289,17 @@ class SchematicEditor(QtWidgets.QWidget):
         self.actions["generate_cad"].setEnabled(False)
         QtWidgets.QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            from .cad import build_cad
+            from .cad import build_cad, generation_source
+
+            source = generation_source(result.source, self.document.settings)
 
             # Stage the source first so an unwritable destination cannot leave
             # a freshly built document or overwrite an existing Python file.
             with NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".py", dir=path.parent,
                                     delete=False) as stream:
                 temporary = Path(stream.name)
-                stream.write(result.source)
-            document = build_cad(result.source, self.document.title)
+                stream.write(source)
+            document = build_cad(source, self.document.title)
             document.saveAs(str(path))
             temporary.replace(python_path)
         except Exception as error:

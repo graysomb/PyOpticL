@@ -79,6 +79,12 @@ new FreeCAD document, checks the actual ray trace, and saves both the selected
 `.FCStd` file and its companion `.py`. The 3D assembly opens with the view fitted
 to the parts. Each generation uses a separate document; existing designs are
 preserved. Save the schematic separately to retain its editable constraints.
+**Baseplate** is enabled by default for both exports. It sizes a rectangular
+machined plate around the hardware with a 15 mm edge margin and 12.7 mm thickness.
+Click the blank canvas to change **Plate thickness** and **Plate edge margin**.
+Supported lab-catalog mounting presets supply the screw holes, dowel holes and
+integral supports. Unsupported or bare optics require a mounted preset or turning
+off **Baseplate**; attachment holes are never inferred for those parts.
 
 - Place a part from the palette and select its **Part preset** and optical
   parameters in the inspector. Each physical optic has one shared position,

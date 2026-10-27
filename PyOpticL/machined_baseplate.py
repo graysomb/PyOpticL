@@ -45,7 +45,8 @@ class MachinedBaseplate:
         self.integrated_names = []
 
     def _relative(self, obj):
-        return self.layout.get_object().Placement.inverse() * obj.Placement
+        reference = getattr(self, '_object', self.layout.get_object())
+        return reference.Placement.inverse() * obj.Placement
 
     def shape(self):
         hardware, fused, integrated = [], [], []
@@ -164,6 +165,7 @@ class MachinedBaseplate:
         if not plate.isValid() or len(plate.Solids) != 1:
             raise ValueError('Machined plate and integrated holders must form one valid solid')
         self.plan = dict(units='mm',top_z=0,thickness_mm=self.thickness,
+            plate_position_mm=list(getattr(self, '_object', self.layout.get_object()).Placement.Base),
             optical_height_mm=(next(iter(heights.values())) if len({round(v, 6) for v in heights.values()}) == 1 else None),
             optical_heights_mm=heights,native_optical_heights_mm=native_heights,stock_bounds=[x0,y0,width,depth],
             holes=operations,pockets=pockets,integrated_holders=self.integrated_names,
@@ -179,10 +181,10 @@ class MachinedBaseplate:
         return plate
 
 
-def add(layout, label='Machined baseplate', **parameters):
+def add(layout, label='Machined baseplate', position=(0,0,0), **parameters):
     """Add after mounting components are placed and recomputed; recompute normally."""
     definition = MachinedBaseplate(layout, **parameters)
-    component = layout.add(Component(label, definition, recompute_priority=-2),(0,0,0),0)
+    component = layout.add(Component(label, definition, recompute_priority=-2),position,0)
     component.make_property('MachiningPlan','App::PropertyString',visible=True)
     definition._object = component.get_object()
     return component, definition
