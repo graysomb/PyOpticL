@@ -13,7 +13,7 @@ from .registry import (
 )
 from .model import connection_length
 from .physical import wrap_angle, wrap_axis_angle
-from PyOpticL.ray_math import norm, sub, unit, heading, dot, yaw
+from PyOpticL.ray_math import add, norm, sub, unit, heading, dot, yaw
 
 
 @dataclass
@@ -70,6 +70,63 @@ def _place_on_ray(document, poses, baseline, edge, origin, direction, free, requ
             poses[target_id][axis] = origin[axis] + distance * direction[axis]
 
 
+def _source_arm_seed(document, seed, baseline, topology, targets, free, counts):
+    """Keep free transmissive parts on a source arm when its endpoint moves."""
+    source_id = topology.source_id
+    source = topology.passes[source_id].component_id
+    requested = {(n, axis) for n, axis, _ in targets}
+    if (source, 3) not in free or (source, 3) in requested:
+        return
+    incoming = {e.target.visit_id: e for e in topology.edges.values()}
+    transmitting = ("lens", "hwp", "qwp", "iris", "slit")
+    for node_id in dict.fromkeys(n for n, axis, _ in targets if axis < 3):
+        visits = [p for p in topology.passes.values() if p.component_id == node_id]
+        if len(visits) != 1 or not visits[0].centered:
+            continue
+        visit_id, middle, edges = visits[0].id, [], []
+        while visit_id in incoming:
+            edge = incoming[visit_id]
+            edges.append(edge)
+            visit_id = edge.source.visit_id
+            if visit_id == source_id:
+                break
+            visit = topology.passes[visit_id]
+            node = document.node(visit.component_id)
+            if (node.kind not in transmitting or counts[node.id] != 1 or not visit.centered
+                    or any((node.id, axis) not in free or (node.id, axis) in requested for axis in range(3))):
+                break
+            middle.append(node.id)
+        if visit_id != source_id or any(document.connection(e.id).length is not None for e in edges):
+            continue
+        before = norm(sub(baseline[node_id][:3], baseline[source][:3]))
+        delta = sub(seed[node_id][:3], seed[source][:3])
+        if before < 1e-6 or norm(delta) < 1e-6 or abs(delta[2]) > 1e-6:
+            continue
+        for n in middle:
+            fraction = norm(sub(baseline[n][:3], baseline[source][:3])) / before
+            seed[n][:3] = [seed[source][axis] + fraction * delta[axis] for axis in range(3)]
+        # A moved plate/iris also carries its free downstream leg up to the
+        # next deflector, rather than forcing a slow grazing-axis iteration.
+        current = visits[0]
+        direction = unit(delta)
+        while document.node(current.component_id).kind in transmitting:
+            outgoing = topology.outgoing[current.id]
+            if len(outgoing) != 1:
+                break
+            edge = outgoing[0]
+            after = topology.passes[edge.target.visit_id]
+            n = after.component_id
+            if (counts[n] != 1 or not after.centered
+                    or document.node(n).kind not in (*transmitting, "mirror")
+                    or any((n, axis) not in free or (n, axis) in requested for axis in range(3))):
+                break
+            distance = document.connection(edge.id).length
+            if distance is None:
+                distance = norm(sub(baseline[n][:3], baseline[current.component_id][:3]))
+            seed[n][:3] = [seed[current.component_id][axis] + distance * direction[axis] for axis in range(3)]
+            current = after
+
+
 def _orientation_seed(document, poses, topology, targets):
     """Estimate primary poses and follow displaced returns through shared parts.
 
@@ -89,6 +146,7 @@ def _orientation_seed(document, poses, topology, targets):
     counts = {}
     for visit in topology.passes.values():
         counts[visit.component_id] = counts.get(visit.component_id, 0) + 1
+    _source_arm_seed(document, seed, poses, topology, targets, free, counts)
 
     def leg(a, b):
         # Roof exits and deliberate off-center visits need their traced ports,
@@ -527,14 +585,16 @@ def explicit_conflicts(document):
     return conflicts
 
 
-def analyze_constraints(document, poses=None, topology=None):
+def analyze_constraints(document, poses=None, topology=None, cancelled=None):
     poses = deepcopy(poses or poses_for(document))
     topology = topology or resolve_topology(document)
     if not topology.ok:
         return ConstraintReport(diagnostics=list(topology.diagnostics))
     rows, trace = _rows(document, poses, topology)
     keys = variables(document, pins=False)
-    matrix = jacobian(document, poses, rows, keys, topology)
+    matrix = jacobian(document, poses, rows, keys, topology, cancelled=cancelled)
+    if matrix is None:
+        return None
     basis = []
     redundant = []
     diagnostics = []
@@ -655,9 +715,6 @@ def _steered_drag_seed(document, poses, topology, targets, packing):
     """
     if not targets or any(axis not in (0, 1) for _, axis, _ in targets):
         return None
-    if not (document.path_constraints or any(e.length is not None for e in document.connections)
-            or (document.layout or {}).get("_separations")):
-        return None
     dragged = {node_id for node_id, _, _ in targets}
     if len(dragged) != 1:
         return None
@@ -675,6 +732,7 @@ def _steered_drag_seed(document, poses, topology, targets, packing):
         return None
     incoming = {e.target.visit_id: e for e in topology.edges.values()}
     visit_id = next(iter(visits_by_node[node_id]))
+    nearby, nearby_score = None, float("inf")
     while visit_id in incoming:
         visit_id = incoming[visit_id].source.visit_id
         pivot_id = topology.passes[visit_id].component_id
@@ -701,30 +759,60 @@ def _steered_drag_seed(document, poses, topology, targets, packing):
         offset = sub(desired, origin)
         along = dot(offset, state.incoming)
         squared = radius * radius - (dot(offset, offset) - along * along)
-        if squared < -1e-8:
-            continue
-        root = max(0, squared) ** 0.5
-        distances = sorted((along - root, along + root),
-                           key=lambda t: abs(t - norm(sub(old, origin))))
-        for distance in distances:
-            if distance <= 0.001:
-                continue
-            pivot = tuple(origin[i] + distance * state.incoming[i] for i in range(3))
-            angle = wrap_angle(heading(sub(desired, pivot)) - heading(sub(poses[node_id][:3], old)))
+        candidates = []
+        if squared >= -1e-8:
+            root = max(0, squared) ** 0.5
+            distances = sorted((along - root, along + root),
+                               key=lambda t: abs(t - norm(sub(old, origin))))
+            for distance in distances:
+                if distance > 0.001:
+                    pivot = tuple(origin[i] + distance * state.incoming[i] for i in range(3))
+                    angle = wrap_angle(heading(sub(desired, pivot)) - heading(sub(poses[node_id][:3], old)))
+                    candidates.append((pivot, angle, (0, 0, 0)))
+        # If moving the pivot cannot reach the target, its first free gap can
+        # extend instead. Carry the rest of the arm rigidly so gratings and
+        # centered lens axes retain their optical alignment.
+        first = topology.outgoing[visit_id][0]
+        outgoing = state.outputs[first.interaction]
+        relative = sub(poses[node_id][:3], old)
+        along_out = dot(relative, outgoing)
+        squared = along_out ** 2 + norm(sub(desired, old)) ** 2 - radius ** 2
+        if document.connection(first.id).length is None and squared >= -1e-8:
+            root = max(0, squared) ** 0.5
+            for change in sorted((-along_out + root, -along_out - root), key=abs):
+                if trace.layout.lengths[first.id] + change <= 0.001:
+                    continue
+                shift = tuple(change * value for value in outgoing)
+                angle = wrap_angle(heading(sub(desired, old)) - heading(add(relative, shift)))
+                candidates.append((old, angle, shift))
+        for pivot, angle, shift in candidates:
             candidate = deepcopy(poses)
             for n in nodes:
-                rotated = yaw(sub(poses[n][:3], old), angle)
+                relative = sub(poses[n][:3], old)
+                rotated = yaw(add(relative, shift) if n != pivot_id else relative, angle)
                 candidate[n] = [*(pivot[i] + rotated[i] for i in range(3)), poses[n][3] + angle]
-            outgoing = yaw(state.outputs[topology.outgoing[visit_id][0].interaction], angle)
-            normal = sub(outgoing, state.incoming)
+            normal = sub(yaw(outgoing, angle), state.incoming)
             if norm(normal) < 1e-8:
                 continue
             candidate[pivot_id][3] = heading(normal)
             rows, checked = _rows(document, candidate, topology, targets, packing)
-            if (all(abs(row.value) <= 1e-6 for row in rows) and checked.ok
-                    and trace_scene(document, candidate, topology=topology).ok):
+            maximum = max((abs(row.value) for row in rows), default=0)
+            if maximum > 1e-3 or any(
+                abs(row.value) > 1e-8 and row.id.startswith(("pin/", "source/")) for row in rows
+            ):
+                continue
+            finite = trace_scene(document, candidate, topology=topology)
+            if any(d.severity == "error" for d in finite.diagnostics):
+                continue
+            if maximum <= 1e-6 and checked.ok and finite.ok:
                 return candidate
-    return None
+            # Roundoff in a saved layout can grow slightly when its arm turns.
+            # Let the numerical solve refine this seed; final acceptance still
+            # uses the full trace and the original 1e-6 constraint tolerance.
+            score = sum((row.value * _scale(row)) ** 2 for row in rows)
+            if score < nearby_score:
+                nearby, nearby_score = candidate, score
+    return nearby
 
 
 def solve_scene(
@@ -829,7 +917,11 @@ def solve_scene(
         if continued is not None:
             continued.iterations += count
             return continued
-    analysis = analyze_constraints(document, points, topology) if report else None
+    if cancelled():
+        return SceneSolution("cancelled", None, points, [], iterations=count)
+    analysis = analyze_constraints(document, points, topology, cancelled) if report else None
+    if cancelled():
+        return SceneSolution("cancelled", None, points, [], iterations=count)
     diagnostics = list(checked.diagnostics)
     diagnostics.extend(
         Diagnostic(

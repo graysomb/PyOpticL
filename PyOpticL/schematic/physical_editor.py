@@ -3,7 +3,6 @@
 from copy import deepcopy
 from itertools import product
 from math import sin, cos, pi, floor, ceil
-from threading import Event
 from .qt import Action, QtCore, QtGui, QtWidgets, exec_menu
 from .editor import (
     SchematicEditor as BaseEditor,
@@ -24,6 +23,7 @@ from .physical import wrap_angle
 from .optic_geometry import element_spec
 from .geometry import snap_point
 from .constraint_marks import component_marks, beam_marks, LEGEND
+from .workers import ManagedWorker
 from PyOpticL.ray_math import add, yaw, heading
 
 Qt = QtCore.Qt
@@ -479,7 +479,7 @@ class PhysicalScene(SchematicScene):
         exec_menu(menu, event.screenPos())
 
 
-class SceneWorker(QtCore.QThread):
+class SceneWorker(ManagedWorker):
     completed = QtCore.Signal(object, int, bool)
     failed = QtCore.Signal(str, int)
 
@@ -490,8 +490,8 @@ class SceneWorker(QtCore.QThread):
         self.targets = targets
         self.final = final
         self.packing = packing
-        self.cancelled = Event()
         self.allow_roof_slide = False
+        self.preview = False
 
     def roof_slide_targets(self):
         """Project an infeasible roof drag onto its current incoming beam."""
@@ -525,15 +525,17 @@ class SceneWorker(QtCore.QThread):
                 self.document,
                 targets=self.targets,
                 packing=self.packing,
-                iterations=200 if self.final else 40,
+                iterations=12 if self.preview else 200 if self.final else 40,
                 cancelled=self.cancelled.is_set,
+                report=not self.preview,
             )
             if not result.ok and self.allow_roof_slide and not self.cancelled.is_set():
                 targets = self.roof_slide_targets()
                 if targets is not None:
                     slid = solve_scene(
                         self.document, targets=targets, packing=self.packing,
-                        iterations=200 if self.final else 40, cancelled=self.cancelled.is_set,
+                        iterations=12 if self.preview else 200 if self.final else 40,
+                        cancelled=self.cancelled.is_set, report=not self.preview,
                     )
                     if slid.ok or slid.status == "cancelled":
                         result = slid
@@ -549,6 +551,7 @@ class PhysicalSchematicEditor(BaseEditor):
         self.dragging = False
         self.revision = 0
         self.workers = set()
+        self.pending_solve = None
         self.active_passes = {}
         self.inspected_omitted = None
         self.display_trace = None
@@ -727,6 +730,7 @@ class PhysicalSchematicEditor(BaseEditor):
             self.show_diagnostics(self.scene.topology.diagnostics)
 
     def cancel_workers(self):
+        self.pending_solve = None
         for worker in self.workers:
             worker.cancelled.set()
 
@@ -755,8 +759,17 @@ class PhysicalSchematicEditor(BaseEditor):
         if self.dragging and self.draft_drag:
             self.move_draft(targets, final)
             return
-        worker = SceneWorker(self.scene_document(), self.revision, targets, final, self.packing(), self)
+        if self.workers:
+            # Mouse events replace one pending request, rather than launching
+            # competing Python threads for every drag frame.
+            self.pending_solve = (targets, final, self.revision)
+            return
+        self.launch_solve(targets, final, self.revision)
+
+    def launch_solve(self, targets, final, revision):
+        worker = SceneWorker(self.scene_document(), revision, targets, final, self.packing(), self)
         worker.allow_roof_slide = self.dragging
+        worker.preview = self.dragging and not final
         if self.dragging and self.preview_poses is not None:
             # Continue from the last valid drag frame, especially when fixed
             # lens separations require a coupled change in beam direction.
@@ -764,12 +777,16 @@ class PhysicalSchematicEditor(BaseEditor):
         worker.completed.connect(self.solved)
         worker.failed.connect(self.solve_failed)
         self.workers.add(worker)
-        worker.finished.connect(lambda: self.release_worker(worker))
+        worker.finished.connect(self.release_worker)
         worker.start()
 
-    def release_worker(self, worker):
+    @QtCore.Slot()
+    def release_worker(self):
+        worker = self.sender()
         self.workers.discard(worker)
-        worker.deleteLater()
+        pending, self.pending_solve = self.pending_solve, None
+        if pending is not None and pending[2] == self.revision:
+            self.launch_solve(*pending)
 
     def solve_failed(self, message, revision):
         if revision == self.revision:
@@ -832,8 +849,10 @@ class PhysicalSchematicEditor(BaseEditor):
             self.update_title()
         self.show_diagnostics(result.diagnostics)
         if result.ok:
-            dof = result.report.degrees_of_freedom if result.report else 0
-            self.status.setText(f"Physical layout valid · {dof} locally free degrees of freedom")
+            self.status.setText(
+                f"Physical layout valid · {result.report.degrees_of_freedom} locally free degrees of freedom"
+                if result.report else "Physical layout valid"
+            )
 
     def focus_diagnostic(self, item):
         value = item.data(Qt.UserRole)
@@ -1323,9 +1342,11 @@ class PhysicalSchematicEditor(BaseEditor):
             self.commit()
 
     def closeEvent(self, event):
+        BaseEditor.closeEvent(self, event)
+        if not event.isAccepted():
+            return
         self.dragging = False
         self.revision += 1
+        self.drag_timer.stop()
+        self.bounds_timer.stop()
         self.cancel_workers()
-        for worker in list(self.workers):
-            worker.wait(3000)
-        BaseEditor.closeEvent(self, event)

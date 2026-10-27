@@ -1,7 +1,5 @@
 """Modal physical preview. CAD resolution stays here; the worker is numerical."""
 
-from threading import Event
-
 from .bounds import resolve_layout_bounds
 from .compiler import validate_schematic
 from .model import document_from_dict
@@ -14,11 +12,12 @@ from .optimization import (
     optimize_layout,
 )
 from .qt import QtCore, QtGui, QtWidgets
+from .workers import ManagedWorker
 
 Qt = QtCore.Qt
 
 
-class LayoutWorker(QtCore.QThread):
+class LayoutWorker(ManagedWorker):
     progressed = QtCore.Signal(object)
     completed = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -26,7 +25,6 @@ class LayoutWorker(QtCore.QThread):
     def __init__(self, problem, parent=None):
         super().__init__(parent)
         self.problem = problem
-        self.cancelled = Event()
 
     def run(self):
         try:

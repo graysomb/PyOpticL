@@ -18,6 +18,7 @@ from .topology import resolve_topology
 
 Qt = QtCore.Qt
 MIME = "application/x-pyopticl-schematic-symbol"
+_open_editors = {}
 
 
 def point(value):
@@ -1385,6 +1386,12 @@ def open_editor(path=None):
     window.setAttribute(Qt.WA_DeleteOnClose)
     window.setWidget(editor)
     mdi.addSubWindow(window)
+    # Keep Python-created tabs and the host wrappers reachable while open.
+    # Numerical work can otherwise trigger cyclic collection of Qt wrappers.
+    editor._workspace_refs = (main, mdi, window)
+    key = id(editor)
+    _open_editors[key] = editor
+    editor.destroyed.connect(lambda *_: _open_editors.pop(key, None))
     editor.update_title()
     window.showMaximized()
     editor.fit()
