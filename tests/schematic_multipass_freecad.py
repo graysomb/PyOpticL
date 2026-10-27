@@ -228,6 +228,13 @@ class NativeMultipassTests(unittest.TestCase):
                 solution = solve_scene(document, iterations=40)
                 self.assertTrue(solution.ok, solution.diagnostics)
                 document.layout["poses"] = solution.poses
+                if preset == "POLARIS-K05VS2":
+                    mirror_node, roof_node = document.nodes[1:3]
+                    mirror_node.physical.pop("turn")
+                    roof_node.physical = {}
+                    solution = solve_scene(document, targets=((roof_node.id, 0, 40), (roof_node.id, 1, 90)))
+                    self.assertTrue(solution.ok, solution.diagnostics)
+                    document.layout["poses"] = solution.poses
                 layout = self.build(document)
                 children = layout.get_object().Children
                 self.assertEqual(sum(child.Label == "M1" for child in children), 1)

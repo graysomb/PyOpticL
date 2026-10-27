@@ -214,6 +214,40 @@ class PhysicalEditorTests(unittest.TestCase):
         self.assertEqual(len(e.document.connections), 4)
         self.assertEqual(len(e.scene.symbols), 4)
 
+    def test_roof_drag_fixes_beam_offset_and_changes_free_angle_as_one_edit(self):
+        from test_schematic_roof_return import shared_mirror_roof_scene
+        from PyOpticL.ray_math import norm, sub, mul, dot
+
+        document = shared_mirror_roof_scene()
+        mirror, roof = document.nodes[1:3]
+        mirror.physical.pop("turn")
+        roof.physical = {}
+        e = self.open(document)
+        before = deepcopy(e.document.to_dict())
+        index = e.history.index
+        old_yaw = e.document.layout["poses"][roof.id][3]
+        self.select(roof.id)
+        self.assertFalse(e.findChild(QtWidgets.QCheckBox, "opticPositionConstrained").isChecked())
+        e.begin_drag()
+        e.start_solve(((roof.id, 0, 40), (roof.id, 1, 90)), True)
+        self.settle()
+        self.assertEqual(e.history.index, index + 1)
+        self.assertTrue(compile_schematic(e.document).ok)
+        state = e.display_trace.layout.visits[roof.id]
+        delta = sub(state.exit, state.entry)
+        offset = norm(sub(delta, mul(state.incoming, dot(delta, state.incoming))))
+        self.assertAlmostEqual(offset, 4, delta=1e-6)
+        self.assertGreater(abs(e.document.layout["poses"][roof.id][3] - old_yaw), 1)
+        self.assertEqual(e.document.node(roof.id).physical, {})
+        self.assertEqual(e.document.node(roof.id).parameters, roof.parameters)
+        after = deepcopy(e.document.to_dict())
+        e.undo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), before)
+        e.redo()
+        self.settle()
+        self.assertEqual(e.document.to_dict(), after)
+
     def test_successful_drag_is_one_undoable_edit_and_preserves_constraints(self):
         e = self.open()
         before = deepcopy(e.document.to_dict())

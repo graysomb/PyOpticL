@@ -132,6 +132,9 @@ off **Baseplate**; attachment holes are never inferred for those parts.
   reduce roof beam separation or select a larger optic if the return misses it.
   A roof's center refers to
   its entrance port; its internal geometry retains the displaced exit.
+  Its **Beam separation** fixes the actual transverse return offset. Dragging
+  adjusts the roof's free angle to preserve that offset; a position pin fixes
+  only X/Y.
 - **Constrain position** pins the shared component origin in X/Y. Every visit
   uses that same pose. **Constrain beam length** pins the distance between its
   optical interaction points. Free lengths and free orientations can adjust.

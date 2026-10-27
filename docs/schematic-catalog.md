@@ -64,6 +64,11 @@ A roof mirror has two distinct optical ports. Its physical position is the
 resolved entrance origin; the return beam leaves the displaced exit and turns
 180°. The horizontal preset offsets the return beam sideways. The vertical
 preset changes its height; exported downstream components follow that height.
+**Beam separation** constrains the actual transverse return offset during
+dragging and optimization. The roof's yaw remains free to adjust with the beam;
+**Constrain position** pins only the entrance origin in X/Y. A finite roof may
+change its return offset when tilted, so a pose that violates the selected
+separation is rejected rather than using that tilt to fit a smaller optic.
 Reversing A/B reverses the offset. Beam lengths measure the external legs
 between actual ports. Total-path constraints also include the actual internal air path between finite roof facets (25.4 mm for nominal axial incidence). The ray solver and native export share the same roof-facet math.
 

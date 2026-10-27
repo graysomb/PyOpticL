@@ -5,7 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from PyOpticL.ray_math import norm, sub, yaw
+from PyOpticL.ray_math import norm, sub, yaw, dot, mul, heading
+from PyOpticL.schematic.physical import wrap_angle
 from PyOpticL.schematic import Connection, Endpoint, PathLengthConstraint, Schematic, compile_schematic, load_schematic, save_schematic
 from PyOpticL.schematic.registry import select_preset
 from PyOpticL.schematic.scene_layout import trace_scene
@@ -91,12 +92,72 @@ class RoofReturnTests(unittest.TestCase):
                 document.layout["poses"] = solution.poses
                 self.assertTrue(compile_schematic(document).ok)
 
-    def test_default_roof_separation_can_reflow_an_unpinned_return(self):
+    def test_oversized_roof_return_cannot_shrink_its_offset_to_fit_a_small_mirror(self):
         document = shared_mirror_roof_scene(separation=12.7)
         for node in document.nodes:
             node.physical = {}
         solution = solve_scene(document, iterations=40)
+        self.assertFalse(solution.ok)
+        self.assertEqual(document.nodes[2].parameters["beam_separation"], 12.7)
+        self.assertTrue(any(d.severity == "error" and
+                            ("beam separation" in d.message or "clear aperture" in d.message)
+                            for d in solution.diagnostics))
+
+    def test_dragging_roof_preserves_offset_and_adjusts_free_yaw(self):
+        for vertical in (False, True):
+            for reverse in (False, True):
+                with self.subTest(vertical=vertical, reverse=reverse):
+                    document = shared_mirror_roof_scene(vertical=vertical, reverse=reverse)
+                    mirror, roof = document.nodes[1:3]
+                    mirror.physical.pop("turn")
+                    roof.physical = {}
+                    initial = solve_scene(document)
+                    self.assertTrue(initial.ok, initial.diagnostics)
+                    document.layout["poses"] = initial.poses
+                    solution = solve_scene(document, targets=((roof.id, 0, 40), (roof.id, 1, 90)))
+                    self.assertTrue(solution.ok, solution.diagnostics)
+                    self.assertAlmostEqual(solution.poses[roof.id][0], 40, delta=1e-6)
+                    self.assertAlmostEqual(solution.poses[roof.id][1], 90, delta=1e-6)
+                    state = solution.layout.visits[roof.id]
+                    delta = sub(state.exit, state.entry)
+                    offset = norm(sub(delta, mul(state.incoming, dot(delta, state.incoming))))
+                    self.assertAlmostEqual(offset, 4, delta=1e-6)
+                    self.assertGreater(abs(wrap_angle(solution.poses[roof.id][3] - initial.poses[roof.id][3])), 1)
+                    self.assertAlmostEqual(wrap_angle(solution.poses[roof.id][3] - heading(state.incoming)), 0, delta=1e-6)
+                    self.assertNotIn("angle", roof.physical)
+                    for node in document.nodes[:2]:
+                        self.assertEqual(solution.poses[node.id][:2], document.layout["poses"][node.id][:2])
+                    document.layout["poses"] = solution.poses
+                    self.assertTrue(compile_schematic(document).ok)
+
+    def test_tilted_roof_with_wrong_actual_offset_is_not_a_valid_layout(self):
+        document = shared_mirror_roof_scene()
+        mirror, roof = document.nodes[1:3]
+        document.layout["poses"][mirror.id][3] = 135
+        document.layout["poses"][roof.id][3] = 85
+        trace = trace_scene(document)
+        rows = [row for row in trace.residuals if row.id == f"roof_offset/{roof.id}"]
+        self.assertEqual(len(rows), 1)
+        self.assertGreater(abs(rows[0].value), 1)
+        self.assertFalse(trace.ok)
+        self.assertFalse(compile_schematic(document).ok)
+
+    def test_roof_position_pin_does_not_pin_yaw_when_upstream_beam_moves(self):
+        document = shared_mirror_roof_scene()
+        mirror, roof = document.nodes[1:3]
+        mirror.physical.pop("turn")
+        mirror.physical.pop("x")
+        initial = solve_scene(document)
+        self.assertTrue(initial.ok, initial.diagnostics)
+        document.layout["poses"] = initial.poses
+        solution = solve_scene(document, targets=((mirror.id, 0, 60),))
         self.assertTrue(solution.ok, solution.diagnostics)
+        self.assertEqual(solution.poses[roof.id][:2], [50, 70])
+        self.assertGreater(abs(wrap_angle(solution.poses[roof.id][3] - initial.poses[roof.id][3])), 1)
+        state = solution.layout.visits[roof.id]
+        delta = sub(state.exit, state.entry)
+        self.assertAlmostEqual(norm(sub(delta, mul(state.incoming, dot(delta, state.incoming)))), 4, delta=1e-6)
+        self.assertEqual(roof.physical, {"x": 50, "y": 70})
         document.layout["poses"] = solution.poses
         self.assertTrue(compile_schematic(document).ok)
 

@@ -428,6 +428,24 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                         path = tuple(add(pose[:3], yaw(point, pose[3])) for point in points)
                         exit = path[-1]
                         out = yaw(out, pose[3])
+                    # Beam separation is a constraint on the actual rays,
+                    # not just the roof's nominal entrance/exit placement.
+                    # A tilted finite roof changes this offset, so its free
+                    # yaw must adjust rather than silently changing separation.
+                    offset_axis = (0, 0, 1) if "vertical" in node.preset else (0, -1, 0)
+                    offset_axis = yaw(offset_axis, pose[3])
+                    if topo.incident_ports.get(node.id) == "B":
+                        offset_axis = mul(offset_axis, -1)
+                    transverse = unit(sub(offset_axis, mul(direction, dot(offset_axis, direction))))
+                    separation = dot(sub(exit, hit), transverse)
+                    residual(
+                        f"roof_offset/{visit_id}",
+                        separation - p["beam_separation"],
+                        f"{node.reference}: constrained roof beam separation",
+                        node.id,
+                        visit_id,
+                        edge.id,
+                    )
                     outputs = {"out": out}
                 elif node.kind == "lens":
                     outputs = {
