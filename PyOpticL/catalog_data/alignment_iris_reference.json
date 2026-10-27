@@ -5,29 +5,45 @@
     "width": 20.0,
     "thickness": 4.0,
     "height": 35.4,
-    "aperture_diameters": [0.5, 1.2],
-    "aperture_heights": [12.7, 25.4],
+    "aperture_diameters": [
+      0.5,
+      1.2
+    ],
+    "aperture_heights": [
+      12.7,
+      25.4
+    ],
     "mount_spacing": 10.0,
     "note": "Measured from the source STEP using tight bounds; original mount has one round feature and one slot."
   },
   "mounting_profile": {
     "seat_frame": "mounting_face",
     "screws": [],
-    "dowels": ["dowel_left", "dowel_right"],
+    "dowels": [
+      "dowel_left",
+      "dowel_right"
+    ],
     "optical_height_mm": 12.7,
     "dowel": {
       "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
       "mount_diameter_mm": 2.05,
       "mount_depth_mm": 2.0,
       "plate_diameter_mm": 2.01,
-      "plate_diameter_limits_mm": [2.0066, 2.02184],
+      "plate_diameter_limits_mm": [
+        2.0066,
+        2.02184
+      ],
       "plate_depth_mm": 4.445,
-      "plate_depth_tolerance_mm": [0, 0.0508],
+      "plate_depth_tolerance_mm": [
+        0,
+        0.0508
+      ],
       "pin_projection_mm": 0.555,
       "note": "Adapted two-round-hole design. Plate dimensions follow the existing catalog pin convention; 118 degree tips follow each straight bore."
     },
     "source": "Data/SPDC Mach Zhender V2/IRIS.step; adapted single-aperture, two-round-hole design",
     "step_sha256": "bee4cb1db0ed8fe9a7a65b5b1076e576fbeb1cdf794d7a9611b4ea8c84cc9cb0",
     "drawing_sha256": null
-  }
+  },
+  "source_reference": "alignment-iris"
 }

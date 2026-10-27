@@ -35,6 +35,10 @@ Design optical systems in Python and automatically generate modular CAD models o
 
 [Lab catalog and component contracts](docs/lab-catalog.md) · [Reference measurement report](docs/reference-measurements.md)
 
+The lab catalog's [original CAD sources](PyOpticL/catalog_data/sources/README.md)
+are included in Git. A complete checkout rebuilds offline without a personal CAD
+cache; run `python3 -m PyOpticL.vendor_cad verify --all` to check every source pin.
+
 </div>
 
 <!-- <img height="100" alt="PyOpticL_logo" src="https://github.com/user-attachments/assets/6abdeee1-0d27-4417-b13f-469ae00388c7" /> -->

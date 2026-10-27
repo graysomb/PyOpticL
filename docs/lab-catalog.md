@@ -133,15 +133,16 @@ record both native and bracket mounting faces; the review report records the
 
 ## Assets and acquisition
 
-Runtime assets are in `~/.cache/pyopticl/cad`, or `PYOPTICL_CAD_CACHE`. Git contains hash manifests, normalization transforms, reference measurements and parametric sketch profiles. Missing or changed cache objects fail before geometry is used; the catalog never silently fetches a different revision. Original STEP solids remain untouched in the cache. Normalization is in `PyOpticL/catalog_data/normalization.json`.
+Original STEP files and drawings are versioned in [`PyOpticL/catalog_data/sources`](../PyOpticL/catalog_data/sources/README.md), together with hash manifests, normalization transforms, reference measurements and parametric profiles. A complete checkout rebuilds offline. Resolution verifies repository bytes first; a changed source fails before geometry is used. Missing files can fall back to the legacy `~/.cache/pyopticl/cad` or `PYOPTICL_CAD_CACHE` store, but `verify --all` requires every repository source. Purchased solids remain unchanged. Normalization is in `PyOpticL/catalog_data/normalization.json`.
 
 ```bash
 python -m PyOpticL.vendor_cad discover --vendor thorlabs --part KA05TA --product-url https://www.thorlabs.com/item/KA05TA
 python -m PyOpticL.vendor_cad register --vendor thorlabs --part KA05TA --product-url https://www.thorlabs.com/item/KA05TA --file /absolute/path/KA05TA-Step.step --kind step --manifest /absolute/path/new-revision.json
 python -m PyOpticL.vendor_cad verify --manifest PyOpticL/catalog_data/assets/KA05TA.step.json
+python -m PyOpticL.vendor_cad verify --all
 ```
 
-Use `download --asset-url OFFICIAL_URL` for explicit file links, `--kind pdf` for drawings, and `--document-id` for a page-confirmed opaque filename. Thorlabs and OptoSigma official domains are supported. Dynamic pages return `browser_required`; download through their public UI, then register. Acquisition validates file contents, stores SHA-256 and retrieval time, and refuses replacing a manifest with a different asset hash. CAD import and dimensional checks remain separate from file validation. STEP revision is unknown unless explicitly identified; a drawing revision is not automatically the STEP revision.
+Registration and downloads store source objects in the repository by default; add the verified object and manifest to Git together. `--cache` or `PYOPTICL_CAD_CACHE` selects an external acquisition store when needed. Use `download --asset-url OFFICIAL_URL` for explicit file links, `--kind pdf` for drawings, and `--document-id` for a page-confirmed opaque filename. Thorlabs and OptoSigma official domains are supported. Dynamic pages return `browser_required`; download through their public UI, then register. Acquisition validates file contents, stores SHA-256 and retrieval time, and refuses replacing a manifest with a different asset hash. CAD import and dimensional checks remain separate from file validation. STEP revision is unknown unless explicitly identified; a drawing revision is not automatically the STEP revision.
 
 Versioned skills are in `skills/vendor-optics-cad` and `skills/thorlabs-connect-parts`, with discoverable installed copies in `~/.codex/skills`. Their scope is exact assets and documented connections, not optical suitability or motion control.
 
@@ -157,9 +158,9 @@ PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/Free
 PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/FreeCAD.app/Contents/Resources/bin/python examples/lab_catalog_demo.py
 ```
 
-For the current PBS, run `tools/verify_displacement_pbs.py` with `Data/Displacement setup/Displacement Mount Assembly.step`. The preset has four raised registers and three relief trenches; the blind Ø2.5 mm clamp attachment hole is retained. The plastic clamp and screw solids remain omitted because the displacement reference does not include them. The legacy HOM definitions remain available.
+For the current PBS, run `tools/verify_displacement_pbs.py`; it uses the bundled original displacement assembly by default, or accepts an explicit source STEP path. The preset has four raised registers and three relief trenches; the blind Ø2.5 mm clamp attachment hole is retained. The plastic clamp and screw solids remain omitted because the displacement reference does not include them. The legacy HOM definitions remain available.
 
-For independent legacy HOM custom-holder regression, run `tools/extract_hom_references.py` with the original HOM STEP and an output directory, then pass that directory to `tools/verify_hom_profiles.py`. The extractor checks the lab source hash before using labels to identify parts. Reference solids are validation inputs only; generated geometry uses editable rational sketch curves and extrusions.
+For independent legacy HOM custom-holder regression, run `tools/extract_hom_references.py OUTPUT_DIRECTORY` using the bundled original HOM STEP (an explicit source path before the output directory is also supported), then pass that directory to `tools/verify_hom_profiles.py`. The extractor checks the lab source hash before using labels to identify parts. Reference solids are validation inputs only; generated geometry uses editable rational sketch curves and extrusions.
 
 See [the measurement report](reference-measurements.md) for precise evidence, comparison thresholds and remaining limitations. Do not treat this catalog as a manufacturing-tolerance or optical-performance certification.
 

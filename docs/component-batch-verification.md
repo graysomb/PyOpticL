@@ -28,7 +28,7 @@ manufacturers' public product downloads. None were unavailable.
 
 Purchased geometry retains source dimensions and holes. Configuration changes
 are limited to removing the K05T6 front ring for the adapter and positioning
-FBR's supplied ring against its waveplate. Original cached bytes remain intact.
+FBR's supplied ring against its waveplate. Original source bytes remain intact.
 
 Shared attachment operations drive ordinary `Baseplate` and `MachinedBaseplate`
 including nested transforms. Component-hole contracts remain distinct from plate
@@ -88,8 +88,9 @@ PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/Free
 ```
 
 The example rebuilds the editable source in a live document before exporting a
-static review. Runtime reconstruction requires the hash-matching asset cache;
-the saved review and STEP do not.
+static review. Runtime reconstruction uses the hash-matching source files
+versioned in `PyOpticL/catalog_data/sources`; no external cache is required.
+The saved review and STEP are self-contained.
 
 ## Fit and modeling qualifications
 

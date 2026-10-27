@@ -1,0 +1,73 @@
+{
+  "alignment-iris": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "bee4cb1db0ed8fe9a7a65b5b1076e576fbeb1cdf794d7a9611b4ea8c84cc9cb0",
+    "cache_path": "objects/bee4cb1db0ed8fe9a7a65b5b1076e576fbeb1cdf794d7a9611b4ea8c84cc9cb0/source.step",
+    "original_source": "Data/SPDC Mach Zhender V2/IRIS.step"
+  },
+  "hom-assembly": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "cb5cc1e4edbcafb95df6d83aa7c3a60cb54545501e82ceaa5c1722965422bddf",
+    "cache_path": "objects/cb5cc1e4edbcafb95df6d83aa7c3a60cb54545501e82ceaa5c1722965422bddf/source.step",
+    "original_source": "Data/HOM Mount/HOM setup.step"
+  },
+  "hom-base": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "37fc0094867aec7ecb851a0b3935f8242437d59aa5a165ef08c8714b350855e6",
+    "cache_path": "objects/37fc0094867aec7ecb851a0b3935f8242437d59aa5a165ef08c8714b350855e6/source.step",
+    "original_source": "Data/HOM Mount/just base.step"
+  },
+  "output-coupler-reference": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "52a132864a74aaaf137137cfc01b9f29b8ff091558b0b250d27778bbd12df8ef",
+    "cache_path": "objects/52a132864a74aaaf137137cfc01b9f29b8ff091558b0b250d27778bbd12df8ef/source.step",
+    "original_source": "Data/SPDC Mach Zhender V2/OutMount_BeamPathR_Machine (1).step"
+  },
+  "displacement-pbs": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "565658bf89e4f28e3bd7385c9cb8ddb2e33328fa77acf33537fbc908bc581b8e",
+    "cache_path": "objects/565658bf89e4f28e3bd7385c9cb8ddb2e33328fa77acf33537fbc908bc581b8e/source.step",
+    "original_source": "Data/Displacement setup/Displacement Mount Assembly.step"
+  },
+  "hom-delay-documentation": {
+    "schema_version": 1,
+    "kind": "pdf",
+    "sha256": "1f67b431e5c8db34f9688e0f71188ea0f0304ca9327f08b1d47f407df7ca3651",
+    "cache_path": "objects/1f67b431e5c8db34f9688e0f71188ea0f0304ca9327f08b1d47f407df7ca3651/source.pdf",
+    "original_source": "Data/HOM Mount/DelayModules.pdf"
+  },
+  "hom-mount-documentation": {
+    "schema_version": 1,
+    "kind": "pdf",
+    "sha256": "3464bc947931d4d9b0ce242c5bb2128b79f78e5ae48f7a544ad58b5960ab4348",
+    "cache_path": "objects/3464bc947931d4d9b0ce242c5bb2128b79f78e5ae48f7a544ad58b5960ab4348/source.pdf",
+    "original_source": "Data/HOM Mount/Documentation.pdf"
+  },
+  "roof-support-horizontal": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "0c1584d459c9fc6dc2d9ef1aec2550c3fc2b889c6f79bfa6218b8b360d2048a9",
+    "cache_path": "objects/0c1584d459c9fc6dc2d9ef1aec2550c3fc2b889c6f79bfa6218b8b360d2048a9/source.step",
+    "original_source": "HRS1015-AG-Step Copy 1.step"
+  },
+  "roof-support-vertical": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "d5457df62fbdfa8590457bb0986a864b16ab2b761cac6360f095e2d272ca5265",
+    "cache_path": "objects/d5457df62fbdfa8590457bb0986a864b16ab2b761cac6360f095e2d272ca5265/source.step",
+    "original_source": "HRS1015-AG-Step (1).step"
+  },
+  "lightsmyth-datasheet": {
+    "schema_version": 1,
+    "kind": "pdf",
+    "sha256": "77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e",
+    "cache_path": "objects/77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e/source.pdf",
+    "original_source": "optics/diffraction-grating-t-1000c-series-ds.pdf",
+    "source_url": "https://www.coherent.com/content/dam/coherent/site/en/resources/datasheet/optics/diffraction-grating-t-1000c-series-ds.pdf"
+  }
+}

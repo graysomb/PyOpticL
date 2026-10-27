@@ -75,7 +75,8 @@
       "screw_length_mm": 10,
       "clamp_thickness_mm": 5.08,
       "plate_top_z_mm": -12.7,
-      "stock_bottom_z_mm": -25.4
+      "stock_bottom_z_mm": -25.4,
+      "source_reference": "roof-support-horizontal"
     },
     "vertical": {
       "source": "HRS1015-AG-Step (1).step",
@@ -151,7 +152,8 @@
       "screw_length_mm": 8,
       "clamp_thickness_mm": 5.08,
       "plate_top_z_mm": -12.7,
-      "stock_bottom_z_mm": -25.4
+      "stock_bottom_z_mm": -25.4,
+      "source_reference": "roof-support-vertical"
     }
   },
   "normalization": {

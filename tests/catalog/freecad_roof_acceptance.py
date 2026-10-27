@@ -23,7 +23,7 @@ from PyOpticL.layout import Component, Layout
 from PyOpticL.library import Baseplate
 from PyOpticL.roof_mirror import (RoofGeometry, RoofSupport, RoofClamp, reference,
     support_reference, support_shape, support_point, capsule)
-from PyOpticL.vendor_cad import resolve
+from PyOpticL.vendor_cad import resolve, resolve_reference
 
 
 class Receiver:
@@ -258,12 +258,10 @@ class RoofTests(unittest.TestCase):
     def test_user_corrected_source_geometry_and_m2_adaptations(self):
         for orientation in ('horizontal','vertical'):
             g=RoofGeometry(orientation);spec=support_reference(g)
-            source=Path.home()/'Downloads'/spec['source']
+            source=resolve_reference(spec['source_reference'])
             self.assertEqual(spec['thread'],'M2 x 0.4')
             support=RoofSupport(g).shape();clamp=RoofClamp(g).shape()
             self.assertTrue(support.isValid() and clamp.isValid())
-            if not source.exists():
-                continue  # Native reconstruction never requires user Downloads.
             self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),spec['sha256'])
             solids=Part.read(str(source)).Solids
             original_body=support_shape(g,solids[2])

@@ -114,7 +114,7 @@ Existing purchased-mount and fixed-iris attachment profiles remain unchanged.
 ## Purchased optic source
 
 The exact official HRS1015-P01 STEP and drawing **TTN048987-E0W revision B**
-are hash-pinned in the existing CAD cache. The optic has three valid source
+are hash-pinned and versioned in `PyOpticL/catalog_data/sources`. The optic has three valid source
 solids and volume 7951.62842695 mm³; nominal dimensions are
 25.4 x 25.4 x 18.7 mm, including the 6 mm backing. Chamfers reduce actual
 native forward extent to 18.5232233 mm. No source solid is modified or fused
@@ -125,8 +125,10 @@ Normalization maps native `(0,18.7,0)` to the roof front center and rotates
 +90 degrees about Z. The nominal roof edge is at `(12.7,0,0)`, parallel to Z
 before the selected optic roll. The corrected support files already contain
 the corresponding orientations, so their structures are normalized without
-rolling them a second time. At runtime only the vendor optic requires its
-pinned cache; the custom support and clamp are native geometry.
+rolling them a second time. Runtime reconstruction reads the bundled vendor optic; the custom support and
+clamp are native geometry. The corrected original support STEP files and HOM
+reference documents are also bundled, indexed by `source_references.json`, so
+source comparisons require neither Downloads nor an external Data folder.
 
 ## Explicit optical passage and OPL
 

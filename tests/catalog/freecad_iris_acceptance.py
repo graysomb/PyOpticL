@@ -21,6 +21,7 @@ from PyOpticL.component_contract import ComponentContract
 from PyOpticL.layout import Component, Layout
 from PyOpticL.library import Baseplate
 from PyOpticL.settings import get_measurement_system, set_measurement_system
+from PyOpticL.vendor_cad import resolve_reference
 
 
 class IrisTests(unittest.TestCase):
@@ -91,9 +92,8 @@ class IrisTests(unittest.TestCase):
         self.assertEqual(rows[0]['procurement'], 'fabricated')
         record = json.loads((catalog.DATA / 'alignment_iris_reference.json').read_text())
         self.assertEqual(record['sha256'], contract.provenance[0].sha256)
-        source = Path(__file__).resolve().parents[3] / record['source']
-        if source.exists():
-            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), record['sha256'])
+        source = resolve_reference(record['source_reference'])
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), record['sha256'])
 
     def test_drill_contains_only_two_blind_bores(self):
         drill = catalog.AlignmentIris().drill()

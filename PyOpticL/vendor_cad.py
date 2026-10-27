@@ -1,4 +1,4 @@
-"""Vendor CAD acquisition and content-addressed cache (standard library only).
+"""Vendor CAD acquisition and versioned, content-addressed sources.
 
 Run ``python -m PyOpticL.vendor_cad --help`` outside FreeCAD.
 Dynamic product pages may require a browser download followed by register.
@@ -28,7 +28,12 @@ class BrowserRequired(RuntimeError):
 
 
 def cache_root():
+    """Optional legacy/download cache; never required by a complete checkout."""
     return Path(os.environ.get("PYOPTICL_CAD_CACHE", Path.home() / ".cache" / "pyopticl" / "cad"))
+
+
+def source_root():
+    return Path(__file__).with_name('catalog_data') / 'sources'
 
 
 def check_url(vendor, url):
@@ -113,7 +118,10 @@ def register(vendor, part, product_url, data, filename, kind, *, asset_url=None,
         raise ValueError("Filename does not identify the part; supply its vendor document ID from the product page")
     validate(data, kind)
     digest = hashlib.sha256(data).hexdigest()
-    root = Path(root) if root else cache_root()
+    # New acquisitions belong in the repository by default. Explicit stores
+    # remain useful for external downloads and isolated verification/tests.
+    root = (Path(root) if root is not None else
+            cache_root() if os.environ.get('PYOPTICL_CAD_CACHE') else source_root())
     directory = root / "objects" / digest
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / ("source.step" if kind == "step" else "source.pdf")
@@ -141,18 +149,52 @@ def register(vendor, part, product_url, data, filename, kind, *, asset_url=None,
     return record
 
 
-def resolve(record, root=None):
-    if record.get("schema_version") != 1:
-        raise ValueError("Unsupported asset manifest version")
-    root = (Path(root) if root else cache_root()).resolve()
+def _asset_path(record, root):
+    root = Path(root).resolve()
     path = (root / record["cache_path"]).resolve()
     if not path.is_relative_to(root):
-        raise ValueError("Asset path escapes cache")
+        raise ValueError("Asset path escapes source root")
+    return path
+
+
+def resolve(record, root=None):
+    """Verify repository bytes first; explicit roots select one exact store.
+
+    cache_path is retained as the schema-1 relative object key. A corrupt
+    repository asset fails even if the legacy cache has a matching copy.
+    Missing repository assets may use the old cache for backward compatibility.
+    Normal catalog use does not copy, download, or write anything.
+    """
+    if record.get("schema_version") != 1:
+        raise ValueError("Unsupported asset manifest version")
+    path = _asset_path(record, source_root() if root is None else root)
+    if root is None and not path.exists():
+        bundled = path
+        path = _asset_path(record, cache_root())
+        if not path.exists():
+            raise FileNotFoundError('Missing pinned CAD source: '+str(bundled)+
+                '; restore catalog_data/sources from Git. Optional legacy cache: '+str(path))
     data = path.read_bytes()
     if hashlib.sha256(data).hexdigest() != record["sha256"]:
         raise ValueError("Asset hash differs from catalog pin")
     validate(data, record["kind"])
     return path
+
+
+def resolve_reference(name):
+    """Original local CAD and documentation pinned with the catalog."""
+    records = json.loads(Path(__file__).with_name('catalog_data').joinpath('source_references.json').read_text())
+    return resolve(records[name])
+
+
+def verify_catalog():
+    """Require every vendor and local reference asset in repository storage."""
+    data = Path(__file__).with_name('catalog_data')
+    records = [json.loads(p.read_text()) for p in sorted((data/'assets').glob('*.json'))]
+    records.extend(json.loads((data/'source_references.json').read_text()).values())
+    paths = {resolve(record, source_root()) for record in records}
+    return dict(records=len(records), files=len(paths), bytes=sum(p.stat().st_size for p in paths),
+                source_root=str(source_root()))
 
 
 def main(argv=None):
@@ -169,13 +211,21 @@ def main(argv=None):
     parser.add_argument("--revision")
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--all", action='store_true', help='Verify all versioned catalog sources (verify only)')
     args = parser.parse_args(argv)
     try:
         if args.action == "verify":
+            if args.all:
+                if args.manifest or args.cache:
+                    parser.error('verify --all checks repository storage; omit --manifest and --cache')
+                print(json.dumps(verify_catalog(), indent=2))
+                return 0
             if not args.manifest:
                 parser.error("verify requires --manifest")
             print(resolve(json.loads(args.manifest.read_text()), args.cache))
             return 0
+        if args.all:
+            parser.error('--all is only supported for verify')
         if not all((args.vendor, args.part, args.product_url)):
             parser.error("--vendor, --part and --product-url are required")
         if args.action == "discover":
