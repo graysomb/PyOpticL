@@ -1,7 +1,10 @@
 """Curated schematic symbols. This module deliberately has no CAD imports."""
 
 from dataclasses import dataclass, field, replace
+from functools import lru_cache
+import json
 from math import asin, atan2, degrees, radians, sin
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -98,8 +101,24 @@ SYMBOLS = {
 # Vendor selections extend existing symbols; old presets retain their exact
 # parameter defaults and specifications, including saved optimized layouts.
 MIRROR_MOUNTS = {"POLARIS-K05VS2": 12.7, "POLARIS-K1VS2": 25.4, "MHV-12.7L-R": 12.7, "MHV-25.4L-R": 25.4}
+D_MIRROR_PRESETS = {
+    "KM05DR": "PFD05-03-P01",
+    "KM05DL": "PFD05-03-P01",
+    "KM100D": "PFD10-03-P01",
+    "KM100DL": "PFD10-03-P01",
+    "PFD05-03-P01": "PFD05-03-P01",
+    "PFD10-03-P01": "PFD10-03-P01",
+}
 LENS_MOUNTS = {"POLARIS-L05G": 12.7, "POLARIS-L1G": 25.4}
 COUPLING_MOUNTS = ("POLARIS-K05T6", "KA05TA")
+
+
+@lru_cache(maxsize=None)
+def d_mirror_geometry(preset):
+    """Use the purchased optic dimensions without importing its CAD definition."""
+    path = Path(__file__).resolve().parents[1] / "catalog_data/d_mirror_reference.json"
+    return json.loads(path.read_text())["parts"][D_MIRROR_PRESETS[preset]]
+
 
 for kind, mounts in (("mirror", MIRROR_MOUNTS), ("lens", LENS_MOUNTS)):
     additions = {
@@ -119,6 +138,20 @@ for kind, mounts in (("mirror", MIRROR_MOUNTS), ("lens", LENS_MOUNTS)):
     SYMBOLS[kind] = replace(
         SYMBOLS[kind], presets=SYMBOLS[kind].presets + tuple(mounts), preset_parameters=additions
     )
+additions = {}
+for preset in D_MIRROR_PRESETS:
+    geometry = d_mirror_geometry(preset)
+    diameter, thickness = 2 * geometry["radius_mm"], geometry["thickness_mm"]
+    additions[preset] = {
+        "diameter": Parameter("Diameter (mm)", diameter, diameter, diameter),
+        "thickness": Parameter("Optic thickness (mm)", thickness, thickness, thickness),
+        "edge_distance": Parameter("Hit below straight edge (mm)", 1,
+                                   geometry["straight_edge_bevel_mm"], geometry["clear_radius_mm"], True),
+    }
+SYMBOLS["mirror"] = replace(
+    SYMBOLS["mirror"], presets=SYMBOLS["mirror"].presets + tuple(D_MIRROR_PRESETS),
+    preset_parameters={**SYMBOLS["mirror"].preset_parameters, **additions},
+)
 for kind in ("hwp", "qwp"):
     additions = {
         name: {

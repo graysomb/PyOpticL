@@ -13,7 +13,7 @@ from .model import (
 )
 from .qt import Action, QtCore, QtGui, QtWidgets
 from .parts import part_spec
-from .registry import SYMBOLS, parameter_specs, parameter_values, select_preset
+from .registry import SYMBOLS, D_MIRROR_PRESETS, parameter_specs, parameter_values, select_preset
 from .topology import resolve_topology
 
 Qt = QtCore.Qt
@@ -859,6 +859,9 @@ class SchematicEditor(QtWidgets.QWidget):
                   ("roof","vertical"):"Vertical + supports",
                   ("roof","bare_horizontal"):"Horizontal, bare",
                   ("roof","bare_vertical"):"Vertical, bare"}
+        for preset, optic in D_MIRROR_PRESETS.items():
+            labels[("mirror", preset)] = (f"{preset} · D-shaped, bare" if preset == optic
+                                         else f"{preset} + {optic} · D-shaped")
         presets.setObjectName("partPreset")
         for preset in symbol.presets:
             presets.addItem(labels.get((node.kind,preset),preset),preset)

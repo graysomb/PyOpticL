@@ -180,6 +180,10 @@ def intersect(document, node, pose, origin, direction, topology, finite=False):
     local = yaw(sub(hit, pose[:3]), -angle)
     if finite:
         aperture = spec.aperture
+        if aperture[0] == "semicircle":
+            # Native D mirrors intercept the full purchased half disk. Hits
+            # in its bevel/uncleared rim terminate rather than passing through.
+            aperture = ("semicircle", spec.size[1] / 2, 0)
         if node.kind == "iris":
             aperture = ("circle", 10 if node.preset == "alignment" else 6.35)
         if node.kind == "slit":

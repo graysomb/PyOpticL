@@ -203,6 +203,12 @@ The merged lab catalog is available through **Part preset**, including POLARIS/M
 mirror mounts, POLARIS lens mounts, FBR/ELL16 waveplate mounts, fiber assemblies,
 PBS, alignment iris, slit, grating and roof presets. See the
 [catalog guide](docs/schematic-catalog.md) for parameters and vendor CAD cache setup.
+Under **Mirror → Part preset**, the D-shaped PFD05-03-P01 and PFD10-03-P01 mirrors
+are available bare or paired with KM05DR/KM05DL and KM100D/KM100DL respectively. Purchased diameter
+and 6 mm thickness are fixed. **Hit below straight edge** sets the nominal spot's
+distance below the cut edge (default 1 mm); the open half faces local +Z. Clear
+semicircle and edge-bevel checks apply to every pass, and XZ shows the half-height
+body. Export and CAD generation use the existing vendor optics and seated mounts.
 Some symbols mark only the known optical aperture; their inspectors say so rather
 than inventing a vendor body size. Physical packing still requires complete assembly bounds.
 

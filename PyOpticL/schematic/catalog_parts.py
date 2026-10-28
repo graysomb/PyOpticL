@@ -18,6 +18,17 @@ def mirror(mount, diameter, thickness):
     return lab_catalog.definition("mirror", mount=mount, thickness=thickness)
 
 
+def d_mirror(optic, diameter, thickness, edge_distance=1, mount=None):
+    from .registry import d_mirror_geometry
+
+    geometry = d_mirror_geometry(optic)
+    if diameter != 2 * geometry["radius_mm"] or thickness != geometry["thickness_mm"]:
+        raise ValueError("Purchased D mirrors have fixed diameter and thickness")
+    if mount is None:
+        return lab_catalog.definition(optic, edge_distance=edge_distance)
+    return lab_catalog.definition("d_mirror", mount=mount, optic=optic, edge_distance=edge_distance)
+
+
 def waveplate(mount, diameter, thickness, fast_axis_angle, retardance):
     return lab_catalog.definition(
         "rotation", mount=mount, thickness=thickness, retardance=retardance, fast_axis_angle=fast_axis_angle

@@ -185,7 +185,14 @@ class PhysicalSymbol(SymbolItem):
                 tuple(spec.corner[i] + bits[i] * spec.size[i] for i in range(3))
                 for bits in product((0, 1), repeat=3)
             ]
-            if self.node.kind in ("mirror", "lens", "hwp", "qwp", "stop", "fiber_source", "fiber_output") or (
+            if spec.aperture[0] == "semicircle":
+                radius = spec.size[1] / 2
+                points = [
+                    (spec.corner[0] + end * spec.size[0],
+                     radius * cos(i * pi / 32), spec.aperture_center[2] - radius * sin(i * pi / 32))
+                    for end in (0, 1) for i in range(33)
+                ]
+            elif self.node.kind in ("mirror", "lens", "hwp", "qwp", "stop", "fiber_source", "fiber_output") or (
                 self.node.kind == "iris" and self.node.preset != "alignment"
             ):
                 radius = spec.size[1] / 2

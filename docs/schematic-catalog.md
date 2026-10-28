@@ -19,6 +19,7 @@ preserve the designed displacement of the exit.
 | Symbol | Added presets | Parameters |
 |---|---|---|
 | Mirror | POLARIS-K05VS2, POLARIS-K1VS2, MHV-12.7L-R, MHV-25.4L-R | Optic thickness; diameter fixed by mount |
+| Mirror, D-shaped | PFD05-03-P01 + KM05DR/KM05DL, PFD10-03-P01 + KM100D/KM100DL, or either optic bare | Hit below straight edge; purchased diameter and 6 mm thickness fixed |
 | Spherical lens | POLARIS-L05G, POLARIS-L1G | Focal length, optic thickness; diameter fixed by mount |
 | Half/quarter-wave plate | FBR, ELL16 with HOM holder | Thickness, fast axis; diameter 12.7 mm |
 | Fiber source/receiver | POLARIS-K05T6, KA05TA | F260FC-1550 + AD1109F + selected mount |
@@ -34,6 +35,14 @@ presets removes parameters that do not belong to the new selection, as one
 undoable edit. Standalone mechanical mounts and the XR25C translation stage
 remain in the CAD catalog; they have no optical interaction to insert in a beam
 route.
+
+D-shaped mirror presets use the existing purchased optics and matching seated
+mounts for CAD generation and assembly bounds. **Hit below straight edge** sets
+the nominal optical origin below the straight edge (default 1 mm). The open half
+faces local +Z; XZ displays the semicircular substrate. Each pass must remain
+inside the 90%-diameter clear semicircle and beyond the 0.1 mm straight-edge bevel.
+Rays above the open edge do not intercept this optic. Mounted selections include
+their existing baseplate attachments and knob relief where required.
 
 Source symbols now expose **Linear polarization (deg)**. A PBS reflects the
 selected linear polarization and transmits its orthogonal polarization, using

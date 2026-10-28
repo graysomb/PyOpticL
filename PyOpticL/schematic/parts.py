@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 
 from .model import interface_turn
-from .registry import COUPLING_MOUNTS, LENS_MOUNTS, MIRROR_MOUNTS, default_turn, parameter_values
+from .registry import COUPLING_MOUNTS, D_MIRROR_PRESETS, LENS_MOUNTS, MIRROR_MOUNTS, default_turn, parameter_values
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,10 @@ class PartSpec:
 def part_spec(document, node, topology, turns=None):
     """Return a hashable specification, or None for a virtual symbol."""
     parameters = tuple(parameter_values(node).items())
+    if node.kind == "mirror" and node.preset in D_MIRROR_PRESETS:
+        optic = D_MIRROR_PRESETS[node.preset]
+        return PartSpec("catalog", "d_mirror", parameters,
+                        (("optic", optic), ("mount", None if node.preset == optic else node.preset)))
     if node.kind == "mirror" and node.preset in MIRROR_MOUNTS:
         return PartSpec("catalog", "mirror", parameters, (("mount", node.preset),))
     if node.kind == "lens" and node.preset in LENS_MOUNTS:

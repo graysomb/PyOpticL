@@ -6,7 +6,7 @@ import json
 from math import hypot, sqrt
 from pathlib import Path
 from PyOpticL.ray_math import add, mul, sub, trace_roof, grating_surface_angle
-from .registry import parameter_values, default_turn, COUPLING_MOUNTS
+from .registry import parameter_values, default_turn, COUPLING_MOUNTS, D_MIRROR_PRESETS, d_mirror_geometry
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,15 @@ def element_spec(node, topology=None):
     p = parameter_values(node)
     diameter, thickness = p.get("diameter", 12.7), p.get("thickness", 1.0)
     if node.kind == "mirror":
+        if node.preset in D_MIRROR_PRESETS:
+            geometry = d_mirror_geometry(node.preset)
+            radius, edge = geometry["radius_mm"], p["edge_distance"]
+            return OpticalElementSpec(
+                (geometry["thickness_mm"], 2 * radius, radius),
+                (-geometry["thickness_mm"], -radius, edge - radius),
+                ("semicircle", geometry["clear_radius_mm"], geometry["straight_edge_bevel_mm"]),
+                single_sided=True, aperture_center=(0, 0, edge),
+            )
         return OpticalElementSpec(
             (thickness if "thickness" in p else 6, diameter, diameter),
             (-(thickness if "thickness" in p else 6), -diameter / 2, -diameter / 2),
@@ -96,6 +105,8 @@ def aperture_excess(spec, local):
     shape, *sizes = spec.aperture
     if shape == "circle":
         return hypot(local[1], local[2]) - sizes[0]
+    if shape == "semicircle":
+        return max(hypot(local[1], local[2]) - sizes[0], local[2] + sizes[1])
     if shape == "slit":
         return max(hypot(local[1], local[2]) - sizes[0], abs(local[2]) - sizes[1])
     return max(abs(local[1]) - sizes[0], abs(local[2]) - sizes[1])

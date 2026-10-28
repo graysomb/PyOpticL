@@ -15,7 +15,7 @@ from PyOpticL.lab_catalog import asset_record
 from PyOpticL.schematic import Endpoint, PathLengthConstraint, compile_schematic, load_schematic
 from PyOpticL.schematic.bounds import BoundsProvider
 from PyOpticL.schematic.parts import part_spec
-from PyOpticL.schematic.registry import SYMBOLS, select_preset
+from PyOpticL.schematic.registry import SYMBOLS, D_MIRROR_PRESETS, select_preset
 from PyOpticL.schematic.topology import resolve_topology
 from PyOpticL.vendor_cad import resolve
 from schematic_freecad import FreeCADSchematicTests, branched, chain
@@ -25,6 +25,31 @@ class CatalogFreeCADTests(unittest.TestCase):
     setUp = FreeCADSchematicTests.setUp
     tearDown = FreeCADSchematicTests.tearDown
     build = FreeCADSchematicTests.build
+
+    def test_d_mirror_exports_use_native_datum_and_machine_matching_mounts(self):
+        import json
+        from PyOpticL.schematic.cad import add_baseplate
+        from test_schematic_d_mirrors import d_mirror_scene
+
+        for preset, height in (("KM05DR", 15.526), ("KM05DL", 15.526),
+                               ("KM100D", 30.004), ("KM100DL", 30.004)):
+            with self.subTest(preset=preset):
+                document = d_mirror_scene(preset, edge_distance=2)
+                layout = self.build(document)
+                assembly = next(child for child in layout.get_object().Children
+                                if callable(getattr(child.Proxy, "contract", None))
+                                and child.Proxy.contract().catalog_id == "d_mirror")
+                self.assertEqual(assembly.Proxy.contract().catalog_id, "d_mirror")
+                self.assertEqual(len(assembly.Children), 2)
+                optic = assembly.Children[0]
+                # The nominal spot stays at Z=0; the cut edge is 2 mm above it.
+                self.assertAlmostEqual(optic.Shape.BoundBox.ZMax, 2, delta=1e-5)
+                plate = add_baseplate(layout, thickness=25.4).get_object()
+                plan = json.loads(plate.MachiningPlan)
+                self.assertTrue(plate.Shape.isValid())
+                self.assertAlmostEqual(plate.Shape.BoundBox.ZMax, -height, delta=1e-5)
+                self.assertEqual(len(plan["holes"]), 1)
+                self.assertEqual(len(plan["pockets"]), int(preset.startswith("KM100")))
 
     def test_generated_grating_example(self):
         self.build(
@@ -170,7 +195,7 @@ def preset_test(kind, preset):
 
 
 for kind, presets in {
-    "mirror": ("POLARIS-K05VS2", "POLARIS-K1VS2", "MHV-12.7L-R", "MHV-25.4L-R"),
+    "mirror": ("POLARIS-K05VS2", "POLARIS-K1VS2", "MHV-12.7L-R", "MHV-25.4L-R", *D_MIRROR_PRESETS),
     "lens": ("POLARIS-L05G", "POLARIS-L1G"),
     "hwp": ("FBR", "ELL16"),
     "qwp": ("FBR", "ELL16"),
