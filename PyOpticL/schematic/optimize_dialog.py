@@ -9,10 +9,10 @@ from .optimization import (
     beam_points,
     build_problem,
     initial_box,
-    optimize_layout,
 )
 from .qt import QtCore, QtGui, QtWidgets
 from .workers import ManagedWorker
+from .optimizer_process import decode, run_optimizer
 
 Qt = QtCore.Qt
 
@@ -28,7 +28,7 @@ class LayoutWorker(ManagedWorker):
 
     def run(self):
         try:
-            result = optimize_layout(
+            result = run_optimizer(
                 self.problem, progress=self.progressed.emit, cancelled=self.cancelled.is_set
             )
             self.completed.emit(result)
@@ -326,9 +326,11 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         self.worker.finished.connect(self.worker_finished)
         self.worker.start()
 
+    @QtCore.Slot(object)
     def update_progress(self, frame):
         if self.closing:
             return
+        frame = decode(frame)
         self.progress.setValue(frame.total_iterations)
         self.status.setText(
             f"Start {frame.start}/{self.problem.options.starts}, iteration {frame.iteration} — "
@@ -360,7 +362,9 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
         for item in items[:30]:
             self.violations.addItem(f"{item.message}: {item.residual:.6g} {item.unit}")
 
+    @QtCore.Slot(object)
     def search_completed(self, result):
+        result = decode(result)
         self.solution = result
         if self.closing:
             return
@@ -381,13 +385,14 @@ class OptimizeLayoutDialog(QtWidgets.QDialog):
                 "No feasible layout found. Search budget exhausted; largest remaining violations are listed below."
             )
 
+    @QtCore.Slot(str)
     def search_failed(self, message):
         self.solution = None
         self.status.setText("Search failed: " + message)
 
+    @QtCore.Slot()
     def worker_finished(self):
-        worker, self.worker = self.worker, None
-        worker.deleteLater()
+        self.worker = None
         self.set_running(False)
         if self.closing:
             super().reject()

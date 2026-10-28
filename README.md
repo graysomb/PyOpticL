@@ -208,7 +208,9 @@ than inventing a vendor body size. Physical packing still requires complete asse
 
 **Optimize physical layout…** fits the current physical system into an XY rectangle.
 The dialog resolves assembly geometry on the GUI thread, then runs an immutable
-numerical snapshot in a cancellable worker. The independent preview shows assembly
+numerical snapshot in a separate, cancellable Python process. Preview updates stay
+on the GUI thread. If the search process fails, the dialog reports the failure and
+allows another run; the schematic is unchanged. The independent preview shows assembly
 disks, beam capsules and violations. Defaults are 1 mm clearance and 1 mm beam
 keep-out diameter. Differing heights do not exempt parts from conservative XY packing.
 The region starts at current extents plus 10 mm, or the previous applied rectangle.

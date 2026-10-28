@@ -94,7 +94,7 @@ class WorkerLifetimeTests(unittest.TestCase):
                     sleep(.05)
                     return SceneSolution('cancelled', None, {}, [])
                 name = ('PyOpticL.schematic.physical_editor.solve_scene' if kind == 'scene'
-                        else 'PyOpticL.schematic.optimize_dialog.optimize_layout')
+                        else 'PyOpticL.schematic.optimize_dialog.run_optimizer')
                 with patch(name, side_effect=solve):
                     worker = (SceneWorker(chain('source', 'output'), 0, parent=owner)
                               if kind == 'scene' else LayoutWorker(None, owner))

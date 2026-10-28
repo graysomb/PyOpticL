@@ -5,7 +5,7 @@ from dataclasses import replace
 from threading import get_ident
 from time import monotonic
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from PyOpticL.bounds import BoundingCircleXY
 from PyOpticL.schematic import compile_schematic
@@ -71,6 +71,14 @@ class OptimizationEditorTests(unittest.TestCase):
         self.assertFalse(dialog.apply_button.isEnabled())
         self.assertTrue(dialog.run_button.isEnabled())
         self.assertFalse(self.editor.bounds_toggle.isChecked())
+        preview_threads = []
+        show_layout = dialog.preview.show_layout
+
+        def show_preview(*args, **kwargs):
+            preview_threads.append(get_ident())
+            return show_layout(*args, **kwargs)
+
+        dialog.preview.show_layout = show_preview
         QtTest.QTest.mouseClick(dialog.run_button, QtCore.Qt.LeftButton)
         self.assertFalse(dialog.run_button.isEnabled())
         self.assertFalse(dialog.apply_button.isEnabled())
@@ -80,6 +88,8 @@ class OptimizationEditorTests(unittest.TestCase):
         self.assertGreater(dialog.progress.value(), 0)
         self.assertTrue(dialog.apply_button.isEnabled())
         self.assertEqual(self.calls, [self.gui_thread] * len(self.calls))
+        self.assertTrue(preview_threads)
+        self.assertEqual(preview_threads, [self.gui_thread] * len(preview_threads))
         self.assertEqual(self.editor.document.to_dict(), before)
         self.assertTrue(dialog.preview.scene().items())
         QtTest.QTest.mouseClick(dialog.apply_button, QtCore.Qt.LeftButton)
@@ -197,6 +207,57 @@ class OptimizationEditorTests(unittest.TestCase):
         dialog.fields["width"].setValue(240)
         self.assertIsNone(dialog.solution)
         self.assertFalse(dialog.apply_button.isEnabled())
+
+    def test_search_process_dies_during_progress_and_dialog_can_retry(self):
+        from test_schematic_optimizer_process import child_launcher
+
+        dialog = self.open_dialog()
+        dialog.options = replace(dialog.options, starts=1, iterations=5)
+        before = deepcopy(self.editor.document.to_dict())
+        processes = []
+        script = (
+            "from PyOpticL.schematic.optimizer_process import decode, _write; "
+            "from PyOpticL.schematic.optimization import OptimizationProgress; "
+            "p = decode(request[1]); "
+            "_write(sys.stdout.buffer, b'P', "
+            "OptimizationProgress(1, 1, 1, p.initial_positions, (), False, p)); "
+            "import os; os._exit(23)"
+        )
+        with patch("PyOpticL.schematic.optimizer_process.subprocess.Popen",
+                   side_effect=child_launcher(script, processes)):
+            dialog.start_search()
+            self.wait_until(lambda: dialog.worker is None)
+        self.assertIn("exited unexpectedly (exit 23)", dialog.status.text())
+        self.assertEqual(dialog.progress.value(), 1)
+        self.assertTrue(dialog.run_button.isEnabled())
+        self.assertFalse(dialog.apply_button.isEnabled())
+        self.assertEqual(processes[0].poll(), 23)
+        self.assertEqual(self.editor.document.to_dict(), before)
+        dialog.start_search()
+        self.wait_until(lambda: dialog.worker is None)
+        self.assertEqual(dialog.solution.status, "feasible")
+        self.assertTrue(dialog.apply_button.isEnabled())
+        self.assertEqual(self.editor.document.to_dict(), before)
+
+    def test_cancel_running_child_keeps_gui_responsive_and_reaps_process(self):
+        from test_schematic_optimizer_process import child_launcher
+
+        dialog = self.open_dialog()
+        before = deepcopy(self.editor.document.to_dict())
+        processes, ticks = [], []
+        timer = QtCore.QTimer(dialog)
+        timer.timeout.connect(lambda: ticks.append(1))
+        timer.start(10)
+        with patch("PyOpticL.schematic.optimizer_process.subprocess.Popen",
+                   side_effect=child_launcher("import time; time.sleep(60)", processes)):
+            dialog.start_search()
+            self.wait_until(lambda: len(ticks) >= 5 and bool(processes))
+            dialog.reject()
+            self.wait_until(lambda: dialog.worker is None)
+        timer.stop()
+        self.assertEqual(dialog.solution.status, "cancelled")
+        self.assertIsNotNone(processes[0].poll())
+        self.assertEqual(self.editor.document.to_dict(), before)
 
     def test_splitter_bounds_resolve_both_free_plane_signs(self):
         d = branched()
