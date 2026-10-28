@@ -58,6 +58,10 @@ def slit(slit_width=1):
     return lab_catalog.definition("slit", slit_width=slit_width)
 
 
+def crystal(mounted=True):
+    return lab_catalog.definition("crystal_holder" if mounted else "crystal_holder_bare")
+
+
 def roof(orientation="horizontal", beam_separation=12.7, mounted=True, reverse=False):
     geometry = RoofGeometry(orientation, beam_separation)
     if reverse:

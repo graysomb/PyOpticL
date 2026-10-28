@@ -69,5 +69,13 @@
     "cache_path": "objects/77e76a42ec86007f0c56e64a051347a46f7641e45a8f35595c1641836eb21e2e/source.pdf",
     "original_source": "optics/diffraction-grating-t-1000c-series-ds.pdf",
     "source_url": "https://www.coherent.com/content/dam/coherent/site/en/resources/datasheet/optics/diffraction-grating-t-1000c-series-ds.pdf"
+  },
+  "crystal-holder": {
+    "schema_version": 1,
+    "kind": "step",
+    "sha256": "a6e87c7328e2ff9513e6678aee707b184e84c1ad134e9c797f5c8e735b6be69e",
+    "cache_path": "objects/a6e87c7328e2ff9513e6678aee707b184e84c1ad134e9c797f5c8e735b6be69e/source.step",
+    "original_source": "Crystal holder.step",
+    "part_number": "Lab crystal holder assembly"
   }
 }

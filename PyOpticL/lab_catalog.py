@@ -21,7 +21,7 @@ DATA = Path(__file__).with_name('catalog_data')
 VENDOR_IDS = ('POLARIS-L05G', 'POLARIS-L1G', 'POLARIS-K1VS2',
               'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6',
               'KM100D', 'KM05DR', 'KM100DL', 'KM05DL')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating', 'd_mirror')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating', 'd_mirror', 'crystal_holder')
 
 
 def asset_record(part):
@@ -545,6 +545,12 @@ def definition(catalog_id, **parameters):
     (degrees) and integer order. D mirrors select a matching mount/optic pair;
     their purchased thickness is fixed at 6 mm. Unknown options fail explicitly.
     """
+    if catalog_id in ('crystal_holder', 'crystal_holder_bare', 'crystal_bracket'):
+        from PyOpticL.crystal_holder import CrystalBracket, CrystalHolder
+        if parameters:
+            raise TypeError('Crystal holder geometry is fixed by the supplied STEP; unsupported parameters: '
+                            + ', '.join(sorted(parameters)))
+        return CrystalBracket() if catalog_id == 'crystal_bracket' else CrystalHolder(mounted=catalog_id == 'crystal_holder')
     if catalog_id in ('d_mirror', 'PFD05-03-P01', 'PFD10-03-P01') or (
             catalog_id == 'mirror' and parameters.get('mount') in ('KM05DR', 'KM100D', 'KM05DL', 'KM100DL')):
         from PyOpticL.d_mirror import DMirror, MountedDMirror

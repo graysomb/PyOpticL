@@ -90,6 +90,8 @@ def part_spec(document, node, topology, turns=None):
         return PartSpec("catalog", "iris", parameters)
     if node.kind == "slit":
         return PartSpec("catalog", "slit", parameters)
+    if node.kind == "crystal":
+        return PartSpec("catalog", "crystal", before=(("mounted", node.preset == "bracketed"),))
     if node.kind == "roof":
         return PartSpec(
             "catalog",

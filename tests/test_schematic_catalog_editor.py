@@ -50,7 +50,7 @@ class CatalogEditorTests(unittest.TestCase):
         doc, node = self.open("mirror", "bare")
         palette = self.editor.findChild(Palette)
         kinds = {palette.item(i).data(QtCore.Qt.UserRole) for i in range(palette.count())}
-        self.assertTrue({"roof", "grating", "slit"}.issubset(kinds))
+        self.assertTrue({"roof", "grating", "slit", "crystal"}.issubset(kinds))
         preset = self.editor.findChild(QtWidgets.QComboBox, "partPreset")
         preset.setCurrentIndex(preset.findData("MHV-25.4L-R"))
         self.flush()
@@ -90,6 +90,7 @@ class CatalogEditorTests(unittest.TestCase):
             ("roof", "vertical"),
             ("grating", "MK05S"),
             ("iris", "alignment"),
+            ("crystal", "bracketed"),
         ):
             doc, node = self.open(kind, preset)
             node.physical.update(x=50, y=0)

@@ -80,7 +80,7 @@ def _source_arm_seed(document, seed, baseline, topology, targets, free, counts):
     if (source, 3) not in free or (source, 3) in requested:
         return
     incoming = {e.target.visit_id: e for e in topology.edges.values()}
-    transmitting = ("lens", "hwp", "qwp", "iris", "slit")
+    transmitting = ("lens", "hwp", "qwp", "iris", "slit", "crystal")
     for node_id in dict.fromkeys(n for n, axis, _ in targets if axis < 3):
         visits = [p for p in topology.passes.values() if p.component_id == node_id]
         if len(visits) != 1 or not visits[0].centered:
@@ -193,7 +193,7 @@ def _orientation_seed(document, poses, topology, targets):
                     if norm(before) < 1e-6 or norm(after) < 1e-6 or not MIN_BEAM_TURN < abs(turn) < 180 - MIN_BEAM_TURN:
                         turn = default_turn("mirror", topology.incident_ports.get(target.id))
                 direction = yaw(direction, turn)
-            elif target_node.kind not in ("lens", "hwp", "qwp", "iris", "slit"):
+            elif target_node.kind not in ("lens", "hwp", "qwp", "iris", "slit", "crystal"):
                 return  # Other deflectors need their own optical trace/frame.
             edge = next_edge
 

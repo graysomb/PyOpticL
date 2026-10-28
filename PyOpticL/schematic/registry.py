@@ -37,7 +37,7 @@ TERMINAL_PORT = {"beam": (-40.0, 0.0)}
 TRANSMISSION = {"left": "right", "right": "left", "top": "bottom", "bottom": "top"}
 REFLECTION = {"left": "top", "top": "left", "right": "bottom", "bottom": "right"}
 MIN_BEAM_TURN = 0.001  # stay above the ray tracer's parallel-plane tolerance
-AXIS_ALIGNED_KINDS = ("hwp", "iris")
+AXIS_ALIGNED_KINDS = ("hwp", "iris", "crystal")
 
 
 DIAMETER = Parameter("Diameter (mm)", 12.7, 0, exclusive=True)
@@ -213,6 +213,9 @@ SYMBOLS["grating"] = Symbol(
         "order": Parameter("Diffraction order", 1, -20, 20, integer=True),
         "mirrored": Parameter("Mirrored orientation", 0, 0, 1, integer=True),
     },
+)
+SYMBOLS["crystal"] = Symbol(
+    "Crystal holder", "XTAL", TWO_PORTS, ("bracketed", "bare"),
 )
 SYMBOLS["roof"] = Symbol(
     "Roof mirror (HRS1015-P01)",

@@ -133,6 +133,11 @@ class SymbolItem(QtWidgets.QGraphicsObject):
         elif kind == "slit":
             for y in (-23,7):
                 painter.drawRect(QtCore.QRectF(-10,y,20,16))
+        elif kind == "crystal":
+            painter.setBrush(QtGui.QColor("#d3a76b"))
+            painter.drawRoundedRect(QtCore.QRectF(-27, -17, 54, 34), 3, 3)
+            painter.setBrush(QtGui.QColor("#a0ddd4"))
+            painter.drawRect(QtCore.QRectF(-23, -5, 46, 10))
         elif kind == "grating":
             painter.drawRect(QtCore.QRectF(-9,-25,18,50))
             for y in range(-20,24,7):
@@ -855,6 +860,8 @@ class SchematicEditor(QtWidgets.QWidget):
         labels = {("splitter","displacement_pbs"):"Displacement PBS + integral seat",
                   ("iris","alignment"):"Fixed alignment iris",
                   ("grating","MK05S"):"MK05S + plate adapter",
+                  ("crystal","bracketed"):"Crystal holder + support bracket",
+                  ("crystal","bare"):"Crystal holder, bare",
                   ("roof","horizontal"):"Horizontal + supports",
                   ("roof","vertical"):"Vertical + supports",
                   ("roof","bare_horizontal"):"Horizontal, bare",

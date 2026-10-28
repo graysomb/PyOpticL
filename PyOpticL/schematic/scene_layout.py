@@ -190,7 +190,7 @@ def intersect(document, node, pose, origin, direction, topology, finite=False):
             aperture = ("circle", 13.589 / 2)
         from dataclasses import replace
 
-        if aperture_excess(replace(spec, aperture=aperture), local) > 1e-8 or distance <= 1e-6:
+        if aperture_excess(replace(spec, aperture=aperture), local, yaw(direction, -angle)) > 1e-8 or distance <= 1e-6:
             return None
         if node.kind == "roof":
             entry = yaw(sub(hit, pose[:3]), -pose[3])
@@ -314,7 +314,7 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                         )
                 residual(
                     f"aperture/{visit_id}",
-                    max(0, aperture_excess(spec, local)),
+                    max(0, aperture_excess(spec, local, yaw(direction, -(pose[3] + interface_angle(document, node, spec))))),
                     f"{node.reference}: pass misses clear aperture",
                     node.id,
                     visit_id,

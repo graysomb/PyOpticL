@@ -28,6 +28,12 @@ preserve the designed displacement of the exit.
 | Variable slit | VA100 with bracket and hardware | Slit width, 0–6 mm |
 | Transmission grating | LightSmyth 1336552, bare or MK05S + plate adapter | Incidence angle, integer diffraction order |
 | Roof mirror | HRS1015-P01, horizontal/vertical, bare or supported | Beam separation, 3–22 mm |
+| Crystal holder | Supplied six-part assembly, bare or with separate bracket and hardware | Fixed 27.4 × 4 × 1 mm crystal; 12.7 mm bracketed optical height |
+
+The [crystal holder](crystal-holder.md) preserves the uploaded solids and adds
+a separate support bracket. Its baseplate contract has two M4 taps and two
+dowel bores. The optical interface passes rays through unchanged and checks
+both crystal ends; no SHG/SPDC conversion is modeled.
 
 Existing presets retain their previous behavior. A mount selection fixes optic
 diameter, and incompatible thicknesses produce an export diagnostic. Switching

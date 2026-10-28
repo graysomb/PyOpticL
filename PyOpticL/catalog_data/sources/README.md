@@ -12,9 +12,10 @@ once. `.gitattributes` preserves their bytes across platforms and treats CAD
 changes as binary diffs.
 
 - `../assets/*.json`: 44 vendor STEP/drawing records covering 22 parts.
-- `../source_references.json`: 10 original CAD/document references, including
-  the iris, HOM, displacement PBS, corrected roof supports, and grating datasheet.
-- Combined: 54 records referencing 53 files, 211,366,914 bytes (about 211 MB
+- `../source_references.json`: 11 original CAD/document references, including
+  the iris, HOM, displacement PBS, corrected roof supports, grating datasheet,
+  and uploaded six-part crystal holder.
+- Combined: 55 records referencing 54 files, 211,492,169 bytes (about 211 MB
   before Git compression). The largest file is about 35 MB.
 
 Source hashes, original vendor filenames, URLs, revisions, measurements, and

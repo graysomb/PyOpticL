@@ -14,7 +14,7 @@ print(lab_catalog.bom(coupler))
 ```
 
 Supported preset IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`,
-`iris`, `slit`, `roof`, `grating`. Purchased mounts are also available directly through
+`iris`, `slit`, `roof`, `grating`, `d_mirror`, `crystal_holder`. Purchased mounts are also available directly through
 `create(part_number, label)` for every part in the native-height table below.
 These return ordinary reusable `Component` objects with purchased-part definitions.
 Unknown parameters fail explicitly. Dimensions use mm.
@@ -55,6 +55,12 @@ Commercial thread designations are explicit and independent of the global metric
 | slit | VA100 variable slit; fabricated 10 mm support; three nominal screws | Slit width (optical parameter) |
 | roof | HRS1015-P01; integral baseplate supports and removable M2 clamp | Fixed; horizontal/vertical construction orientation |
 | grating | LightSmyth 1336552; imperial MK05S; direct grating seating and 10 mm baseplate adapter | Vendor tip/tilt described; nominal incidence is a construction parameter |
+| crystal_holder | Original six-part holder/crystal STEP; separate bracket, screws, washers and locating pins | Fixed after installation |
+
+See [crystal holder and bracket](crystal-holder.md) for source preservation,
+mounting dimensions, nominal fastening selections and its four-hole baseplate
+drill contract. `crystal_holder_bare` and `crystal_bracket` expose the original
+assembly and new support separately.
 
 The [transmission grating](grating.md) uses its actual incident ray and wavelength
 to calculate one diffracted order. `create('MK05S', label)` exposes the purchased

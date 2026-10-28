@@ -18,6 +18,7 @@ class OpticalElementSpec:
     single_sided: bool = False
     aperture_only: bool = False
     aperture_center: tuple = (0, 0, 0)
+    through_length: float = 0
 
 
 def element_spec(node, topology=None):
@@ -66,6 +67,8 @@ def element_spec(node, topology=None):
             ("slit", 13.589 / 2, p["slit_width"] / 2),
             aperture_only=True,
         )
+    if node.kind == "crystal":
+        return OpticalElementSpec((27.4, 4, 1), (-13.7, -2, -.5), ("rect", 2, .5), through_length=27.4)
     if node.kind == "grating":
         return OpticalElementSpec(
             (0.95, 31.8, 12.3), (0, -15.9, -6.15), ("rect", 15.4, 5.65),
@@ -100,7 +103,12 @@ def element_spec(node, topology=None):
     return None
 
 
-def aperture_excess(spec, local):
+def aperture_excess(spec, local, direction=None):
+    if spec.through_length and direction is not None:
+        if abs(direction[0]) < 1e-6:
+            return 1e6
+        return max(aperture_excess(spec, add(local, mul(direction, (x-local[0])/direction[0])))
+                   for x in (-spec.through_length/2, spec.through_length/2))
     local = sub(local, spec.aperture_center)
     shape, *sizes = spec.aperture
     if shape == "circle":

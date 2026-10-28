@@ -60,7 +60,12 @@ def main():
     )
     roof.connections[-1].length = None
     roof.path_constraints.append(PathLengthConstraint("total", "node-0", "node-2", 165.4))
-    for name, document in (("lab-presets", lab), ("grating", grating), ("roof", roof)):
+    crystal = chain(
+        "Crystal holder on bracket",
+        (("source", "beam"), ("crystal", "bracketed"), ("output", "open")),
+    )
+    crystal.nodes[0].parameters.update(waist=.1, power=.01)
+    for name, document in (("lab-presets", lab), ("grating", grating), ("roof", roof), ("crystal", crystal)):
         from PyOpticL.schematic.scene_layout import initialize_layout
         initialize_layout(document)
         result = compile_schematic(document)
