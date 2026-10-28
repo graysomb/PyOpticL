@@ -1,4 +1,4 @@
-"""Two exact D-mirror/holder pairs on one flat plate, at native beam heights."""
+"""Four exact D-mirror/holder pairs on one flat plate, at native beam heights."""
 import json
 from pathlib import Path
 import sys
@@ -10,15 +10,16 @@ from PyOpticL import attachments, lab_catalog as catalog, machined_baseplate
 from PyOpticL.beam_path import BeamPath, Stop
 from PyOpticL.layout import Component, Layout
 
-SAMPLES = [('KM05DR', (0, 0)), ('KM100D', (120, 80))]
-WAVELENGTH, WAIST, POWER, YAW = 1550., .2, .001, 135.
+SAMPLES = [('KM05DR', (0, 0)), ('KM100D', (120, 80)),
+           ('KM05DL', (0, 130)), ('KM100DL', (120, 210))]
+WAVELENGTH, WAIST, POWER = 1550., .2, .001
 QUALIFICATIONS = [
     'Source STEP and drawings are versioned. PFD10 closed shell is promoted using unchanged faces.',
     'Optical datum is 1 mm below the straight edge; native beam heights are 16.526 and 31.004 mm.',
-    'KM100D example optic is excluded because it is not supplied; exact PFD10-03-P01 replaces it.',
-    'KM05DR is rear loaded: S1 faces its front opening; nylon screws retract 0.44375 mm to contact rear S2.',
-    'KM100D knob requires one 0.885 mm plate clearance relief; mounting face stays at plate top.',
-    'One M4 cap screw for KM100D and one 8-32 x 1/4 in stud for KM05DR are BOM requirements. No dowels.',
+    'KM100D/KM100DL example optic is excluded because it is not supplied; exact PFD10-03-P01 replaces it.',
+    'KM05DR/KM05DL are rear loaded: S1 faces its front opening; nylon screws retract 0.44375 mm to contact rear S2.',
+    'Each KM100D/KM100DL knob requires one 0.885 mm plate clearance relief; mounting face stays at plate top.',
+    'One M4 cap screw per KM100D/KM100DL and one 8-32 x 1/4 in stud per KM05DR/KM05DL are BOM requirements. No dowels.',
     'Ideal single-sided reflection with conservative 90%-diameter semicircular clear aperture and 0.1 mm edge exclusion. No coating efficiency, edge diffraction, or clamp-force model.',
     'Nominal CAD fit and engagement are checked; manufacturing fit and physical retention require validation.',
 ]
@@ -40,7 +41,8 @@ def build(output=None, plate_thickness=30.):
     root = Layout('D-mirror pairs at native heights')
     samples = []
     for mount, (x, y) in SAMPLES:
-        component = root.add(catalog.create('d_mirror', mount, mount=mount), (x, y, 0), YAW)
+        yaw = -135. if mount.endswith('DL') else 135.
+        component = root.add(catalog.create('d_mirror', mount, mount=mount), (x, y, 0), yaw)
         height = catalog.native_height(component)
         component.get_object().BasePlacement.Base.z = height
         beam = root.add(BeamPath(mount + ' beam', wavelength=WAVELENGTH, waist=WAIST,
@@ -74,8 +76,8 @@ def build(output=None, plate_thickness=30.):
             path_length_mm=sum(s.Proxy.distance for s in segments),
             contracts=[o.Proxy.contract().to_dict() for o in (optic, holder)],
             bom=catalog.bom(component), solids_valid=True, nominal_fit_passed=True))
-    if len(machining.plan['holes']) != 2 or len(machining.plan['pockets']) != 1:
-        raise ValueError('Expected two tapped bores and one knob clearance pocket')
+    if len(machining.plan['holes']) != 4 or len(machining.plan['pockets']) != 2:
+        raise ValueError('Expected four tapped bores and two knob clearance pockets')
     static = App.newDocument('DMirrorsReview')
     physical = []
     for obj in attachments.descendants(root.get_object()):
@@ -122,4 +124,4 @@ def build(output=None, plate_thickness=30.):
 
 if __name__ == '__main__':
     document, report = build()
-    print('Built both native-height D-mirror pairs with two plate bores and one knob relief.')
+    print('Built four native-height D-mirror pairs with four plate bores and two knob reliefs.')

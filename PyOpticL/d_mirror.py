@@ -1,4 +1,4 @@
-"""Purchased D-shaped pickoff mirrors, with their matching right-handed mounts.
+"""Purchased D-shaped pickoff mirrors, with matching left- and right-hand mounts.
 
 The optical origin lies edge_distance below the straight edge (default 1 mm).
 +X is the outward front normal, +Z points toward the open half.
@@ -84,7 +84,11 @@ class SeatedDMirrorMount(VendorPart):
     def __init__(self, part, edge_distance=1.):
         super().__init__(part)
         self.edge_distance = edge_distance
-        self.origin[1] -= edge_distance - 1.
+        # Source frames differ between handed variants. Select the same lower
+        # optical datum in the normalized frame, without moving the hardware.
+        shift = App.Rotation('XYZ', *self.rotation).inverted().multVec(
+            App.Vector(0, 0, -(edge_distance - 1.)))
+        self.origin = list(App.Vector(*self.origin) + shift)
 
     def baseplate_profile(self):
         profile = super().baseplate_profile()

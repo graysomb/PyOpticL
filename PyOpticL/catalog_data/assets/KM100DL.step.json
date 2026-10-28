@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KM100DL",
+  "product_url": "https://www.thorlabs.com/item/KM100DL",
+  "asset_url": null,
+  "vendor_filename": "KM100DL-Step.step",
+  "document_id": "TTN010108-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-28T16:16:56.398342+00:00",
+  "sha256": "4f6ed761ff044bb525c20e500586404449781ced7b2640ccac6c4bd0336f0f85",
+  "kind": "step",
+  "cache_path": "objects/4f6ed761ff044bb525c20e500586404449781ced7b2640ccac6c4bd0336f0f85/source.step",
+  "units": "requires_cad_inspection",
+  "identity_evidence": "product-page document association; not inferred from shape",
+  "acquisition_note": "Downloaded from the exact SKU page Support Documents STEP control."
+}

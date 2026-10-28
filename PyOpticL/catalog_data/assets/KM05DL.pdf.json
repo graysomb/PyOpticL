@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KM05DL",
+  "product_url": "https://www.thorlabs.com/item/KM05DL",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/k/km/km0/km05dl/ttn098184-e0w.pdf?v=0116115935",
+  "vendor_filename": "ttn098184-e0w.pdf",
+  "document_id": "TTN098184-E0W",
+  "revision": "A",
+  "retrieved_at": "2026-10-28T16:16:56.590573+00:00",
+  "sha256": "5b5c647cfe24ff8d4fa73a6d3b26d05c21f7080ffe2d9a12dda031b1a33e22e8",
+  "kind": "pdf",
+  "cache_path": "objects/5b5c647cfe24ff8d4fa73a6d3b26d05c21f7080ffe2d9a12dda031b1a33e22e8/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

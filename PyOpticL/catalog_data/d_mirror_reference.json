@@ -64,7 +64,14 @@
       "reference_optic_solids": [
         22
       ],
-      "source_note": "Vendor example optic is not included; remove reference solid 22 from working holder geometry."
+      "source_note": "Vendor example optic is not included; remove reference solid 22 from working holder geometry.",
+      "seating_solid": 0,
+      "front_normal_native": [
+        0,
+        0,
+        1
+      ],
+      "handedness": "right"
     },
     "KM05DR": {
       "source_step_sha256": "363556f440fdaed91cf85bca41a7069f7a6b2a8b2563d4acfacd6a141d4fb229",
@@ -125,7 +132,14 @@
       "reference_optic_solids": [],
       "source_note": "No example optic in supplier compound. Cylinders model 8-32 major diameter; thread identity is from drawing. Rear-loaded mirror: S1 faces native +Z through the front lip at Z=14.6558 mm; S2 faces the adjusters at Z=8.6558 mm.",
       "front_seating_plane_native_z_mm": 14.6558,
-      "back_surface_plane_native_z_mm": 8.6558
+      "back_surface_plane_native_z_mm": 8.6558,
+      "seating_solid": 1,
+      "front_normal_native": [
+        0,
+        0,
+        1
+      ],
+      "handedness": "right"
     },
     "PFD05-03-P01": {
       "source_step_sha256": "d900887eecff235068c9f28d66e667dea7b67ea5690983d7265ae9a21c41eb25",
@@ -178,6 +192,145 @@
       "clear_radius_mm": 11.43,
       "straight_edge_bevel_mm": 0.1,
       "source_note": "One valid closed shell; promote to a solid using unchanged source faces, without sewing, healing, or geometry edits."
+    },
+    "KM05DL": {
+      "source_step_sha256": "005ab0b5cce70806b3f266661a4ac788adc23bdac02cb6271da7c78ca585c98e",
+      "source_drawing_sha256": "5b5c647cfe24ff8d4fa73a6d3b26d05c21f7080ffe2d9a12dda031b1a33e22e8",
+      "drawing_revision": "A",
+      "source_solid_count": 26,
+      "source_volume_mm3": 5646.243018061438,
+      "source_bounds_mm": [
+        -13.817599999999944,
+        -15.646400100000093,
+        -16.0528,
+        15.646400100000053,
+        13.81759999999991,
+        3.1750001
+      ],
+      "circle_center_native": [
+        -1.8796,
+        1.8796,
+        2.032
+      ],
+      "front_plane_native_z_mm": 2.032,
+      "native_circle_center_height_mm": 17.526,
+      "native_beam_height_mm": 16.526,
+      "physical_mounting_features": [
+        {
+          "name": "post_bottom",
+          "center": [
+            15.6464,
+            -0.9144,
+            -8.28675
+          ],
+          "axis": [
+            -1,
+            0,
+            0
+          ],
+          "diameter": 4.1656,
+          "depth": 8.226325,
+          "thread": "8-32 UNC"
+        },
+        {
+          "name": "post_side",
+          "center": [
+            0.9144,
+            -15.6464,
+            -8.28675
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.1656,
+          "depth": 8.226325,
+          "thread": "8-32 UNC"
+        }
+      ],
+      "reference_optic_solids": [],
+      "handedness": "left",
+      "seating_solid": 0,
+      "front_seating_plane_native_z_mm": 2.032,
+      "back_surface_plane_native_z_mm": -3.968,
+      "front_normal_native": [
+        0,
+        0,
+        1
+      ],
+      "source_note": "No example optic. Rear loaded: S1 faces native +Z at Z=2.032; S2 at Z=-3.968. Semicircle occupies native X>=-1.8796; selected bottom face is X=15.6464. Source solids 15 and 16 are nylon-tipped clamp screws. Threads documented as 8-32 UNC in TTN098184-E0W revision A."
+    },
+    "KM100DL": {
+      "source_step_sha256": "4f6ed761ff044bb525c20e500586404449781ced7b2640ccac6c4bd0336f0f85",
+      "source_drawing_sha256": "66bde5d52bb56ec3be76b81798af85fd8da1af2e14753fad6f64105b77a85c61",
+      "drawing_revision": "B",
+      "source_solid_count": 23,
+      "source_volume_mm3": 21314.59254353128,
+      "source_bounds_mm": [
+        -19.811999999999962,
+        -21.84399999999994,
+        -7.493000100000003,
+        32.63899999999995,
+        30.606999999999978,
+        30.924500099999964
+      ],
+      "circle_center_native": [
+        0,
+        10.795,
+        -6.35
+      ],
+      "front_plane_native_z_mm": -6.35,
+      "native_circle_center_height_mm": 32.004000000000005,
+      "native_beam_height_mm": 31.004,
+      "physical_mounting_features": [
+        {
+          "name": "post_bottom",
+          "center": [
+            6.604,
+            -21.209,
+            7.6073
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "diameter": 4.7625,
+          "depth": 12.192,
+          "thread": null,
+          "counterbore_mm": 7.9375
+        },
+        {
+          "name": "post_side",
+          "center": [
+            32.004,
+            4.191,
+            7.6073
+          ],
+          "axis": [
+            -1,
+            0,
+            0
+          ],
+          "diameter": 4.7625,
+          "depth": 12.192,
+          "thread": null,
+          "counterbore_mm": 7.9375
+        }
+      ],
+      "reference_optic_solids": [
+        22
+      ],
+      "handedness": "left",
+      "seating_solid": 0,
+      "back_seating_plane_native_z_mm": -0.35,
+      "front_normal_native": [
+        0,
+        0,
+        -1
+      ],
+      "source_note": "Example optic is not supplied; exclude source solid 22. S1 faces native -Z at Z=-6.35, S2 seats at Z=-0.35. Selected bottom face Y=-21.209; source knob solid 21 protrudes 0.635 mm below it."
     }
   },
   "pairs": {
@@ -191,7 +344,8 @@
       "orientation": "Straight edge along local Y, open side toward +Z.",
       "coating": "Protected silver P01; ideal reflection only, no measured efficiency or coating phase.",
       "clearance_note": "Removable knob source solid 6 extends 0.635 mm below the selected mounting face. A 0.885 mm-deep plate relief includes 0.25 mm extra clearance; native height is unchanged.",
-      "default_edge_distance_mm": 1.0
+      "default_edge_distance_mm": 1.0,
+      "handedness": "right"
     },
     "KM05DR": {
       "optic": "PFD05-03-P01",
@@ -215,7 +369,46 @@
         ]
       },
       "clamp_pose_note": "Supplier 4-40 nylon tips end at native Z=9.09955 mm; retract each existing screw by 0.44375 mm along native -Z to contact the 6 mm optic rear S2 at Z=8.6558 mm. Coated S1 is at Z=14.6558 mm, facing native +Z through the front retaining lip. Dimensions and source bytes unchanged.",
-      "default_edge_distance_mm": 1.0
+      "default_edge_distance_mm": 1.0,
+      "handedness": "right"
+    },
+    "KM05DL": {
+      "optic": "PFD05-03-P01",
+      "radius_mm": 6.35,
+      "clear_radius_mm": 5.715,
+      "straight_edge_bevel_mm": 0.1,
+      "native_beam_height_mm": 16.526,
+      "mirror_seating_depth_mm": 6.0,
+      "orientation": "Straight edge along local Y, open side toward +Z.",
+      "coating": "Protected silver P01; ideal reflection only, no measured efficiency or coating phase.",
+      "seated_clamp_offsets_mm": {
+        "15": [
+          -0.44375,
+          0,
+          0
+        ],
+        "16": [
+          -0.44375,
+          0,
+          0
+        ]
+      },
+      "clamp_pose_note": "Source nylon tips in solids 15 and 16 end at native Z=-3.52425; retract 0.44375 mm along native -Z to touch rear S2 at -3.968. Coated S1 faces native +Z at the front lip Z=2.032. Source bytes/dimensions unchanged.",
+      "default_edge_distance_mm": 1.0,
+      "handedness": "left"
+    },
+    "KM100DL": {
+      "optic": "PFD10-03-P01",
+      "radius_mm": 12.7,
+      "clear_radius_mm": 11.43,
+      "straight_edge_bevel_mm": 0.1,
+      "native_beam_height_mm": 31.004,
+      "mirror_seating_depth_mm": 6.0,
+      "orientation": "Straight edge along local Y, open side toward +Z.",
+      "coating": "Protected silver P01; ideal reflection only, no measured efficiency or coating phase.",
+      "clearance_note": "Removable knob source solid 21 extends 0.635 mm below the selected mounting face. A 0.885 mm-deep plate relief includes 0.25 mm extra clearance; native height is unchanged.",
+      "default_edge_distance_mm": 1.0,
+      "handedness": "left"
     }
   }
 }

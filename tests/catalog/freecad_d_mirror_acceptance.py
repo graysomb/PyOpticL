@@ -19,7 +19,7 @@ from PyOpticL.library import Baseplate
 from PyOpticL.vendor_cad import resolve
 from examples import d_mirrors as demo
 
-MOUNTS = ('KM05DR', 'KM100D')
+MOUNTS = ('KM05DR', 'KM100D', 'KM05DL', 'KM100DL')
 
 # Datum checks use exact surfaces: cached display triangulations can expand
 # bounding boxes by hundredths of a millimetre after the GUI meshes a shape.
@@ -72,7 +72,7 @@ class DMirrorTests(unittest.TestCase):
             contract = definition.contract()
             self.assertEqual(contract, ComponentContract.from_dict(contract.to_dict()))
             self.assertEqual(len(contract.holes), 2)
-            self.assertEqual({h.thread for h in contract.holes}, {'8-32 UNC'} if mount=='KM05DR' else {None})
+            self.assertEqual({h.thread for h in contract.holes}, {'8-32 UNC'} if mount.startswith('KM05') else {None})
             self.assertEqual(len(attachments.operations(definition)), 1)
             self.assertEqual(definition.baseplate_profile()['dowels'], [])
             cylinders = [f.Surface for f in catalog.vendor_shape(mount).Faces if isinstance(f.Surface, Part.Cylinder)]
@@ -83,27 +83,29 @@ class DMirrorTests(unittest.TestCase):
                     (c.Center-center).cross(axis).Length<1e-6 for c in cylinders))
 
     def test_native_heights_seating_clamps_and_bom(self):
-        for mount, height in [('KM05DR', 16.526), ('KM100D', 31.004)]:
+        for mount in MOUNTS:
+            height = reference()['pairs'][mount]['native_beam_height_mm']
             component = catalog.create('d_mirror', mount, mount=mount)
             component.recompute()
             optic, holder = component.get_object().Children
             self.assertAlmostEqual(catalog.native_height(component), height, places=6)
             self.assertEqual(len(optic.Shape.Solids), 1)
-            self.assertEqual(len(holder.Shape.Solids), 26 if mount=='KM05DR' else 22)
+            self.assertEqual(len(holder.Shape.Solids), 26 if mount.startswith('KM05') else 22)
             self.assertLess(sum(optic.Shape.common(s).Volume for s in holder.Shape.Solids), 1e-6)
             self.assertLess(optic.Shape.distToShape(holder.Shape)[0], 1e-7)
-            self.assertLess(optic.Shape.distToShape(holder.Shape.Solids[1 if mount=='KM05DR' else 0])[0], 1e-7)
+            self.assertLess(optic.Shape.distToShape(holder.Shape.Solids[reference()['parts'][mount]['seating_solid']])[0], 1e-7)
             for a,b in zip(holder.Shape.Solids, catalog.VendorPart(mount).shape().Solids):
                 self.assertAlmostEqual(a.Volume, b.Volume, places=6)
-            if mount=='KM05DR':
-                for i in (24,25):
+            if mount.startswith('KM05'):
+                for index in reference()['pairs'][mount]['seated_clamp_offsets_mm']:
+                    i = int(index)
                     self.assertLess(optic.Shape.distToShape(holder.Shape.Solids[i])[0], 1e-7)
             rows = catalog.bom(component)
             self.assertEqual(len(rows), 2)
             self.assertEqual({r['procurement'] for r in rows}, {'purchased'})
             hardware = rows[1]['mounting_hardware']
             self.assertEqual(len(hardware), 1)
-            self.assertIn('8-32' if mount=='KM05DR' else 'M4', hardware[0]['kind'])
+            self.assertIn('8-32' if mount.startswith('KM05') else 'M4', hardware[0]['kind'])
             b = optic.Shape.optimalBoundingBox(False)
             r = reference()['pairs'][mount]['radius_mm']
             self.assertAlmostEqual(b.XMin, -6, places=5)
@@ -111,27 +113,41 @@ class DMirrorTests(unittest.TestCase):
             self.assertAlmostEqual(b.ZMax, 1, places=5)
             self.assertAlmostEqual(b.ZMin, 1-r, places=5)
 
-    def test_half_inch_coated_face_points_through_front_lip(self):
-        component = catalog.create('d_mirror', 'Rear-loaded half-inch', mount='KM05DR')
-        component.recompute()
-        optic, holder = component.get_object().Children
-        # Independently identified source coordinates: the moving plate's
-        # front retaining lip is at native Z=14.6558; adjusters are toward -Z.
-        # Seating/zero-overlap alone also passes for a backwards optic.
-        definition = holder.Proxy
-        rotation = App.Rotation('XYZ', *definition.rotation)
-        native_to_component = App.Placement(-rotation.multVec(App.Vector(*definition.origin)), rotation)
-        component_to_native = native_to_component.inverse()
-        fronts = [f for f in optic.Shape.Faces if isinstance(f.Surface, Part.Plane)
-                  and f.normalAt(0,0).x > .999999 and abs(f.CenterOfMass.x) < 1e-7]
-        self.assertEqual(len(fronts), 1)
-        front = fronts[0]
-        self.assertAlmostEqual(component_to_native.multVec(front.CenterOfMass).z,14.6558,places=6)
-        self.assert_vector(component_to_native.Rotation.multVec(front.normalAt(0,0)), (0,0,1))
-        for i in (24,25):
-            self.assertAlmostEqual(holder.Shape.Solids[i].optimalBoundingBox(False).XMax,-6,places=6)
-        self.assert_vector(component_to_native.Rotation.multVec(
-            App.Vector(*component.interfaces()[0].normal)), (0,0,1))
+    def test_coated_face_orientation_and_left_right_hardware(self):
+        # Independent native S1 planes/normals; zero overlap alone also permits
+        # a backwards optic. KM05DL's semicircle opens along native -X.
+        source_fronts = {'KM05DR': (14.6558, (0,0,1)),
+                         'KM05DL': (2.032, (0,0,1)),
+                         'KM100D': (6.35, (0,0,1)),
+                         'KM100DL': (-6.35, (0,0,-1))}
+        for mount, (z, normal) in source_fronts.items():
+            with self.subTest(mount=mount):
+                component = catalog.create('d_mirror', mount, mount=mount)
+                component.recompute()
+                optic, holder = component.get_object().Children
+                definition = holder.Proxy
+                rotation = App.Rotation('XYZ', *definition.rotation)
+                native_to_component = App.Placement(-rotation.multVec(App.Vector(*definition.origin)), rotation)
+                component_to_native = native_to_component.inverse()
+                fronts = [f for f in optic.Shape.Faces if isinstance(f.Surface, Part.Plane)
+                          and f.normalAt(0,0).x > .999999 and abs(f.CenterOfMass.x) < 1e-7]
+                self.assertEqual(len(fronts), 1)
+                front = fronts[0]
+                self.assertAlmostEqual(component_to_native.multVec(front.CenterOfMass).z,z,places=6)
+                self.assert_vector(component_to_native.Rotation.multVec(front.normalAt(0,0)), normal)
+                self.assert_vector(component_to_native.Rotation.multVec(
+                    App.Vector(*component.interfaces()[0].normal)), normal)
+                for index in reference()['pairs'][mount].get('seated_clamp_offsets_mm', {}):
+                    self.assertAlmostEqual(holder.Shape.Solids[int(index)].optimalBoundingBox(False).XMax,-6,places=6)
+                # Above the open edge only the upright arm remains. Its side
+                # must reverse for the exact left-handed source, with no
+                # reflection/negative scale applied to purchased geometry.
+                upper = holder.Shape.common(Part.makeBox(200,200,100,
+                    App.Vector(-100,-100,6 if mount.startswith('KM05') else 13)))
+                self.assertGreater(len(upper.Solids),0)
+                sign = -1 if mount in ('KM05DL','KM100DL') else 1
+                center_y = sum(s.Volume * s.CenterOfMass.y for s in upper.Solids) / upper.Volume
+                self.assertGreater(sign * center_y, 1)
 
     def ray(self, optic, hit, direction=(-1,0,0)):
         optic.compute_placement()
@@ -220,11 +236,11 @@ class DMirrorTests(unittest.TestCase):
             component.get_object().BasePlacement.Base.z = catalog.native_height(component)
             components.append(component)
         plate, machining = machined_baseplate.add(root, thickness=30)
-        ordinary = root.add(Component('Ordinary',Baseplate((350,160,30),optical_height=0,
+        ordinary = root.add(Component('Ordinary',Baseplate((650,160,30),optical_height=0,
             grid_offset=(0,0)),recompute_priority=-2),(0,0,0),0)
         root.recompute()
-        self.assertEqual(len(machining.plan['holes']),2)
-        self.assertEqual(len(machining.plan['pockets']),1)
+        self.assertEqual(len(machining.plan['holes']),len(MOUNTS))
+        self.assertEqual(len(machining.plan['pockets']),2)
         self.assertIsNone(machining.plan['optical_height_mm'])
         for target in (plate,ordinary):
             shape = target.get_object().Shape
@@ -252,11 +268,11 @@ class DMirrorTests(unittest.TestCase):
             definition = catalog.VendorPart(mount)
             op = attachments.operations(definition)[0]
             self.assertEqual(op['kind'],'tapped')
-            self.assertEqual(op['thread'],'8-32 UNC' if mount=='KM05DR' else 'M4 x 0.7')
-            self.assertAlmostEqual(op['diameter_mm'],3.4544 if mount=='KM05DR' else 3.3)
+            self.assertEqual(op['thread'],'8-32 UNC' if mount.startswith('KM05') else 'M4 x 0.7')
+            self.assertAlmostEqual(op['diameter_mm'],3.4544 if mount.startswith('KM05') else 3.3)
             footprint = definition.drill()
             self.assertTrue(footprint.isValid())
-            self.assertEqual(len(footprint.Solids),1 if mount=='KM05DR' else 2)
+            self.assertEqual(len(footprint.Solids),1 if mount.startswith('KM05') else 2)
             root = Layout('Thin '+mount)
             component = root.add(catalog.create('d_mirror',mount,mount=mount),(0,0,0),0)
             component.get_object().BasePlacement.Base.z = catalog.native_height(component)
@@ -271,7 +287,7 @@ class DMirrorTests(unittest.TestCase):
             component.recompute()
             optic,holder = component.get_object().Children
             center = App.Vector(*attachments.operations(holder.Proxy,holder.Placement)[0]['center_mm'])
-            if mount=='KM05DR':
+            if mount.startswith('KM05'):
                 hardware = Part.makeCylinder(4.1656/2,6.35,center-App.Vector(0,0,3.175))
                 self.assertAlmostEqual(hardware.optimalBoundingBox(False).ZMax,3.175,places=6)
                 self.assertAlmostEqual(hardware.optimalBoundingBox(False).ZMin,-3.175,places=6)
@@ -294,7 +310,7 @@ class DMirrorTests(unittest.TestCase):
         self.assertEqual({obj.Name for obj in self.doc.Objects}, before)
 
     def test_api_validation_and_instance_isolation(self):
-        for part in ('KM05DR','KM100D','PFD05-03-P01','PFD10-03-P01'):
+        for part in (*MOUNTS,'PFD05-03-P01','PFD10-03-P01'):
             component = catalog.create(part,part); component.recompute()
             self.assertTrue(component.get_object().Shape.isValid())
         for mount in MOUNTS:
@@ -334,8 +350,8 @@ class DMirrorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)/'d_mirrors.FCStd'
             static,report = demo.build(output)
-            self.assertEqual(len(report['samples']),2)
-            self.assertEqual(report['export']['solids'],51)
+            self.assertEqual({sample['mount'] for sample in report['samples']},set(MOUNTS))
+            self.assertEqual(report['export']['solids'],101)
             expected = {o.Name:(o.Shape.Volume,len(o.Shape.Solids)) for o in static.Objects if hasattr(o,'Shape')}
             App.closeDocument(static.Name); static = App.openDocument(str(output))
             for name,(volume,count) in expected.items():
@@ -346,7 +362,7 @@ class DMirrorTests(unittest.TestCase):
                 self.assertAlmostEqual(obj.Shape.Volume,volume,places=6)
             plate = Part.read(str(output.with_name(output.stem+'_baseplate.step')))
             self.assertTrue(plate.isValid());self.assertEqual(len(plate.Solids),1)
-            self.assertEqual(len(json.loads(output.with_suffix('.machining.json').read_text())['holes']),2)
+            self.assertEqual(len(json.loads(output.with_suffix('.machining.json').read_text())['holes']),4)
 
 
 if __name__ == '__main__':

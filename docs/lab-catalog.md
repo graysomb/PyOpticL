@@ -392,9 +392,11 @@ PYTHONPATH=/Applications/FreeCAD.app/Contents/Resources/lib:. /Applications/Free
 ## D-shaped pickoff mirrors
 
 See [D mirrors and matching holders](d-mirrors.md) for exact KM05DR/PFD05-03-P01
-and KM100D/PFD10-03-P01 pairs, native datum conventions, finite D-shaped
+and KM100D/PFD10-03-P01 pairs, plus their KM05DL and KM100DL left-hand holders,
+native datum conventions, finite D-shaped
 reflection, selected plate attachments, source evidence, and rebuild commands.
 Use `create('d_mirror', label, mount='KM05DR')` or
-`create('d_mirror', label, mount='KM100D')`. Bare parts are available by part
-number. Neither holder has locating dowels; KM05DR retains its imperial 8-32
-thread. KM100D includes a small plate relief for its removable knob.
+`create('d_mirror', label, mount='KM100D')`. The same API accepts
+`mount='KM05DL'` and `mount='KM100DL'`. Bare parts are available by part
+number. None has locating dowels; KM05DR/KM05DL retain their imperial 8-32
+threads. KM100D/KM100DL include small plate reliefs for their removable knobs.

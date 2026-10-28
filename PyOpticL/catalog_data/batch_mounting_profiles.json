@@ -849,5 +849,134 @@
       "hardware": "8-32 UNC x 1/4 in mounting stud",
       "note": "One double-ended 6.35 mm stud: nominal 3.175 mm engagement in holder and plate. Holder retains its imperial 8-32 tapped hole; no M4 substitution. Single-stud mounting does not provide dowel registration."
     }
+  },
+  "KM05DL": {
+    "seat_frame": "mounting_face",
+    "screws": [
+      "post_bottom"
+    ],
+    "dowels": [],
+    "optical_height_mm": 16.526,
+    "source": "https://www.thorlabs.com/item/KM05DL; engineering drawing and independently measured source STEP",
+    "step_sha256": "005ab0b5cce70806b3f266661a4ac788adc23bdac02cb6271da7c78ca585c98e",
+    "drawing_sha256": "5b5c647cfe24ff8d4fa73a6d3b26d05c21f7080ffe2d9a12dda031b1a33e22e8",
+    "native_seat": [
+      15.6464,
+      -0.9144,
+      -8.28675
+    ],
+    "native_holes": [
+      {
+        "name": "post_bottom",
+        "center": [
+          15.6464,
+          -0.9144,
+          -8.28675
+        ],
+        "axis": [
+          -1,
+          0,
+          0
+        ],
+        "diameter": 4.1656,
+        "depth": 8.226325,
+        "thread": "8-32 UNC"
+      },
+      {
+        "name": "post_side",
+        "center": [
+          0.9144,
+          -15.6464,
+          -8.28675
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.1656,
+        "depth": 8.226325,
+        "thread": "8-32 UNC"
+      }
+    ],
+    "screw": {
+      "thread": "8-32 UNC",
+      "diameter_mm": 3.4544,
+      "depth_mm": 10.0,
+      "thread_depth_mm": 8.0,
+      "hardware": "8-32 UNC x 1/4 in mounting stud",
+      "note": "One double-ended 6.35 mm stud: nominal 3.175 mm engagement in holder and plate. Holder retains its imperial 8-32 tapped hole; no M4 substitution. Single-stud mounting does not provide dowel registration."
+    }
+  },
+  "KM100DL": {
+    "seat_frame": "mounting_face",
+    "screws": [
+      "post_bottom"
+    ],
+    "dowels": [],
+    "optical_height_mm": 31.004,
+    "source": "https://www.thorlabs.com/item/KM100DL; engineering drawing and independently measured source STEP",
+    "step_sha256": "4f6ed761ff044bb525c20e500586404449781ced7b2640ccac6c4bd0336f0f85",
+    "drawing_sha256": "66bde5d52bb56ec3be76b81798af85fd8da1af2e14753fad6f64105b77a85c61",
+    "native_seat": [
+      6.604,
+      -21.209,
+      7.6073
+    ],
+    "native_holes": [
+      {
+        "name": "post_bottom",
+        "center": [
+          6.604,
+          -21.209,
+          7.6073
+        ],
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "diameter": 4.7625,
+        "depth": 12.192,
+        "thread": null,
+        "counterbore_mm": 7.9375
+      },
+      {
+        "name": "post_side",
+        "center": [
+          32.004,
+          4.191,
+          7.6073
+        ],
+        "axis": [
+          -1,
+          0,
+          0
+        ],
+        "diameter": 4.7625,
+        "depth": 12.192,
+        "thread": null,
+        "counterbore_mm": 7.9375
+      }
+    ],
+    "screw": {
+      "hardware": "M4 x 0.7 x 12 mm mounting cap screw",
+      "note": "One M4 x 12 cap screw through existing #8/M4 counterbore: 4.318 mm clearance section and 7.682 mm nominal plate engagement. Vendor includes imperial/metric mounting screws; supplied lengths are unverified. No dowel registration."
+    },
+    "clearance_pockets": [
+      {
+        "origin_mm": [
+          -37.5245,
+          4.83,
+          -31.889
+        ],
+        "size_mm": [
+          11.93,
+          15.232,
+          0.895
+        ],
+        "purpose": "Source solid 21 removable adjuster knob; 0.635 mm below seat plus 0.25 mm clearance. Top extends 0.01 mm above seat for a clean cut."
+      }
+    ]
   }
 }

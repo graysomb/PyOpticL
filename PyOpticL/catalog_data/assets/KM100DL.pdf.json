@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KM100DL",
+  "product_url": "https://www.thorlabs.com/item/KM100DL",
+  "asset_url": "https://media.thorlabs.com/globalassets/items/k/km/km1/km100dl/ttn010108-e0w.pdf?v=0116115958",
+  "vendor_filename": "ttn010108-e0w.pdf",
+  "document_id": "TTN010108-E0W",
+  "revision": "B",
+  "retrieved_at": "2026-10-28T16:16:56.581419+00:00",
+  "sha256": "66bde5d52bb56ec3be76b81798af85fd8da1af2e14753fad6f64105b77a85c61",
+  "kind": "pdf",
+  "cache_path": "objects/66bde5d52bb56ec3be76b81798af85fd8da1af2e14753fad6f64105b77a85c61/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

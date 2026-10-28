@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "vendor": "thorlabs",
+  "part_number": "KM05DL",
+  "product_url": "https://www.thorlabs.com/item/KM05DL",
+  "asset_url": null,
+  "vendor_filename": "KM05DL-Step.step",
+  "document_id": "TTN098184-E0W",
+  "revision": null,
+  "retrieved_at": "2026-10-28T16:16:56.396586+00:00",
+  "sha256": "005ab0b5cce70806b3f266661a4ac788adc23bdac02cb6271da7c78ca585c98e",
+  "kind": "step",
+  "cache_path": "objects/005ab0b5cce70806b3f266661a4ac788adc23bdac02cb6271da7c78ca585c98e/source.step",
+  "units": "requires_cad_inspection",
+  "identity_evidence": "product-page document association; not inferred from shape",
+  "acquisition_note": "Downloaded from the exact SKU page Support Documents STEP control."
+}
