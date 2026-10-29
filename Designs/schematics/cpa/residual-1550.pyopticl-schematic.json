@@ -53,10 +53,26 @@
       "mirror_role": "turning"
     },
     {
+      "id": "SHG_IR_M1",
+      "reference": "SHG_IR_M1",
+      "kind": "mirror",
+      "preset": "POLARIS-K05VS2",
+      "parameters": {
+        "diameter": 12.7
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
       "id": "Residual_1550",
       "reference": "Residual_1550",
-      "kind": "output",
-      "preset": "open",
+      "kind": "fiber_output",
+      "preset": "POLARIS-K05T6",
       "parameters": {},
       "position": [
         0,
@@ -110,6 +126,23 @@
         "pass_id": ""
       },
       "b": {
+        "node_id": "SHG_IR_M1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e3",
+      "a": {
+        "node_id": "SHG_IR_M1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
         "node_id": "Residual_1550",
         "port_id": "beam",
         "pass_id": ""
@@ -158,11 +191,17 @@
         12.7,
         -45
       ],
-      "Residual_1550": [
+      "SHG_IR_M1": [
         -213.25521376258732,
         -219.01257307546803,
         12.7,
-        180
+        -45
+      ],
+      "Residual_1550": [
+        -213.25521376258732,
+        -339.012573075468,
+        12.7,
+        90
       ]
     },
     "projection": "XY",

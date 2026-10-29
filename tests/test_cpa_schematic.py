@@ -128,8 +128,8 @@ class CPAStarterTests(unittest.TestCase):
         fibers = [
             n for d in docs.values() for n in d.nodes if n.kind.startswith("fiber_")
         ]
-        self.assertEqual(len(fibers), 2)
-        self.assertEqual({n.reference for n in fibers}, {"To_EDFA", "From_EDFA"})
+        self.assertEqual(len(fibers), 3)
+        self.assertEqual({n.reference for n in fibers}, {"To_EDFA", "From_EDFA", "Residual_1550"})
         before = docs["compressor"].layout["poses"]["Crystal_1550_exit"][:3]
         after = docs["output-775"].layout["poses"]["SHG_775_boundary"][:3]
         self.assertEqual(before, after)
@@ -161,6 +161,23 @@ class CPAStarterTests(unittest.TestCase):
         self.assertAlmostEqual(b.exit[1] - b.entry[1], .9874269245, delta=1e-6)
         transmitted.node("SHG_M1").parameters.update(reflect_min=900, reflect_max=800)
         self.assertFalse(compile_schematic(transmitted).ok)
+
+    def test_rear_1550_mirror_feeds_integral_lens_fiber_coupler(self):
+        document = generator.residual1550()
+        mirror, coupler = document.node("SHG_IR_M1"), document.node("Residual_1550")
+        self.assertEqual(mirror.preset, "POLARIS-K05VS2")
+        self.assertEqual(parameter_values(mirror)["diameter"], 12.7)
+        self.assertEqual(coupler.kind, "fiber_output")
+        self.assertEqual(coupler.preset, "POLARIS-K05T6")
+        self.assertEqual([n.reference for n in document.nodes if n.kind == "lens"], ["SHG_L2"])
+        topology = resolve_topology(document)
+        self.assertEqual(topology.order, ["SHG_1550_boundary", "SHG_L2", "SHG_M1", "SHG_IR_M1", "Residual_1550"])
+        trace = trace_scene(document)
+        self.assertTrue(trace.ok, trace.diagnostics)
+        self.assertAlmostEqual(trace.layout.lengths["e2"], generator.REAR_DICHROIC_TO_MIRROR_MM)
+        self.assertAlmostEqual(trace.layout.lengths["e3"], generator.REAR_MIRROR_TO_COUPLER_MM)
+        for actual, expected in zip(trace.layout.visits[mirror.id].outputs["out"], (0, -1, 0)):
+            self.assertAlmostEqual(actual, expected, delta=1e-9)
 
 
 if __name__ == "__main__":

@@ -15,10 +15,12 @@ import Part
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from PyOpticL import attachments, lab_catalog, machined_baseplate
-from PyOpticL.layout import Layout
+from PyOpticL.layout import Layout, Component
 from PyOpticL.beam_path import BeamSegment, BeamPath, linear_polarization
 from PyOpticL.schematic import compile_schematic, load_schematic
 from PyOpticL.schematic.runtime import check_pass_trace
+from PyOpticL.schematic.parts import part_spec
+from PyOpticL.schematic.topology import resolve_topology
 
 SCHEMATICS = ROOT / "Designs/schematics/cpa"
 
@@ -91,6 +93,17 @@ def _build(output=None):
         obj = shared[ref].get_object()
         assert (obj.Placement.Base - App.Vector(*position[:3])).Length < 1e-6
     stage = root.add(Layout(document.title), (0, 0, 0), 0)
+    topology = resolve_topology(document)
+    for ref, position in ns["PLACEMENTS"].items():
+        if ref in shared:
+            continue
+        node = document.node(ref)
+        component = stage.add(
+            Component(node.reference, part_spec(document, node, topology).instantiate()),
+            position[:3], position[3],
+        )
+        components.append(component.get_object())
+        shared[ref] = component
     settings = ns["SOURCE"]
     stage.add(BeamPath("SHG_1550_boundary", wavelength=settings["wavelength"],
         polarization=linear_polarization(settings["polarization_angle"]),
@@ -173,7 +186,7 @@ def _build(output=None):
 
     dichroic = shared["SHG_M1"].get_object()
     residual_beam = next(o for o in stages["residual-1550"].get_object().Children if hasattr(o, "BeamSegments"))
-    rear = next(s for s in residual_beam.BeamSegments if s.StartObject == dichroic and s.EndObject is None)
+    rear = next(s for s in residual_beam.BeamSegments if s.StartObject == dichroic and not s.InternalToComponent)
     rear_guide = Part.makeCylinder(1, rear.Proxy.distance,
         App.Vector(*rear.Proxy.get_global_position()), App.Vector(*rear.Proxy.get_global_direction()))
     rear_overlap = sum(rear_guide.common(o.Shape).Volume for o in attachments.descendants(dichroic)

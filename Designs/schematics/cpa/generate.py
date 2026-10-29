@@ -34,6 +34,8 @@ COMPRESSOR_GRATING_SEPARATION_MM = (
     STRETCHER_LENS_SEPARATION_MM - 2 * STRETCHER_GRATING_GAP_MM
 )
 RETURN_SEPARATION_MM = 9.0
+REAR_DICHROIC_TO_MIRROR_MM = 110.0
+REAR_MIRROR_TO_COUPLER_MM = 120.0
 H = 12.7
 T = 101.62794830005953
 
@@ -247,13 +249,16 @@ def residual1550():
     exit, direction, _ = dichroic_transmission(
         (-100, -220, H), (-1, 0, 0), yaw((1, 0, 0), -45), 3, 1.5
     )
-    point = add(exit, mul(direction, 110))
-    out = node(d, "Residual_1550", "output", "open", point[:2], 180)
-    chain(d, [s, l, m, out])
+    point = add(exit, mul(direction, REAR_DICHROIC_TO_MIRROR_MM))
+    steering = node(d, "SHG_IR_M1", "mirror", "POLARIS-K05VS2", point[:2], -45)
+    out = node(d, "Residual_1550", "fiber_output", "POLARIS-K05T6",
+               (point[0], point[1] - REAR_MIRROR_TO_COUPLER_MM), 90)
+    chain(d, [s, l, m, steering, out])
     return d
 
 
 ASSUMPTIONS = [
+    "The rear 1550 nm output uses a 12.7 mm mirror SHG_IR_M1 in a POLARIS-K05VS2 mount, then an existing F260FC-1550/AD1109F/POLARIS-K05T6 fiber coupler with its integral lens. Editable starter distances are 110 mm from the dichroic rear surface to the steering mirror and 120 mm from that mirror to the receiving coupler. No additional coupling lens or fiber cable is modeled; fiber mode matching is not validated.",
     "The final SHG optic is an ideal dichroic: 700–850 nm reflects (including 775 nm), while 1550 nm transmits through a nominal 3 mm, n=1.5 parallel plate. The optic's exact part/coating is not yet selected. The MHV-12.7L-R mount uses its existing 12.7 mm, 3 mm-thick optic seating contract; the rear beam clearance is checked against the pinned vendor CAD.",
     "Separate 775 nm and residual 1550 nm traces share one output lens and one dichroic assembly. The residual 1550 nm display power of 425 mW is only illustrative (500 minus 75 mW, ignoring losses), not a conversion or residual-power prediction. Both wavelengths and boundary beam parameters remain editable.",
     "Both stretcher lenses are 25.4 mm (1 inch) diameter in POLARIS-L1G mounts. The stretcher end retroreflecting mirror ST_M1 is 25.4 mm diameter in a POLARIS-K1VS2 mount. The final compressor mirror CP_M2 is 12.7 mm (1/2 inch) diameter in a POLARIS-K05VS2 mount. Their mounting pockets and drilling follow the catalog contracts.",
@@ -266,7 +271,7 @@ ASSUMPTIONS = [
     "Compressor grating centers are separated by 1000 - 2*70 = 860 mm along the outgoing inter-grating beam. This distance is an editable schematic length constraint; the roof and return route follow the second grating.",
     "The stretcher filter location uses the tunable VA100 slit with its catalog bracket and drill contract. Slit width is editable and provisionally 1 mm; spectral bandwidth remains unconfirmed.",
     "The compressor LO pickoff and its branch are omitted. The return from CP_G1 feeds CP_M2 directly, then the SHG half-wave plate and lens.",
-    "EDFA remains external, bounded by two existing fiber collimators with integral lenses; no additional coupling lenses, fibers or EDFA package are modeled.",
+    "EDFA remains external, bounded by two existing fiber collimators with integral lenses. A third integral-lens coupler receives the rear 1550 nm output; no additional coupling lenses, fibers or EDFA package are modeled.",
     "1550 nm and 775 nm are separate traces joined at the crystal exit. No gain, pulse dispersion, SHG efficiency or phase matching is predicted.",
     "500 mW amplifier input and 75 mW 775 nm display values follow the reference labels; seed power and all Gaussian input waists are illustrative.",
     "Rendered beams are constant-width center-ray guides, not validated Gaussian beam envelopes.",

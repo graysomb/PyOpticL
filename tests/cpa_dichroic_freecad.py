@@ -54,6 +54,10 @@ class DichroicRoutingTests(unittest.TestCase):
         np.testing.assert_allclose(rear.get_global_direction(), (-1, 0, 0), atol=1e-9)
         self.assertAlmostEqual(rear.get_global_position()[1], -219.012573075, places=6)
         self.assertAlmostEqual(rear.power, .425)
+        self.assertEqual(external[0].EndObject.Label, "SHG_IR_M1")
+        received = next(s for s in segments if s.StartObject is not None and s.StartObject.Label == "SHG_IR_M1")
+        self.assertEqual(received.EndObject.Label, "Residual_1550")
+        np.testing.assert_allclose(received.Proxy.get_global_direction(), (0, -1, 0), atol=1e-9)
         guide = Part.makeCylinder(1, rear.distance, App.Vector(*rear.get_global_position()),
                                   App.Vector(*rear.get_global_direction()))
         for child in attachments.descendants(optic):

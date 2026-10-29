@@ -5,7 +5,10 @@ from PyOpticL.library import optics, thorlabs
 from PyOpticL.schematic.runtime import check_pass_trace
 from PyOpticL.schematic import catalog_parts as catalog
 
-PLACEMENTS = {'SHG_L2': (0, -220, 12.7, 0), 'SHG_M1': (-100, -220, 12.7, -45)}
+PLACEMENTS = {'Residual_1550': (-213.25521376258732, -339.012573075468, 12.7, 90),
+ 'SHG_IR_M1': (-213.25521376258732, -219.01257307546803, 12.7, -45),
+ 'SHG_L2': (0, -220, 12.7, 0),
+ 'SHG_M1': (-100, -220, 12.7, -45)}
 
 SOURCE = {'angle': 180,
  'polarization_angle': 0,
@@ -15,9 +18,9 @@ SOURCE = {'angle': 180,
  'wavelength': 1550}
 
 EXPECTED_PASSES = {'Residual_1550': {'branches': {},
-                   'component': None,
-                   'entry': (-213.25521376258732, -219.01257307546803, 12.7),
-                   'exit': (-213.25521376258732, -219.01257307546803, 12.7),
+                   'component': 'Residual_1550',
+                   'entry': (-213.25521376258726, -339.012573075468, 12.7),
+                   'exit': (-213.25521376258726, -339.012573075468, 12.7),
                    'internal_length': 0.0,
                    'mode': 'receive',
                    'reference': 'Residual_1550'},
@@ -33,6 +36,18 @@ EXPECTED_PASSES = {'Residual_1550': {'branches': {},
                        'internal_length': 0,
                        'mode': 'emit',
                        'reference': 'SHG_1550_boundary'},
+ 'SHG_IR_M1': {'branches': {'out': {'connection': 'e3',
+                                    'direction': (2.220446049250313e-16,
+                                                  -1.0,
+                                                  0.0),
+                                    'length': 120.0,
+                                    'pass': 'Residual_1550'}},
+               'component': 'SHG_IR_M1',
+               'entry': (-213.2552137625873, -219.01257307546803, 12.7),
+               'exit': (-213.2552137625873, -219.01257307546803, 12.7),
+               'internal_length': 0.0,
+               'mode': 'pass',
+               'reference': 'SHG_IR_M1'},
  'SHG_L2': {'branches': {'out': {'connection': 'e1',
                                  'direction': (-1.0,
                                                1.2246467991473532e-16,
@@ -49,8 +64,8 @@ EXPECTED_PASSES = {'Residual_1550': {'branches': {},
                                  'direction': (-1.0,
                                                1.2246467991473532e-16,
                                                0.0),
-                                 'length': 110.00000000000001,
-                                 'pass': 'Residual_1550'}},
+                                 'length': 110.0,
+                                 'pass': 'SHG_IR_M1'}},
             'component': 'SHG_M1',
             'entry': (-99.99999999999999, -220.0, 12.7),
             'exit': (-103.2552137625873, -219.01257307546803, 12.7),
@@ -59,9 +74,7 @@ EXPECTED_PASSES = {'Residual_1550': {'branches': {},
             'reference': 'SHG_M1'}}
 
 PATH_LENGTHS = {}
-OPEN_SEGMENTS = [((-103.2552137625873, -219.01257307546803, 12.7),
-  (-1.0, 1.2246467991473532e-16, 0.0),
-  110.00000000000001)]
+OPEN_SEGMENTS = []
 
 def build_layout():
     layout = Layout('CPA draft — residual 1550 nm transmitted output')
@@ -72,10 +85,16 @@ def build_layout():
     part_1 = Component('SHG_M1', catalog.dichroic(mount='MHV-12.7L-R', diameter=12.7, thickness=3, reflect_min=700, reflect_max=850, refractive_index=1.5))
     x, y, z, angle = PLACEMENTS['SHG_M1']
     objects['SHG_M1'] = layout.add(part_1, position=(x, y, z), rotation=angle)
+    part_2 = Component('SHG_IR_M1', catalog.mirror(mount='POLARIS-K05VS2', diameter=12.7, thickness=3))
+    x, y, z, angle = PLACEMENTS['SHG_IR_M1']
+    objects['SHG_IR_M1'] = layout.add(part_2, position=(x, y, z), rotation=angle)
+    part_3 = Component('Residual_1550', catalog.coupling(mount='POLARIS-K05T6', receiving=True))
+    x, y, z, angle = PLACEMENTS['Residual_1550']
+    objects['Residual_1550'] = layout.add(part_3, position=(x, y, z), rotation=angle)
     beam = layout.add(BeamPath('SHG_1550_boundary', wavelength=SOURCE["wavelength"],
         polarization=linear_polarization(SOURCE["polarization_angle"]),
         power=SOURCE["power"], waist=SOURCE["waist"],
-        final_distance=80.0, trace_limit=6, trace_ends=OPEN_SEGMENTS),
+        final_distance=80.0, trace_limit=7, trace_ends=OPEN_SEGMENTS),
         position=SOURCE["position"], rotation=SOURCE["angle"])
     layout.recompute()
     check_pass_trace(beam, objects, EXPECTED_PASSES, 'SHG_1550_boundary')
