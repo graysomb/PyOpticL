@@ -241,7 +241,7 @@ class RoofSupport:
     def contract(self):
         frames = self.geometry.frames(mounted=True)
         frames.append(Frame('clamp_tap',tuple(support_point(self.geometry,self.spec['hole_center_mm'])),(180,0,0)))
-        return ComponentContract('roof-integral-support','2','Lab',
+        return ComponentContract('roof-integral-support',self.spec.get('revision','2'),'Lab',
             'HRS-INTEGRAL-'+self.geometry.orientation.upper(),'fabricated',
             frames=tuple(frames),
             holes=(Hole('clamp_tap','clamp_tap',self.spec['tap_drill_mm'],self.spec['hole_depth_mm'],
@@ -291,7 +291,7 @@ class MountedRoof(Assembly):
     def __init__(self, geometry):
         self.geometry = geometry
         spec = support_reference(geometry)
-        contract = ComponentContract('roof','2','Lab','','assembly',
+        contract = ComponentContract('roof',spec.get('revision','2'),'Lab','','assembly',
             frames=tuple(geometry.frames(mounted=True)),optical_reference='input',
             provenance=provenance()+support_provenance(geometry))
         center = App.Vector(*spec['hole_center_mm']) + App.Vector(0,0,spec['clamp_thickness_mm'])

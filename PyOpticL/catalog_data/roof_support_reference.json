@@ -1,5 +1,5 @@
 {
-  "revision": "2",
+  "revision": "3",
   "orientations": {
     "horizontal": {
       "source": "HRS1015-AG-Step Copy 1.step",
@@ -79,14 +79,14 @@
       "source_reference": "roof-support-horizontal"
     },
     "vertical": {
-      "source": "HRS1015-AG-Step (1).step",
-      "sha256": "d5457df62fbdfa8590457bb0986a864b16ab2b761cac6360f095e2d272ca5265",
+      "source": "HRS1015-AG-Step (2).step",
+      "sha256": "47b62fe522f665edcaddbaf962ea8c645a77a835f6bdc3f22370a2182bb54908",
       "clamp_profile": "roof_vertical_clamp",
       "stop_profiles": [
         "roof_vertical_stop_1",
         "roof_vertical_stop_2"
       ],
-      "stop_height_mm": 12.7,
+      "stop_height_mm": 2.54,
       "clamp": {
         "volume_mm3": 553.3804530583626,
         "bounds_mm": [
@@ -99,14 +99,14 @@
         ]
       },
       "integral_body": {
-        "volume_mm3": 20058.17587402704,
+        "volume_mm3": 18747.25053185803,
         "bounds_mm": [
           -19.05,
           19.0543351531029,
-          -13.299999999999999,
+          -13.3,
           24.8,
           -25.4,
-          1.7347234759768e-15
+          -10.16
         ]
       },
       "reference_optic": {
@@ -153,7 +153,9 @@
       "clamp_thickness_mm": 5.08,
       "plate_top_z_mm": -12.7,
       "stock_bottom_z_mm": -25.4,
-      "source_reference": "roof-support-vertical"
+      "source_reference": "roof-support-vertical-v3",
+      "revision": "3",
+      "replaces_source_reference": "roof-support-vertical"
     }
   },
   "normalization": {
@@ -172,6 +174,7 @@
     "User-corrected integral support designs replace the previous carrier, dowels, M4 attachments and bridge lock.",
     "AG-labelled reference optics are geometric references only. Purchased P01 optic and optical model remain unchanged.",
     "Source blind holes adapted to M2 x 0.4 tap drills (1.6 mm) with 118 degree tips; clamp slots widened to 2.2 mm for M2 clearance.",
-    "Vertical support outer-wall source deviation below 0.003 mm retained within 0.01 mm CAD comparison tolerance by nominal profile extrusion."
+    "Vertical support outer-wall source deviation below 0.003 mm retained within 0.01 mm CAD comparison tolerance by nominal profile extrusion.",
+    "Vertical revision 3 uses HRS1015-AG-Step (2).step: stops lowered from 12.7 to 2.54 mm above the seating floor; clamp and AG reference optic are geometrically identical to revision 2. Previous source remains pinned as roof-support-vertical."
   ]
 }

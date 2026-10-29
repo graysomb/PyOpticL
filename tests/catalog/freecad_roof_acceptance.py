@@ -283,6 +283,26 @@ class RoofTests(unittest.TestCase):
             self.assertLess(original_optic.cut(optic.get_object().Shape).Volume,1e-5)
             self.assertLess(optic.get_object().Shape.cut(original_optic).Volume,1e-5)
 
+    def test_vertical_revision_three_lowers_only_the_integral_stops(self):
+        geometry = RoofGeometry('vertical')
+        specification = support_reference(geometry)
+        self.assertEqual(specification['source_reference'], 'roof-support-vertical-v3')
+        self.assertEqual(specification['stop_height_mm'], 2.54)
+        current = Part.read(str(resolve_reference(specification['source_reference']))).Solids
+        previous = Part.read(str(resolve_reference('roof-support-vertical'))).Solids
+        for index in (0, 1):  # Unchanged clamp and reference optic.
+            self.assertLess(current[index].cut(previous[index]).Volume, 1e-6)
+            self.assertLess(previous[index].cut(current[index]).Volume, 1e-6)
+        self.assertLess(current[2].cut(previous[2]).Volume, 1e-6)
+        self.assertAlmostEqual(current[2].optimalBoundingBox().ZMax + 12.7, 2.54)
+        self.assertAlmostEqual(previous[2].optimalBoundingBox().ZMax + 12.7, 12.7)
+        rebuilt = RoofSupport(geometry)
+        seat = next(frame for frame in rebuilt.contract().frames if frame.name == 'plate_top')
+        self.assertAlmostEqual(rebuilt.shape().optimalBoundingBox().ZMax-seat.position[2], 2.54, delta=1e-6)
+        self.assertEqual(rebuilt.contract().revision, '3')
+        self.assertEqual(specification['hole_depth_mm'], 5.08)
+        self.assertEqual(specification['tap_drill_mm'], 1.6)
+
     def plate_scene(self, orientation, machined, nested=True):
         root=Layout('Plate layout')
         root.get_object().BasePlacement=App.Placement(App.Vector(50,60,3),App.Rotation('XYZ',0,0,17))
@@ -398,7 +418,7 @@ class RoofTests(unittest.TestCase):
                 self.assertEqual(len(report['machining']['pockets']),0)
                 self.assertEqual(len(report['machining']['integrated_holders']),2)
                 self.assertEqual(checks['hardware_solid_count'],11)
-                self.assert_vector(report['machining']['stock_envelope_mm'],(85,170,49.05),tol=1e-5)
+                self.assert_vector(report['machining']['stock_envelope_mm'],(85,170,38.89),tol=1e-5)
                 self.assertTrue(checks['native_reopen_valid'])
                 self.assertEqual(sum(r['part_number']=='HRS1015-P01' for r in report['bom'] if 'part_number' in r),2)
                 for suffix,field in [('.report.json',None),('.machining.json','machining'),('.bom.json','bom')]:

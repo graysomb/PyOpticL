@@ -88,7 +88,7 @@ def render(report=REPORT, output=None):
         xlabel="X (mm)",
         ylabel="Y (mm)",
         xlim=(-150, 570),
-        ylim=(-455, 95),
+        ylim=(min(s["start_mm"][1] for s in trace) - 55, 75),
         aspect="equal",
     )
     ax.grid(alpha=0.12)

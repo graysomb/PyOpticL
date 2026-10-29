@@ -242,9 +242,10 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         beam = next(o for o in stages["compressor"].get_object().Children if hasattr(o, "BeamSegments"))
         checks = []
         for start, end, targets in (
-            ("CP_M1", "CP_G1", ("CP_Pickoff",)),
+            ("CP_M1", "CP_G1", ("CP_Pickoff", "CP_VRoof")),
             ("CP_G1", "CP_VRoof", ("CP_Pickoff", "CP_M1")),
             ("CP_VRoof", "CP_G1", ("CP_Pickoff", "CP_M1")),
+            ("CP_G1", "CP_Pickoff", ("CP_VRoof", "CP_M1")),
         ):
             segment = next(s for s in beam.BeamSegments
                            if reference(s.StartObject) == start and reference(s.EndObject) == end)
@@ -256,7 +257,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
                 checks.append(dict(start=start, end=end, assembly=target, overlap_mm3=overlap))
         compressor_clearance = dict(probe_radius_mm=1, checks=checks)
         if any(c["overlap_mm3"] > 1e-5 for c in checks):
-            raise ValueError("Compressor intermediate path obstructed: " + str(checks))
+            raise ValueError("Compressor bypass path obstructed: " + str(checks))
     if collisions or beam_collisions:
         raise ValueError(dict(cross_assembly_collisions=collisions,
                               beam_to_unintended_component_collisions=beam_collisions))

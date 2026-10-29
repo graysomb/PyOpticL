@@ -22,15 +22,17 @@ The grating is centered between the two lateral spots. Its four spots lie at
 separation. The compressor’s nominal 430 mm fold plane places the horizontal roof entrance 417.3 mm from the first grating hit;
 actual ray lengths also include the finite roof path and lateral walkoff.
 
-The compressor input leg is at Y=-300 mm and the vertical roof entrance at
-Y=-400 mm. The horizontal roof is entered through B first, putting the
-intermediate corridor on the side that clears the final pickoff. A half-inch
-PFD05-03-P01 in KM05DL replaces the final mirror, with its interaction at
-(320,-220,9.875) mm. CP_M1 also uses PFD05-03-P01 in KM05DL, with a −5.3 mm
-in-plane offset along local Y and a 0.5 mm edge datum. Its interaction remains
-(320,-300,15.525) mm. The off-center input D mirror and left-handed final
-pickoff clear the intermediate bypasses. The SHG/output chain retains its X/Y positions at
-the new 9.875 mm height, including the rear 1550 nm collection mirror and coupler.
+The compressor input leg is at Y=-300 mm. CP_M1 is a centered half-inch circular
+mirror in POLARIS-K05VS2 at (320,-300,15.525) mm. The vertical roof entrance is at
+Y=-100 mm, between the grating and D pickoff. Its physical axis is shifted 5 mm
+in negative local Y (negative world X) from the return ray, so the beam enters
+and exits the roof intentionally off axis. The revised 2.54 mm integral stops
+are retained. Both straight-through beams clear the roof optic and mount with
+1 mm radius probes. A half-inch PFD05-03-P01 in KM05DL at (320,-220,9.875) mm
+selects the lower output for SHG. The horizontal roof is entered through B first;
+its 9.538700743 mm separation preserves the quadrant-centered grating spots.
+The SHG/output chain retains its X/Y positions and 9.875 mm height, including
+the rear 1550 nm collection mirror and coupler.
 
 Edit the constants in `generate.py`, then regenerate the schematic JSON and
 standalone scripts from the repository root:

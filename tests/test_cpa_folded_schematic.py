@@ -179,8 +179,9 @@ class FoldedCPATests(unittest.TestCase):
         self.assertEqual(topology.incident_ports["CP_HRoof_return"], "A")
         self.assertEqual(topology.incident_ports["CP_VRoof"], "B")
         self.assertEqual(document.node("CP_Pickoff").preset, "KM05DL")
-        self.assertEqual(document.node("CP_M1").preset, "KM05DL")
-        self.assertFalse(document.optical_pass("CP_M1").centered)
+        self.assertEqual(document.node("CP_M1").preset, "POLARIS-K05VS2")
+        self.assertTrue(topology.passes["CP_M1"].centered)
+        self.assertFalse(topology.passes["CP_VRoof"].centered)
         self.assertEqual(
             parameter_values(document.node("CP_HRoof"))["beam_separation"],
             9.538700742686107,
@@ -229,7 +230,10 @@ class FoldedCPATests(unittest.TestCase):
         poses = document.layout["poses"]
         self.assertAlmostEqual(norm(sub(poses["CP_HRoof"][:2], spots[0][:2])), 417.3)
         self.assertEqual(poses["From_EDFA"][1], -300)
-        self.assertEqual(poses["CP_VRoof"][1], -400)
+        self.assertEqual(poses["CP_VRoof"][1], -100)
+        self.assertAlmostEqual(poses["CP_VRoof"][0], vertical.entry[0] - 5)
+        for actual, expected in zip(poses["CP_M1"][:3], (320, -300, 15.525)):
+            self.assertAlmostEqual(actual, expected)
         for ref, point in (
             ("CP_M1", (320, -300, 15.525)),
             ("CP_Pickoff", (320, -220, 9.875)),

@@ -28,9 +28,10 @@ integral supports, removable clamp, screw and hole axes stay upright.
 The mounted preset uses the user's corrected designs:
 
 - `HRS1015-AG-Step Copy 1.step`: horizontal roof and slotted rectangular clamp.
-- `HRS1015-AG-Step (1).step`: vertical roof and slotted corner clamp.
+- `HRS1015-AG-Step (2).step`: revised vertical roof with lower stops and the same slotted corner clamp.
+  The previous `(1)` source remains pinned for provenance.
 
-Both source hashes, measured dimensions, hole locations and solid roles are
+Source hashes, measured dimensions, hole locations and solid roles are
 recorded in `catalog_data/roof_support_reference.json`. Their native profiles
 are committed as editable rational curves and extrusions; runtime rebuilding
 does not depend on the files remaining in Downloads. The supplied AG-labelled
@@ -41,9 +42,10 @@ optical model. Source AG and purchased P01 envelopes agree geometrically.
 The original bolt-on carrier has been replaced. Each design contributes a
 38.1 x 38.1 x 12.7 mm stock reference patch with its integral stops, a separate
 5.08 mm-thick removable clamp, and one nominal M2 socket-head screw. The
-horizontal stop height is 2.54 mm above the patch reference top; vertical stops
-are 12.7 mm high. The vertical clamp retains its corner shape and 1.27 mm
-relief. There are no roof M4 attachments, dowel pins, acetal pads or carrier
+horizontal and vertical stop heights are both 2.54 mm above the patch reference
+top. Vertical revision 3 lowers its previous 12.7 mm stops by 10.16 mm; the
+optic, clamp, seating floor, hole centers and M2 drilling dimensions are
+unchanged. The vertical clamp retains its corner shape and 1.27 mm relief. There are no roof M4 attachments, dowel pins, acetal pads or carrier
 recesses. The support body becomes material in the baseplate.
 
 The only deliberate hole changes from the supplied designs are:
@@ -190,8 +192,8 @@ Exports under `artifacts/roof_mirror*` include static FreeCAD, hardware STEP
 STEPs, machining/BOM JSON, and concise Markdown/JSON verification reports.
 Source documents remain open for editing. The default plate is 85 x 170 x
 30 mm below Z=0, with two integral support sets, two M2 taps and no carrier
-pockets. Raised features reach Z=19.05 mm, so the minimum bounding billet
-is **85 x 170 x 49.05 mm**. The machining JSON and BOM report the slab
+pockets. Raised integral features reach Z=8.89 mm, so the minimum bounding billet
+is **85 x 170 x 38.89 mm**. The machining JSON and BOM report the slab
 and complete stock envelope separately.
 The hardware assembly has 11 valid solids; each purchased roof retains three.
 

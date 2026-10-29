@@ -40,11 +40,9 @@
       "id": "CP_M1",
       "reference": "CP_M1",
       "kind": "mirror",
-      "preset": "KM05DL",
+      "preset": "POLARIS-K05VS2",
       "parameters": {
-        "diameter": 12.7,
-        "thickness": 6.0,
-        "edge_distance": 0.5
+        "diameter": 12.7
       },
       "position": [
         0,
@@ -440,14 +438,6 @@
   "path_constraints": [],
   "passes": [
     {
-      "id": "CP_M1",
-      "component_id": "CP_M1",
-      "mode": "pass",
-      "turn": null,
-      "direction": null,
-      "centered": false
-    },
-    {
       "id": "CP_G1",
       "component_id": "CP_G1",
       "mode": "pass",
@@ -466,6 +456,14 @@
     {
       "id": "CP_G1_2",
       "component_id": "CP_G1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "CP_VRoof",
+      "component_id": "CP_VRoof",
       "mode": "pass",
       "turn": null,
       "direction": null,
@@ -511,8 +509,8 @@
         180
       ],
       "CP_M1": [
-        323.7476659402887,
-        -303.7476659402887,
+        320,
+        -300.0,
         15.524999999999999,
         45
       ],
@@ -529,8 +527,8 @@
         -168.37205169994047
       ],
       "CP_VRoof": [
-        310.0804961016746,
-        -400.0,
+        305.0804961016746,
+        -100.0,
         15.524999999999999,
         -90
       ],

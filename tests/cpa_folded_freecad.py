@@ -106,9 +106,10 @@ class FoldedStretcherTests(unittest.TestCase):
                 9.875,
             )
             for start, target, checked in (
-                ("CP_M1", "CP_G1", ("CP_Pickoff",)),
+                ("CP_M1", "CP_G1", ("CP_Pickoff", "CP_VRoof")),
                 ("CP_G1", "CP_VRoof", ("CP_Pickoff", "CP_M1")),
                 ("CP_VRoof", "CP_G1", ("CP_Pickoff", "CP_M1")),
+                ("CP_G1", "CP_Pickoff", ("CP_VRoof", "CP_M1")),
             ):
                 s = next(
                     s

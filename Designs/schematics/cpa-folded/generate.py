@@ -44,10 +44,9 @@ COMPRESSOR_HORIZONTAL_SEPARATION_MM = 9.538700742686107
 COMPRESSOR_FOLD_DISTANCE_MM = baseline.COMPRESSOR_GRATING_SEPARATION_MM / 2
 ROOF_INTERNAL_AXIAL_DEPTH_MM = 12.7
 COMPRESSOR_INPUT_Y_MM = -300.0
-COMPRESSOR_VERTICAL_ROOF_Y_MM = -400.0
+COMPRESSOR_VERTICAL_ROOF_Y_MM = -100.0
+COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM = -5.0
 COMPRESSOR_PICKOFF_Y_MM = -220.0
-COMPRESSOR_INPUT_MIRROR_TANGENT_OFFSET_MM = -5.3
-COMPRESSOR_INPUT_MIRROR_EDGE_DISTANCE_MM = 0.5
 
 
 def stretcher():
@@ -250,17 +249,12 @@ def compressor():
         180,
         fast_axis_angle=0,
     )
-    input_mirror_pose = add(
-        (gx, COMPRESSOR_INPUT_Y_MM, upper),
-        mul(yaw((0, 1, 0), 45), COMPRESSOR_INPUT_MIRROR_TANGENT_OFFSET_MM),
-    )
     put(
         "CP_M1",
         "mirror",
-        "KM05DL",
-        input_mirror_pose,
+        "POLARIS-K05VS2",
+        (gx, COMPRESSOR_INPUT_Y_MM, upper),
         45,
-        edge_distance=COMPRESSOR_INPUT_MIRROR_EDGE_DISTANCE_MM,
     )
     put(
         "CP_G1",
@@ -277,11 +271,17 @@ def compressor():
         roof_angle,
         beam_separation=COMPRESSOR_HORIZONTAL_SEPARATION_MM,
     )
+    # Decenter the physical roof along its edge. The hit remains on the
+    # displaced return ray, while the optic clears the two straight-through paths.
+    vertical_roof_pose = add(
+        (second[0], COMPRESSOR_VERTICAL_ROOF_Y_MM, upper),
+        mul(yaw((0, 1, 0), -90), COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM),
+    )
     put(
         "CP_VRoof",
         "roof",
         "vertical",
-        (second[0], COMPRESSOR_VERTICAL_ROOF_Y_MM, upper),
+        vertical_roof_pose,
         -90,
         beam_separation=2 * COMPRESSOR_OFFSET_MM,
     )
@@ -317,7 +317,7 @@ def compressor():
         ("Crystal_1550_exit", "Crystal_1550_exit", "beam"),
     ]
     for visit, component, _ in route:
-        if visit != component or component in ("CP_G1", "CP_HRoof", "CP_M1"):
+        if visit != component or component in ("CP_G1", "CP_HRoof", "CP_VRoof"):
             d.passes.append(OpticalPass(visit, component, centered=False))
     for i, ((av, ac, entry), (bv, bc, incoming)) in enumerate(zip(route, route[1:])):
         outgoing_port = "beam" if ac == "From_EDFA" else "A" if entry == "B" else "B"
@@ -343,7 +343,7 @@ ASSUMPTIONS = [
     "Separate folded CPA variant with both dispersive stages folded. The baseline CPA files and artifacts are retained. Both folded stages use the same 5.65 mm upper/lower separation. The stretcher retains its X/Y positions, hardware and focal length; SHG and rear 1550 nm collection hardware retain their X/Y positions and optical parameters at the lower compressor output height.",
     f"The compressor uses one CP_G1 grating four times, one horizontal HRS1015-P01 roof twice, and one vertical HRS1015-P01 roof once. Its nominal axis is Z={COMPRESSOR_AXIS_HEIGHT_MM:g} mm, with input/output at Z={COMPRESSOR_AXIS_HEIGHT_MM + COMPRESSOR_OFFSET_MM:g}/{COMPRESSOR_AXIS_HEIGHT_MM - COMPRESSOR_OFFSET_MM:g} mm. The horizontal separation is {COMPRESSOR_HORIZONTAL_SEPARATION_MM:g} mm; the vertical roof shifts downward by {2*COMPRESSOR_OFFSET_MM:g} mm. All four grating passes are intentionally off axis, at the centers of the four quadrants of the 30.8 x 11.3 mm clear aperture: local face offsets (+/-7.7, +/-2.825) mm.",
     f"The horizontal roof's nominal virtual fold plane is {COMPRESSOR_FOLD_DISTANCE_MM:g} mm beyond the first grating hit. Its entrance plane is {COMPRESSOR_FOLD_DISTANCE_MM - ROOF_INTERNAL_AXIAL_DEPTH_MM:g} mm away, accounting for the measured roof's {ROOF_INTERNAL_AXIAL_DEPTH_MM:g} mm internal axial depth. Actual path lengths include the finite roof path and lateral walkoff; a nominal 860 mm span is not imposed as a chief-ray length.",
-    f"The compressor input coupler, waveplate and steering-mirror interaction are at Y={COMPRESSOR_INPUT_Y_MM:g} mm. The vertical roof entrance is at Y={COMPRESSOR_VERTICAL_ROOF_Y_MM:g} mm on the displaced return ray. A PFD05-03-P01 in KM05DL replaces CP_M2 with its ray interaction at (320, {COMPRESSOR_PICKOFF_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM-COMPRESSOR_OFFSET_MM:g}) mm, steering the fourth grating pass into SHG. The horizontal roof is entered through B first, placing the return corridor on the opposite side of the input line. CP_M1 also uses PFD05-03-P01 in KM05DL with an editable {COMPRESSOR_INPUT_MIRROR_TANGENT_OFFSET_MM:g} mm local-Y in-plane offset and a {COMPRESSOR_INPUT_MIRROR_EDGE_DISTANCE_MM:g} mm edge datum; its beam interaction stays at (320, {COMPRESSOR_INPUT_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM+COMPRESSOR_OFFSET_MM:g}) mm. The retained off-center input D mirror and left-handed pickoff clear the intermediate corridor. All three bypass paths are checked against the pickoff and input mirror with 1 mm radius probes.",
+    f"The compressor input coupler, waveplate and ordinary half-inch CP_M1 mirror in POLARIS-K05VS2 are at Y={COMPRESSOR_INPUT_Y_MM:g} mm. CP_M1 is centered at (320, {COMPRESSOR_INPUT_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM+COMPRESSOR_OFFSET_MM:g}) mm. The vertical roof entrance is at Y={COMPRESSOR_VERTICAL_ROOF_Y_MM:g} mm, between the grating and D pickoff, and its physical axis is offset {COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM:g} mm along local Y from the displaced return ray. The vertical roof is intentionally off axis; its revised integral stops are 2.54 mm above the seating floor. A PFD05-03-P01 in KM05DL remains at (320, {COMPRESSOR_PICKOFF_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM-COMPRESSOR_OFFSET_MM:g}) mm, steering the fourth grating pass into SHG. The horizontal roof is entered through B first. Both straight-through beams are checked against the vertical roof with 1 mm radius probes, along with the pickoff and steering-mirror bypass checks.",
     f"One physical ST_G2 grating and one 25.4 mm ST_L2 lens in a POLARIS-L1G mount are each used four times. The lens focal length is 500 mm, its center is Z={LENS_AXIS_HEIGHT_MM:g} mm, and the upper/lower beams pass at Z={LENS_AXIS_HEIGHT_MM + BEAM_OFFSET_MM:g}/{LENS_AXIS_HEIGHT_MM - BEAM_OFFSET_MM:g} mm. The grating is centered at the lens axis height; its four passes are intentionally off axis.",
     "The upright 25.4 mm ST_Fold mirror in a POLARIS-K1VS2 mount lies 500 mm axially beyond the lens, at the original inter-grating midpoint for the default dimensions. Its normal follows the nominal telescope axis, not the sloping incident ray. The grating-to-lens gap remains 70 mm. Finite sloping ray lengths are computed rather than forced to the axial distance.",
     "The lower return traverses the same lens and grating, then a PFD05-03-P01 D-shaped mirror in a KM05DR mount selects it. The optical datum is 1 mm below the straight edge. The upper path clears the open half; a 1 mm radius clearance probe is checked against the optic and mount.",

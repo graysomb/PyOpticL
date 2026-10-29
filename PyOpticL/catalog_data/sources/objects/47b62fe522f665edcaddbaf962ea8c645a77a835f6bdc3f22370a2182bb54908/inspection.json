@@ -1,0 +1,28 @@
+{
+  "source_file": "HRS1015-AG-Step (2).step",
+  "sha256": "47b62fe522f665edcaddbaf962ea8c645a77a835f6bdc3f22370a2182bb54908",
+  "units": "mm",
+  "inspection": "FreeCAD STEP import and independent source comparison before profile reconstruction",
+  "source_solids": 3,
+  "all_solids_valid": true,
+  "reference_datums": {
+    "optic_center_z_mm": 0,
+    "seating_floor_z_mm": -12.7,
+    "stock_bottom_z_mm": -25.4,
+    "stop_top_z_mm": -10.16,
+    "stop_height_mm": 2.54
+  },
+  "comparison": {
+    "previous_source_reference": "roof-support-vertical",
+    "reference_optic_symmetric_difference_mm3": 0,
+    "removable_clamp_symmetric_difference_mm3": 0,
+    "previous_stop_height_mm": 12.7
+  },
+  "model_adaptations": {
+    "thread": "M2 x 0.4",
+    "tap_drill_mm": 1.6,
+    "straight_drill_depth_mm": 5.08,
+    "clamp_slot_width_mm": 2.2,
+    "comparison_tolerance_mm": 0.01
+  }
+}
