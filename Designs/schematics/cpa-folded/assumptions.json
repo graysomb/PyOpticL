@@ -1,0 +1,12 @@
+[
+  "Separate folded CPA variant. The baseline CPA files and artifacts are retained; compressor, SHG and rear 1550 nm collection routes are unchanged.",
+  "One physical ST_G2 grating and one 25.4 mm ST_L2 lens in a POLARIS-L1G mount are each used four times. The lens focal length is 500 mm, its center is Z=12.7 mm, and the upper/lower beams pass at Z=14.7/10.7 mm. The grating is centered at the lens axis height; its four passes are intentionally off axis.",
+  "The upright 25.4 mm ST_Fold mirror in a POLARIS-K1VS2 mount lies 500 mm axially beyond the lens, at the original inter-grating midpoint for the default dimensions. Its normal follows the nominal telescope axis, not the sloping incident ray. The grating-to-lens gap remains 70 mm. Finite sloping ray lengths are computed rather than forced to the axial distance.",
+  "The lower return traverses the same lens and grating, then a PFD05-03-P01 D-shaped mirror in a KM05DR mount selects it. The optical datum is 1 mm below the straight edge. The upper path clears the open half; a 1 mm radius clearance probe is checked against the optic and mount.",
+  "The D pickoff is 75 mm before the grating. The VA100 is 75 mm after the pickoff, followed 75 mm later by the existing 25.4 mm ST_M1 retroreflector in a POLARIS-K1VS2 mount. The return retraces the entire folded path to the launching coupler.",
+  "The upper input steering mirror is 225 mm before the grating; the FBR half-wave plate is 150 mm before it. The integral-lens fiber coupler is 180 mm from that steering mirror. All starter distances and the 2 mm lens offset are editable in generate.py and the schematic poses.",
+  "The plate top is Z=3 mm and thickness is 33 mm, preserving its underside at Z=-30 mm. Purchased mounts remain upright and use their real seats, recessed where required; no floating mounts or unspecified spacers are introduced.",
+  "VA100 slit width is provisionally 1 mm. Beam waists and powers remain illustrative. Native and schematic traces use the existing ideal thin-lens, mirror and grating models; no detailed aberration, pulse dispersion, gain, SHG efficiency or phase matching is predicted.",
+  "The output dichroic reflects 775 nm and transmits 1550 nm through an ideal 3 mm, n=1.5 plate. The exact coating/optic is unselected. The residual 1550 nm path retains its half-inch mirror and integral-lens coupler; fiber cables and the EDFA package are omitted.",
+  "All delivered beam solids are constant-width center-ray guides. The plate and drilling are a provisional review draft."
+]

@@ -54,19 +54,21 @@ def center_ray_shape(segment):
     obj.purgeTouched()
 
 
-def build(output=None):
+def build(output=None, *, schematic_folder=SCHEMATICS, plate_top_z=0.0,
+          plate_thickness=30.0, baseplate_output=None):
     # Restrict the display override to this build; the library tracer and its
     # Gaussian transport are unchanged. All delivered beam solids are guides.
     with patch.object(BeamSegment, "compute_shape", center_ray_shape):
-        return _build(output)
+        return _build(output, Path(schematic_folder), plate_top_z,
+                      plate_thickness, baseplate_output)
 
 
-def _build(output=None):
+def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_output):
     source = App.newDocument("CPAStarterSource")
     root = Layout("CPA mechanical starter — provisional")
     stages, programs, components = {}, {}, []
     for name in ("stretcher", "compressor", "output-775"):
-        document = load_schematic(SCHEMATICS / (name + ".pyopticl-schematic.json"))
+        document = load_schematic(schematic_folder / (name + ".pyopticl-schematic.json"))
         compiled = compile_schematic(document)
         if not compiled.ok:
             raise ValueError([item.message for item in compiled.diagnostics])
@@ -81,7 +83,7 @@ def _build(output=None):
         )
     # Reuse the output lens and dichroic physically; a second wavelength does
     # not add another copy of either optical assembly or another drill pattern.
-    document = load_schematic(SCHEMATICS / "residual-1550.pyopticl-schematic.json")
+    document = load_schematic(schematic_folder / "residual-1550.pyopticl-schematic.json")
     compiled = compile_schematic(document)
     if not compiled.ok:
         raise ValueError([item.message for item in compiled.diagnostics])
@@ -113,9 +115,19 @@ def _build(output=None):
     stage.recompute()
     stages["residual-1550"], programs["residual-1550"] = stage, ns
     print("All four optical routes built and traced.", flush=True)
-    plate, machining = machined_baseplate.add(root, thickness=30.0)
+    plate, machining = machined_baseplate.add(
+        root, position=(0, 0, plate_top_z), thickness=plate_thickness)
     root.recompute()
     print("Provisional baseplate machined.", flush=True)
+    component_references = {o.Name: o.Label for o in components}
+
+    def reference(obj):
+        while obj is not None:
+            if obj.Name in component_references:
+                return component_references[obj.Name]
+            obj = getattr(obj, "Parent", None)
+        return None
+
     # Verify the full installation after nesting and plate machining as well.
     route_report = {}
     for name, stage in stages.items():
@@ -139,6 +151,14 @@ def _build(output=None):
             actual_path_mm=sum(
                 s.Proxy.distance for s in beam.get_object().BeamSegments
             ),
+            trace=[dict(
+                start_component=reference(s.StartObject),
+                end_component=reference(s.EndObject),
+                start_mm=list(s.Proxy.get_global_position()),
+                end_mm=list(s.Proxy.get_global_position() + s.Proxy.distance * s.Proxy.get_global_direction()),
+                direction=list(s.Proxy.get_global_direction()),
+                internal=bool(s.InternalToComponent),
+            ) for s in beam.get_object().BeamSegments],
         )
 
     # Check collisions between distinct physical optical assemblies. Internal
@@ -193,6 +213,23 @@ def _build(output=None):
                        if hasattr(o, "Shape") and not o.Shape.isNull())
     if rear_overlap > 1e-5:
         raise ValueError("Dichroic mount obstructs the rear 1550 nm beam")
+
+    pickoff_clearance = None
+    if "ST_Pickoff" in shared:
+        pickoff = shared["ST_Pickoff"].get_object()
+        beam = next(o for o in stages["stretcher"].get_object().Children if hasattr(o, "BeamSegments"))
+        upper = next(s for s in beam.BeamSegments
+                     if reference(s.StartObject) == "ST_HWP1"
+                     and reference(s.EndObject) == "ST_G2")
+        guide = Part.makeCylinder(1, upper.Proxy.distance,
+            App.Vector(*upper.Proxy.get_global_position()), App.Vector(*upper.Proxy.get_global_direction()))
+        overlap = guide.common(compound(pickoff)).Volume
+        pickoff_clearance = dict(probe_radius_mm=1, mount="KM05DR", overlap_mm3=overlap)
+        if overlap > 1e-5:
+            raise ValueError("D-shaped pickoff obstructs the upper stretcher beam")
+    if collisions or beam_collisions:
+        raise ValueError(dict(cross_assembly_collisions=collisions,
+                              beam_to_unintended_component_collisions=beam_collisions))
 
     static = App.newDocument("CPAStarterReview")
     group = static.addObject("App::DocumentObjectGroup", "CPA_Starter")
@@ -272,10 +309,11 @@ def _build(output=None):
     group.addObjects(features)
     report = dict(
         status="Provisional mechanical layout; optical prescription unconfirmed",
-        assumptions=json.loads((SCHEMATICS / "assumptions.json").read_text()),
+        assumptions=json.loads((schematic_folder / "assumptions.json").read_text()),
         routes=route_report,
         lens_facings=lens_facings,
         dichroic_rear_clearance=dict(probe_radius_mm=1, mount="MHV-12.7L-R", overlap_mm3=rear_overlap),
+        stretcher_pickoff_clearance=pickoff_clearance,
         machining=machining.plan,
         cross_assembly_collisions=collisions,
         beam_to_unintended_component_collisions=beam_collisions,
@@ -298,10 +336,12 @@ def _build(output=None):
     Part.makeCompound([o.Shape for o in hardware]).exportStep(
         str(output.with_suffix(".step"))
     )
-    plate.get_object().Shape.exportStep(
-        str(output.with_name("cpa_draft_baseplate.step"))
-    )
+    plate_path = Path(baseplate_output or output.with_name("cpa_draft_baseplate.step")).resolve()
+    plate_path.parent.mkdir(parents=True, exist_ok=True)
+    plate.get_object().Shape.exportStep(str(plate_path))
     output.with_suffix(".review.json").write_text(json.dumps(report, indent=2) + "\n")
+    output.with_suffix(".bom.json").write_text(json.dumps(report["bom"], indent=2) + "\n")
+    output.with_suffix(".drilling.json").write_text(json.dumps(machining.plan, indent=2) + "\n")
     return SimpleNamespace(
         document=static,
         source=source,

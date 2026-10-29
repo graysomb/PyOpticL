@@ -41,11 +41,13 @@ def integration_operations(definition, placement=None):
     return result
 
 
-def fuse_integrated(plate, root, relative_to):
+def fuse_integrated(plate, root, relative_to, *, recesses=None, pocket_clearance=.25):
     """Union selected fabricated supports with stock; never fuse their optics.
 
     Both baseplate workflows use the same support solids and selected bores.
     The reference patch must fit the blank, and its optic seat cannot be buried.
+    Machined plates may pass a recess-record list to expose seats below their
+    reference top. Other callers retain the strict no-buried-seat behavior.
     """
     inverse = relative_to.Placement.inverse()
     stock = plate.optimalBoundingBox()
@@ -60,8 +62,6 @@ def fuse_integrated(plate, root, relative_to):
             raise ValueError('Integral support must stand upright: ' + obj.Label)
         frames = {f.name:f for f in obj.Proxy.contract().frames}
         seat = placement.multVec(App.Vector(*frames[specification['seat_frame']].position))
-        if seat.z < -.01:
-            raise ValueError('Integral optic seat is below plate top: ' + obj.Label)
         shape = obj.Shape.copy()
         shape.Placement = placement
         bounds = shape.optimalBoundingBox()
@@ -70,6 +70,18 @@ def fuse_integrated(plate, root, relative_to):
         if (bounds.XMin < stock.XMin-.01 or bounds.XMax > stock.XMax+.01
                 or bounds.YMin < stock.YMin-.01 or bounds.YMax > stock.YMax+.01):
             raise ValueError('Integral support footprint lies outside plate stock')
+        if seat.z < -.01:
+            if recesses is None:
+                raise ValueError('Integral optic seat is below plate top: ' + obj.Label)
+            if seat.z <= stock.ZMin + .5:
+                raise ValueError('Integral support recess leaves insufficient stock')
+            pocket = Part.makeBox(bounds.XLength + 2*pocket_clearance,
+                bounds.YLength + 2*pocket_clearance, stock.ZMax - seat.z + .01,
+                App.Vector(bounds.XMin-pocket_clearance, bounds.YMin-pocket_clearance, seat.z))
+            plate = plate.cut(pocket)
+            recesses.append(dict(kind='integral_support_recess', mount=obj.Label,
+                mount_object=obj.Name, assembly=obj.Parent.Label,
+                depth_mm=-seat.z, clearance_mm=pocket_clearance))
         plate = plate.fuse(shape)
         if len(plate.Solids) != 1:
             raise ValueError('Integral support does not join the baseplate')

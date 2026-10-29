@@ -147,7 +147,8 @@ class MachinedBaseplate:
             if obj.ViewObject:
                 obj.ViewObject.Visibility = False
         plate, integral_operations, integral_objects = attachments.fuse_integrated(
-            plate, self.layout.get_object(), getattr(self, '_object', self.layout.get_object()))
+            plate, self.layout.get_object(), getattr(self, '_object', self.layout.get_object()),
+            recesses=pockets, pocket_clearance=self.pocket_clearance)
         operations.extend(integral_operations)
         if integral_objects:
             # Stock union must not refill a neighboring mount's earlier bores.
