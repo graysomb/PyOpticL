@@ -120,7 +120,8 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
     stage.add(BeamPath("SHG_1550_boundary", wavelength=settings["wavelength"],
         polarization=linear_polarization(settings["polarization_angle"]),
         power=settings["power"], waist=settings["waist"], bound_parent=root,
-        final_distance=80, trace_limit=8, trace_ends=ns["OPEN_SEGMENTS"]),
+        final_distance=80, trace_limit=len(ns["EXPECTED_PASSES"]) + 3,
+        trace_ends=ns["OPEN_SEGMENTS"]),
         settings["position"], settings["angle"])
     stage.recompute()
     stages["residual-1550"], programs["residual-1550"] = stage, ns

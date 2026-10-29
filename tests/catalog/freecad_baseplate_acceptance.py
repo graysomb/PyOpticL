@@ -96,5 +96,47 @@ class BaseplateTests(unittest.TestCase):
         self.assertTrue(shape.isInside(App.Vector(0,0,5),1e-7,False))
         self.assertFalse(shape.isInside(App.Vector(0,0,7),1e-7,False))
 
+    def test_lens_recesses_follow_nested_mount_axes_with_twelve_mm_axial_extension(self):
+        doc = App.newDocument('OrientedLensRecesses')
+        self.addCleanup(App.closeDocument, doc.Name)
+        root = Layout('Rotated lens plate')
+        root.get_object().BasePlacement = App.Placement(App.Vector(21,-17,0),
+            App.Rotation('XYZ',0,0,19))
+        mounts = []
+        for i, (part, angle) in enumerate((('POLARIS-L05G',31), ('POLARIS-L05G',211),
+                                          ('POLARIS-L1G',31), ('POLARIS-L1G',211))):
+            group = root.add(Layout('Lens group'), (i*180,0,0), 17)
+            height = catalog.VendorPart(part).baseplate_profile()['optical_height_mm']
+            mounts.append(group.add(catalog.create(part,part), (0,0,height-5), angle))
+        plate, definition = machining.add(root, thickness=33, margin=40)
+        root.recompute()
+        shape = plate.get_object().Shape
+        self.assertTrue(shape.isValid())
+        self.assertEqual(len(shape.Solids),1)
+        self.assertEqual(len(definition.plan['holes']),12)
+        self.assertEqual(len(definition.plan['pockets']),4)
+        for mount, record in zip(mounts, definition.plan['pockets']):
+            obj = mount.get_object()
+            local = obj.Shape.copy();local.Placement = App.Placement()
+            b = local.optimalBoundingBox()
+            self.assertEqual(record['orientation'],'mount')
+            self.assertEqual(record['axial_extra_mm'],12)
+            self.assertAlmostEqual(record['size_mm'][0], b.XLength+.5+12)
+            self.assertAlmostEqual(record['size_mm'][1], b.YLength+.5)
+            self.assertAlmostEqual(record['depth_mm'],5)
+            relative = plate.get_object().Placement.inverse()*obj.Placement
+            axis = relative.Rotation.multVec(App.Vector(1,0,0))
+            recess_axis = App.Rotation('XYZ',*record['rotation_deg']).multVec(App.Vector(1,0,0))
+            self.assertLess((axis-recess_axis).Length,1e-7)
+            seat_z = -obj.Proxy.baseplate_profile()['optical_height_mm']
+            # Each end extends by 6 mm, while the transverse walls stay tight.
+            for x in (b.XMin-.25-3, b.XMax+.25+3):
+                point = App.Vector(x,b.Center.y,seat_z+2)
+                self.assertFalse(shape.isInside(obj.Placement.multVec(point),1e-7,False))
+                point.z = seat_z-.1
+                self.assertTrue(shape.isInside(obj.Placement.multVec(point),1e-7,False))
+            point = obj.Placement.multVec(App.Vector(b.Center.x,b.YMax+.25+1,seat_z+2))
+            self.assertTrue(shape.isInside(point,1e-7,False))
+
 
 if __name__ == '__main__':unittest.main(verbosity=2)

@@ -22,25 +22,43 @@ def render(report=REPORT, output=None):
     trace = data["routes"]["stretcher"]["trace"]
     lens = np.array(next(s["end_mm"] for s in trace if s["end_component"] == "ST_L2"))
     fold = np.array(next(s["end_mm"] for s in trace if s["end_component"] == "ST_Fold"))
-    axis = fold - lens
-    axis[2] = 0
-    axis /= np.linalg.norm(axis)
-    optical = {"ST_G2", "ST_L2", "ST_Fold"}
+    bend_segment = next((s for s in trace if s["end_component"] == "ST_Bend"), None)
+    bend = np.array(bend_segment["end_mm"]) if bend_segment else None
+    gx = -np.linalg.norm(
+        np.array(next(s["end_mm"] for s in trace if s["end_component"] == "ST_G2"))[:2]
+        - lens[:2]
+    )
+    bx = np.linalg.norm(bend[:2] - lens[:2]) if bend is not None else None
+    fx = (
+        bx + np.linalg.norm(fold[:2] - bend[:2])
+        if bend is not None
+        else np.linalg.norm(fold[:2] - lens[:2])
+    )
+    axial = {"ST_G2": gx, "ST_L2": 0.0, "ST_Fold": fx}
+    if bend is not None:
+        axial["ST_Bend"] = bx
+    optical = set(axial)
     forward = [
         s
         for s in trace
         if s["start_component"] in optical and s["end_component"] in optical
-    ][:4]
+    ][: 6 if bend is not None else 4]
     hits = [s["end_mm"][2] for s in trace if s["end_component"] == "ST_L2"]
     upper, lower = max(hits), min(hits)
     center = fold[2]
 
     fig, ax = plt.subplots(figsize=(13, 6.8), facecolor="#f7f9fb")
     ax.set_facecolor("#f7f9fb")
-    colors = ("#b65c00", "#bc3a26", "#27794e", "#176cb4")
+    colors = (
+        ("#b65c00", "#bc3a26", "#bc3a26", "#27794e", "#27794e", "#176cb4")
+        if bend is not None
+        else ("#b65c00", "#bc3a26", "#27794e", "#176cb4")
+    )
     for segment, color in zip(forward, colors):
         a, b = np.array(segment["start_mm"]), np.array(segment["end_mm"])
-        x = np.array([(a - lens) @ axis, (b - lens) @ axis])
+        x = np.array(
+            [axial[segment["start_component"]], axial[segment["end_component"]]]
+        )
         z = np.array([a[2], b[2]])
         ax.plot(x, z, lw=2.6, color=color)
         p, q = 0.43, 0.57
@@ -50,12 +68,12 @@ def render(report=REPORT, output=None):
             xytext=(x[0] + p * (x[1] - x[0]), z[0] + p * (z[1] - z[0])),
             arrowprops=dict(arrowstyle="-|>", color=color, lw=2, mutation_scale=15),
         )
-    gx = (np.array(forward[0]["start_mm"]) - lens) @ axis
-    fx = (fold - lens) @ axis
     ax.axhline(center, color="#83919d", ls="--", lw=1)
     ax.plot([0, 0], [lower - 1, upper + 1], color="#4b8fba", lw=7, alpha=0.5)
     ax.plot([gx, gx], [lower - 0.6, upper + 0.6], color="#314f60", lw=5)
     ax.plot([fx, fx], [lower - 1, upper + 1], color="#46535e", lw=5)
+    if bx is not None:
+        ax.axvline(bx, color="#46535e", ls=":", lw=1.5)
     ax.scatter([0] * 4, hits, s=40, color="#163c54", zorder=5)
     ax.annotate(
         "",
@@ -86,11 +104,14 @@ def render(report=REPORT, output=None):
     ax.text(
         fx / 2, upper + 1.02, f"{fx:g} mm axial distance", ha="center", color="#536773"
     )
-    for x, label in (
+    labels = [
         (gx, "Grating"),
         (0, "1-inch lens\nf = 500 mm"),
-        (fx, "1-inch fold mirror"),
-    ):
+        (fx, "1-inch end mirror"),
+    ]
+    if bx is not None:
+        labels.append((bx, "1-inch bend mirror\n90° turn in plan"))
+    for x, label in labels:
         ax.text(
             x, lower - 1.35, label, ha="center", va="top", fontsize=11, color="#163c54"
         )
@@ -106,7 +127,7 @@ def render(report=REPORT, output=None):
     ax.set(
         xlim=(gx - 30, fx + 40),
         ylim=(lower - 2.1, upper + 1.6),
-        xlabel="Axial position from lens toward fold mirror (mm)",
+        xlabel="Unfolded axial distance from lens toward end mirror (mm)",
         ylabel="Height above original datum (mm)",
     )
     ax.spines[["top", "right"]].set_visible(False)
@@ -122,7 +143,11 @@ def render(report=REPORT, output=None):
     fig.text(
         0.08,
         0.9,
-        "Upper beam → lens → midpoint mirror → same lens → lower beam",
+        (
+            "Upper beam → lens → bend mirror → end mirror → bend mirror → lens → lower beam"
+            if bend is not None
+            else "Upper beam → lens → midpoint mirror → same lens → lower beam"
+        ),
         fontsize=12,
         color="#536773",
     )

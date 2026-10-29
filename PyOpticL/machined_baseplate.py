@@ -99,16 +99,35 @@ class MachinedBaseplate:
             if seat.z > .01:
                 raise ValueError('Mount would float above plate; spacers are not allowed: '+obj.Label)
             if seat.z < -1e-6:
-                shape = obj.Shape.copy();shape.Placement = placement
+                orientation = profile.get('recess_orientation', 'plate')
+                if orientation not in ('plate', 'mount'):
+                    raise ValueError('Recess orientation must be plate or mount')
+                pocket_frame = placement if orientation == 'mount' else App.Placement()
+                shape = obj.Shape.copy();shape.Placement = pocket_frame.inverse()*placement
                 b = shape.optimalBoundingBox()
                 if seat.z-self.pocket_clearance <= -self.thickness+10:
                     raise ValueError('Insufficient stock beneath recessed mount for tapped hole')
-                # A conservative rectangular machining pocket, with a flat seat.
-                pocket = Part.makeBox(b.XLength+2*self.pocket_clearance,
-                    b.YLength+2*self.pocket_clearance,-seat.z+.01,
-                    App.Vector(b.XMin-self.pocket_clearance,b.YMin-self.pocket_clearance,seat.z))
+                # Enlarge selected mount recesses for adjuster/tool access,
+                # retaining the same flat seat and attachment-hole datum.
+                scale = profile.get('recess_scale_xy', 1.)
+                if not math.isfinite(scale) or scale < 1:
+                    raise ValueError('Recess XY scale must be finite and at least one')
+                axial_extra = profile.get('recess_axial_extra_mm', 0.)
+                if not math.isfinite(axial_extra) or axial_extra < 0:
+                    raise ValueError('Recess axial extension must be finite and nonnegative')
+                size = [(b.XLength+2*self.pocket_clearance)*scale+axial_extra,
+                        (b.YLength+2*self.pocket_clearance)*scale, -seat.z]
+                floor = pocket_frame.inverse().multVec(seat).z
+                origin = App.Vector(b.Center.x-size[0]/2, b.Center.y-size[1]/2, floor)
+                pocket = Part.makeBox(size[0],size[1],size[2]+.01,origin)
+                pocket.Placement = pocket_frame*pocket.Placement
                 plate = plate.cut(pocket)
-                pockets.append(dict(mount=obj.Label,depth_mm=-seat.z,clearance_mm=self.pocket_clearance))
+                pockets.append(dict(mount=obj.Label, mount_object=obj.Name,
+                    assembly=obj.Parent.Label, depth_mm=-seat.z,
+                    clearance_mm=self.pocket_clearance, recess_scale_xy=scale,
+                    orientation=orientation, axial_extra_mm=axial_extra,
+                    origin_mm=list(pocket_frame.multVec(origin)), size_mm=size,
+                    rotation_deg=list(pocket_frame.Rotation.toEulerAngles('XYZ'))))
             for record, pocket in attachments.clearance_pockets(obj.Proxy, placement):
                 bottom = pocket.optimalBoundingBox().ZMin
                 if bottom < -self.thickness + .5:

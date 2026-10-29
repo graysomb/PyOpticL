@@ -86,6 +86,22 @@
       "mirror_role": "turning"
     },
     {
+      "id": "ST_Bend",
+      "reference": "ST_Bend",
+      "kind": "mirror",
+      "preset": "POLARIS-K1VS2",
+      "parameters": {
+        "diameter": 25.4
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
       "id": "ST_Fold",
       "reference": "ST_Fold",
       "kind": "mirror",
@@ -229,7 +245,7 @@
         "pass_id": ""
       },
       "b": {
-        "node_id": "ST_Fold",
+        "node_id": "ST_Bend",
         "port_id": "A",
         "pass_id": ""
       },
@@ -241,14 +257,14 @@
     {
       "id": "e5",
       "a": {
-        "node_id": "ST_Fold",
+        "node_id": "ST_Bend",
         "port_id": "B",
         "pass_id": ""
       },
       "b": {
-        "node_id": "ST_L2",
+        "node_id": "ST_Fold",
         "port_id": "A",
-        "pass_id": "ST_L2_lower"
+        "pass_id": ""
       },
       "bends": [],
       "length": null,
@@ -258,6 +274,40 @@
     {
       "id": "e6",
       "a": {
+        "node_id": "ST_Fold",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_Bend",
+        "port_id": "B",
+        "pass_id": "ST_Bend_lower"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e7",
+      "a": {
+        "node_id": "ST_Bend",
+        "port_id": "A",
+        "pass_id": "ST_Bend_lower"
+      },
+      "b": {
+        "node_id": "ST_L2",
+        "port_id": "A",
+        "pass_id": "ST_L2_lower"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e8",
+      "a": {
         "node_id": "ST_L2",
         "port_id": "B",
         "pass_id": "ST_L2_lower"
@@ -273,7 +323,7 @@
       "allow_folding": false
     },
     {
-      "id": "e7",
+      "id": "e9",
       "a": {
         "node_id": "ST_G2",
         "port_id": "B",
@@ -281,40 +331,6 @@
       },
       "b": {
         "node_id": "ST_Pickoff",
-        "port_id": "A",
-        "pass_id": ""
-      },
-      "bends": [],
-      "length": null,
-      "turns": {},
-      "allow_folding": false
-    },
-    {
-      "id": "e8",
-      "a": {
-        "node_id": "ST_Pickoff",
-        "port_id": "B",
-        "pass_id": ""
-      },
-      "b": {
-        "node_id": "ST_Iris",
-        "port_id": "A",
-        "pass_id": ""
-      },
-      "bends": [],
-      "length": null,
-      "turns": {},
-      "allow_folding": false
-    },
-    {
-      "id": "e9",
-      "a": {
-        "node_id": "ST_Iris",
-        "port_id": "B",
-        "pass_id": ""
-      },
-      "b": {
-        "node_id": "ST_M1",
         "port_id": "A",
         "pass_id": ""
       },
@@ -326,6 +342,40 @@
     {
       "id": "e10",
       "a": {
+        "node_id": "ST_Pickoff",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_Iris",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e11",
+      "a": {
+        "node_id": "ST_Iris",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_M1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e12",
+      "a": {
         "node_id": "ST_M1",
         "port_id": "B",
         "pass_id": ""
@@ -341,7 +391,7 @@
       "allow_folding": false
     },
     {
-      "id": "e11",
+      "id": "e13",
       "a": {
         "node_id": "ST_Iris",
         "port_id": "A",
@@ -358,7 +408,7 @@
       "allow_folding": false
     },
     {
-      "id": "e12",
+      "id": "e14",
       "a": {
         "node_id": "ST_Pickoff",
         "port_id": "A",
@@ -375,7 +425,7 @@
       "allow_folding": false
     },
     {
-      "id": "e13",
+      "id": "e15",
       "a": {
         "node_id": "ST_G2",
         "port_id": "A",
@@ -392,11 +442,28 @@
       "allow_folding": false
     },
     {
-      "id": "e14",
+      "id": "e16",
       "a": {
         "node_id": "ST_L2",
         "port_id": "A",
         "pass_id": "ST_L2_lower_return"
+      },
+      "b": {
+        "node_id": "ST_Bend",
+        "port_id": "A",
+        "pass_id": "ST_Bend_lower_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e17",
+      "a": {
+        "node_id": "ST_Bend",
+        "port_id": "B",
+        "pass_id": "ST_Bend_lower_return"
       },
       "b": {
         "node_id": "ST_Fold",
@@ -409,11 +476,28 @@
       "allow_folding": false
     },
     {
-      "id": "e15",
+      "id": "e18",
       "a": {
         "node_id": "ST_Fold",
         "port_id": "B",
         "pass_id": "ST_Fold_return"
+      },
+      "b": {
+        "node_id": "ST_Bend",
+        "port_id": "B",
+        "pass_id": "ST_Bend_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e19",
+      "a": {
+        "node_id": "ST_Bend",
+        "port_id": "A",
+        "pass_id": "ST_Bend_return"
       },
       "b": {
         "node_id": "ST_L2",
@@ -426,7 +510,7 @@
       "allow_folding": false
     },
     {
-      "id": "e16",
+      "id": "e20",
       "a": {
         "node_id": "ST_L2",
         "port_id": "B",
@@ -443,7 +527,7 @@
       "allow_folding": false
     },
     {
-      "id": "e17",
+      "id": "e21",
       "a": {
         "node_id": "ST_G2",
         "port_id": "B",
@@ -460,7 +544,7 @@
       "allow_folding": false
     },
     {
-      "id": "e18",
+      "id": "e22",
       "a": {
         "node_id": "ST_HWP1",
         "port_id": "A",
@@ -477,7 +561,7 @@
       "allow_folding": false
     },
     {
-      "id": "e19",
+      "id": "e23",
       "a": {
         "node_id": "ST_M2",
         "port_id": "A",
@@ -523,6 +607,22 @@
     {
       "id": "ST_L2",
       "component_id": "ST_L2",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "ST_Bend",
+      "component_id": "ST_Bend",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "ST_Bend_lower",
+      "component_id": "ST_Bend",
       "mode": "pass",
       "turn": null,
       "direction": null,
@@ -577,12 +677,28 @@
       "centered": false
     },
     {
+      "id": "ST_Bend_lower_return",
+      "component_id": "ST_Bend",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
       "id": "ST_Fold_return",
       "component_id": "ST_Fold",
       "mode": "pass",
       "turn": null,
       "direction": null,
       "centered": true
+    },
+    {
+      "id": "ST_Bend_return",
+      "component_id": "ST_Bend",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
     },
     {
       "id": "ST_L2_return",
@@ -628,56 +744,62 @@
   "layout": {
     "poses": {
       "To_EDFA": [
-        1696.6038361944875,
-        404.77352544571863,
+        770.0,
+        -300.0,
         15.524999999999999,
         0
       ],
       "ST_M2": [
-        1876.6038361944875,
-        404.77352544571863,
+        950.0,
+        -300.0,
         15.524999999999999,
         135
       ],
       "ST_HWP1": [
-        1876.6038361944875,
-        479.77352544571863,
+        950.0,
+        -225.0,
         15.524999999999999,
         90
       ],
       "ST_G2": [
-        1876.6038361944875,
-        629.7735254457186,
+        950.0,
+        -75.0,
         12.7,
         11.62794830005953
       ],
       "ST_L2": [
-        1808.0404427439487,
-        615.6646247604552,
+        881.4366065494613,
+        -89.10890068526342,
         12.7,
         191.62794830005953
       ],
-      "ST_Fold": [
-        1318.3019180972437,
-        514.8867627228593,
+      "ST_Bend": [
+        563.106565529103,
+        -154.61451100970075,
         12.7,
-        11.62794830005953
+        -33.37205169994047
+      ],
+      "ST_Fold": [
+        598.3788172422616,
+        -326.02299463604754,
+        12.7,
+        101.62794830005953
       ],
       "ST_Pickoff": [
-        1876.6038361944875,
-        554.7735254457186,
+        950.0,
+        -150.0,
         9.875,
         45
       ],
       "ST_Iris": [
-        1951.6038361944875,
-        554.7735254457186,
+        1025.0,
+        -150.0,
         9.875,
         0
       ],
       "ST_M1": [
-        2026.6038361944875,
-        554.7735254457186,
+        1100.0,
+        -150.0,
         9.875,
         180
       ]

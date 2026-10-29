@@ -95,6 +95,9 @@ class SeatedDMirrorMount(VendorPart):
         profile['optical_height_mm'] -= self.edge_distance - 1.
         for pocket in profile.get('clearance_pockets', []):
             pocket['origin_mm'][2] += self.edge_distance - 1.
+        for pin in profile.get('contact_dowels', {}).get('pins', []):
+            pin['center_mm'][2] += self.edge_distance - 1.
+            pin['contact_point_mm'][2] += self.edge_distance - 1.
         return profile
 
     def shape(self):

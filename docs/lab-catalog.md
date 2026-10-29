@@ -238,6 +238,14 @@ Machining plans include `optical_heights_mm` per mounting object and
 `optical_height_mm` remains a number for uniform-height layouts and is `null`
 for mixed heights. Contract serialization remains unchanged.
 
+Recesses for POLARIS-L05G and POLARIS-L1G lens mounts follow the installed
+mount's optical axis, including reversed and nested placements. Their local
+axial length is the mount envelope plus the usual pocket clearance and an
+additional 12 mm (6 mm at each end); transverse width and seating depth are
+unchanged. The mounting profiles select `recess_orientation: "mount"` and
+`recess_axial_extra_mm: 12`. Each pocket report records its rotated origin,
+local dimensions and `rotation_deg` so the machining rectangle is unambiguous.
+
 The displacement PBS support is fused into the plate as one solid. Its existing
 clamp bore is recut after fusion so that the plate stock does not fill it. No
 holder-attachment holes are added. `machining.integrated_names` identifies the
@@ -404,5 +412,6 @@ reflection, selected plate attachments, source evidence, and rebuild commands.
 Use `create('d_mirror', label, mount='KM05DR')` or
 `create('d_mirror', label, mount='KM100D')`. The same API accepts
 `mount='KM05DL'` and `mount='KM100DL'`. Bare parts are available by part
-number. None has locating dowels; KM05DR/KM05DL retain their imperial 8-32
-threads. KM100D/KM100DL include small plate reliefs for their removable knobs.
+number. Two plate-mounted contact pins locate each fixed base against its rear
+face; the purchased holders retain their original mounting holes. KM05DR/KM05DL
+retain their imperial 8-32 threads. KM100D/KM100DL include small plate reliefs for their removable knobs.

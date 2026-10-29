@@ -1,7 +1,7 @@
 """Separate folded CPA variant; run to regenerate its editable routes and scripts.
 
 Both dispersive stages are folded. The baseline supplies the SHG hardware;
-its X/Y positions are retained at the compressor's lower output height.
+the SHG lenses are constrained symmetrically around the crystal center.
 No baseline schematic or artifact is overwritten by this generator.
 """
 import importlib.util
@@ -12,7 +12,7 @@ from copy import deepcopy
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
-from PyOpticL.ray_math import add, mul, yaw, heading, grating_direction
+from PyOpticL.ray_math import add, sub, mul, norm, yaw, heading, grating_direction
 from PyOpticL.schematic import Connection, Endpoint, compile_schematic, save_schematic
 from PyOpticL.schematic.model import OpticalPass
 from PyOpticL.schematic.optic_geometry import element_spec, roof_trace
@@ -47,13 +47,23 @@ COMPRESSOR_INPUT_Y_MM = -300.0
 COMPRESSOR_VERTICAL_ROOF_Y_MM = -100.0
 COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM = -5.0
 COMPRESSOR_PICKOFF_Y_MM = -220.0
+STRETCHER_GRATING_X_MM = 950.0
+STRETCHER_INPUT_Y_MM = COMPRESSOR_INPUT_Y_MM
+STRETCHER_LENS_TO_BEND_MM = 325.0
+STRETCHER_BEND_ANGLE_DEG = 90.0
+SHG_LENS_SEPARATION_MM = 60.0
+REAR_MIRROR_TO_HWP_MM = 30.0
+REAR_HWP_TO_PBS_MM = 30.0
+REAR_PBS_TO_COUPLER_MM = 60.0
+REAR_PICKOFF_LENGTH_MM = 100.0
+REAR_HWP_ANGLE_DEG = 22.5
 
 
 def stretcher():
     d = baseline.new("CPA folded draft — off-axis stretcher")
     d.settings["plate_thickness"] = PLATE_THICKNESS_MM
-    old = baseline.stretcher().layout["poses"]
-    gx, gy = old["ST_G2"][:2]
+    gx = STRETCHER_GRATING_X_MM
+    gy = STRETCHER_INPUT_Y_MM + GRATING_TO_STEERING_MM
     lx, ly = add((gx, gy, 0), mul(yaw((1, 0, 0), baseline.T - 90), -GRATING_GAP_MM))[:2]
     upper, lower = (
         LENS_AXIS_HEIGHT_MM + BEAM_OFFSET_MM,
@@ -111,9 +121,25 @@ def stretcher():
         baseline.T - 90 + 180,
         focal_length=FOCAL_LENGTH_MM,
     )
-    fold = add(
+    if not 0 < STRETCHER_LENS_TO_BEND_MM < FOCAL_LENGTH_MM:
+        raise ValueError("Stretcher bend must lie between the lens and end mirror")
+    telescope_axis = mul(yaw((1, 0, 0), baseline.T - 90), -1)
+    folded_axis = yaw(telescope_axis, STRETCHER_BEND_ANGLE_DEG)
+    bend = add(
         (lx, ly, LENS_AXIS_HEIGHT_MM),
-        mul(yaw((1, 0, 0), baseline.T - 90), -FOCAL_LENGTH_MM),
+        mul(telescope_axis, STRETCHER_LENS_TO_BEND_MM),
+    )
+    put(
+        "ST_Bend",
+        "mirror",
+        "POLARIS-K1VS2",
+        bend[:2],
+        LENS_AXIS_HEIGHT_MM,
+        heading(sub(folded_axis, telescope_axis)),
+    )
+    fold = add(
+        bend,
+        mul(folded_axis, FOCAL_LENGTH_MM - STRETCHER_LENS_TO_BEND_MM),
     )
     put(
         "ST_Fold",
@@ -121,7 +147,7 @@ def stretcher():
         "POLARIS-K1VS2",
         fold[:2],
         LENS_AXIS_HEIGHT_MM,
-        baseline.T - 90,
+        heading(mul(folded_axis, -1)),
     )
     py = gy - GRATING_TO_PICKOFF_MM
     put("ST_Pickoff", "mirror", "KM05DR", (gx, py), lower, 45, edge_distance=1)
@@ -150,7 +176,9 @@ def stretcher():
         ("ST_HWP1", "ST_HWP1", "A"),
         ("ST_G2", "ST_G2", "B"),
         ("ST_L2", "ST_L2", "B"),
+        ("ST_Bend", "ST_Bend", "A"),
         ("ST_Fold", "ST_Fold", "A"),
+        ("ST_Bend_lower", "ST_Bend", "B"),
         ("ST_L2_lower", "ST_L2", "A"),
         ("ST_G2_lower", "ST_G2", "A"),
         ("ST_Pickoff", "ST_Pickoff", "A"),
@@ -160,7 +188,9 @@ def stretcher():
         ("ST_Pickoff_return", "ST_Pickoff", "B"),
         ("ST_G2_lower_return", "ST_G2", "B"),
         ("ST_L2_lower_return", "ST_L2", "B"),
+        ("ST_Bend_lower_return", "ST_Bend", "A"),
         ("ST_Fold_return", "ST_Fold", "A"),
+        ("ST_Bend_return", "ST_Bend", "B"),
         ("ST_L2_return", "ST_L2", "A"),
         ("ST_G2_return", "ST_G2", "A"),
         ("ST_HWP1_return", "ST_HWP1", "B"),
@@ -168,13 +198,13 @@ def stretcher():
         ("To_EDFA_return", "To_EDFA", "beam"),
     ]
     for visit, component, _ in route:
-        if visit != component or component in ("ST_G2", "ST_L2"):
+        if visit != component or component in ("ST_G2", "ST_L2", "ST_Bend"):
             d.passes.append(
                 OpticalPass(
                     visit,
                     component,
                     "receive" if visit == "To_EDFA_return" else "pass",
-                    centered=component not in ("ST_G2", "ST_L2"),
+                    centered=component not in ("ST_G2", "ST_L2", "ST_Bend"),
                 )
             )
     for i, ((av, ac, entry), (bv, bc, incoming)) in enumerate(zip(route, route[1:])):
@@ -299,6 +329,9 @@ def compressor():
             pose = list(old.layout["poses"][n.id])
             pose[2] += lower - baseline.H
             d.layout["poses"][n.id] = pose
+    d.layout["poses"]["SHG_L1"][0] = (
+        d.layout["poses"]["SHG_Crystal"][0] + SHG_LENS_SEPARATION_MM / 2
+    )
     route = [
         ("From_EDFA", "From_EDFA", "beam"),
         ("CP_HWP1", "CP_HWP1", "A"),
@@ -326,32 +359,111 @@ def compressor():
                 f"e{i}",
                 Endpoint(ac, outgoing_port, "" if av == ac else av),
                 Endpoint(bc, incoming, "" if bv == bc else bv),
+                length=(
+                    SHG_LENS_SEPARATION_MM / 2
+                    if (ac, bc) == ("SHG_L1", "SHG_Crystal")
+                    else None
+                ),
             )
         )
     return d
 
 
 def lower_shg_output(document):
-    """Rigidly lower the complete wavelength route, including virtual endpoints."""
+    """Lower the output route and constrain its lens relative to crystal exit."""
     shift = COMPRESSOR_AXIS_HEIGHT_MM - COMPRESSOR_OFFSET_MM - baseline.H
     for pose in document.layout["poses"].values():
         pose[2] += shift
+    center = baseline.compressor().layout["poses"]["SHG_Crystal"]
+    poses = document.layout["poses"]
+    poses["SHG_L2"][0] = center[0] - SHG_LENS_SEPARATION_MM / 2
+    for edge in document.connections:
+        if edge.b.node_id == "SHG_L2":
+            # The output route starts at the physical crystal exit, 13.7 mm
+            # after its center, so its free-space constraint is 16.3 mm.
+            edge.length = round(poses[edge.a.node_id][0] - poses["SHG_L2"][0], 9)
+            if edge.length <= 0:
+                raise ValueError("SHG output lens must lie beyond the crystal exit")
     return document
 
 
+def add_rear_pickoff(document):
+    """An editable polarization pickoff ahead of the residual receiving port."""
+    document.title = "CPA folded draft — residual 1550 nm with adjustable pickoff"
+    poses = document.layout["poses"]
+    x, y, z = poses["SHG_IR_M1"][:3]
+    hwp_y = y - REAR_MIRROR_TO_HWP_MM
+    pbs_y = hwp_y - REAR_HWP_TO_PBS_MM
+    hwp = baseline.node(document, "SHG_IR_HWP1", "hwp", "FBR",
+                        (x, hwp_y), -90, fast_axis_angle=REAR_HWP_ANGLE_DEG)
+    pbs = baseline.node(document, "SHG_IR_PBS1", "splitter", "displacement_pbs",
+                        (x, pbs_y), -90, ref_polarization=0)
+    pickoff = baseline.node(document, "Pickoff_1550", "output", "open",
+                            (x + REAR_PICKOFF_LENGTH_MM, pbs_y), 0)
+    for ref in (hwp.id, pbs.id, pickoff.id):
+        poses[ref][2] = z
+    poses["Residual_1550"][1] = pbs_y - REAR_PBS_TO_COUPLER_MM
+    document.layout["splitters"][pbs.id] = False
+    document.connections = [edge for edge in document.connections
+                            if edge.b.node_id != "Residual_1550"]
+    baseline.edge(document, document.node("SHG_IR_M1"), hwp,
+                  length=REAR_MIRROR_TO_HWP_MM)
+    baseline.edge(document, hwp, pbs, bport="left", length=REAR_HWP_TO_PBS_MM)
+    baseline.edge(document, pbs, document.node("Residual_1550"),
+                  aport="right", bport="beam", length=REAR_PBS_TO_COUPLER_MM)
+    baseline.edge(document, pbs, pickoff, aport="top", bport="beam",
+                  length=REAR_PICKOFF_LENGTH_MM)
+    return document
+
+
+def validate_shg_spacing(documents):
+    """Enforce the shared center/spacing across the separate wavelength files."""
+    poses = documents["compressor"].layout["poses"]
+    first, center = poses["SHG_L1"][:3], poses["SHG_Crystal"][:3]
+    second = documents["output-775"].layout["poses"]["SHG_L2"][:3]
+    midpoint = mul(add(first, second), 0.5)
+    if (
+        abs(norm(sub(first, second)) - SHG_LENS_SEPARATION_MM) > 1e-6
+        or norm(sub(midpoint, center)) > 1e-6
+    ):
+        raise ValueError(
+            f"SHG lenses must be {SHG_LENS_SEPARATION_MM:g} mm apart with the crystal center at their midpoint"
+        )
+    for name, source in (
+        ("output-775", "SHG_775_boundary"),
+        ("residual-1550", "SHG_1550_boundary"),
+    ):
+        output = documents[name].layout["poses"]
+        if (
+            norm(sub(output["SHG_L2"][:3], second)) > 1e-6
+            or norm(sub(output[source][:3], poses["Crystal_1550_exit"][:3])) > 1e-6
+        ):
+            raise ValueError(
+                "SHG wavelength routes must share the same lens and crystal exit"
+            )
+    return dict(
+        lens_spacing_mm=norm(sub(first, second)),
+        lens_to_crystal_center_mm=[norm(sub(first, center)), norm(sub(second, center))],
+        crystal_center_mm=center,
+    )
+
+
 ASSUMPTIONS = [
-    "Separate folded CPA variant with both dispersive stages folded. The baseline CPA files and artifacts are retained. Both folded stages use the same 5.65 mm upper/lower separation. The stretcher retains its X/Y positions, hardware and focal length; SHG and rear 1550 nm collection hardware retain their X/Y positions and optical parameters at the lower compressor output height.",
+    "Separate folded CPA variant with both dispersive stages folded. The baseline CPA files and artifacts are retained. Both folded stages use the same 5.65 mm upper/lower separation. The stretcher sits beside the compressor with both input couplers on Y=-300 mm. An additional 1-inch mirror bends its telescope leg while retaining its total optical length and lens focal length; The SHG crystal and downstream output hardware keep their positions; the two 30 mm SHG lenses are now constrained 60 mm apart, with the crystal center midway between them at the lower compressor output height.",
     f"The compressor uses one CP_G1 grating four times, one horizontal HRS1015-P01 roof twice, and one vertical HRS1015-P01 roof once. Its nominal axis is Z={COMPRESSOR_AXIS_HEIGHT_MM:g} mm, with input/output at Z={COMPRESSOR_AXIS_HEIGHT_MM + COMPRESSOR_OFFSET_MM:g}/{COMPRESSOR_AXIS_HEIGHT_MM - COMPRESSOR_OFFSET_MM:g} mm. The horizontal separation is {COMPRESSOR_HORIZONTAL_SEPARATION_MM:g} mm; the vertical roof shifts downward by {2*COMPRESSOR_OFFSET_MM:g} mm. All four grating passes are intentionally off axis, at the centers of the four quadrants of the 30.8 x 11.3 mm clear aperture: local face offsets (+/-7.7, +/-2.825) mm.",
     f"The horizontal roof's nominal virtual fold plane is {COMPRESSOR_FOLD_DISTANCE_MM:g} mm beyond the first grating hit. Its entrance plane is {COMPRESSOR_FOLD_DISTANCE_MM - ROOF_INTERNAL_AXIAL_DEPTH_MM:g} mm away, accounting for the measured roof's {ROOF_INTERNAL_AXIAL_DEPTH_MM:g} mm internal axial depth. Actual path lengths include the finite roof path and lateral walkoff; a nominal 860 mm span is not imposed as a chief-ray length.",
     f"The compressor input coupler, waveplate and ordinary half-inch CP_M1 mirror in POLARIS-K05VS2 are at Y={COMPRESSOR_INPUT_Y_MM:g} mm. CP_M1 is centered at (320, {COMPRESSOR_INPUT_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM+COMPRESSOR_OFFSET_MM:g}) mm. The vertical roof entrance is at Y={COMPRESSOR_VERTICAL_ROOF_Y_MM:g} mm, between the grating and D pickoff, and its physical axis is offset {COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM:g} mm along local Y from the displaced return ray. The vertical roof is intentionally off axis; its revised integral stops are 2.54 mm above the seating floor. A PFD05-03-P01 in KM05DL remains at (320, {COMPRESSOR_PICKOFF_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM-COMPRESSOR_OFFSET_MM:g}) mm, steering the fourth grating pass into SHG. The horizontal roof is entered through B first. Both straight-through beams are checked against the vertical roof with 1 mm radius probes, along with the pickoff and steering-mirror bypass checks.",
+    f"The stretcher grating is positioned at X={STRETCHER_GRATING_X_MM:g} mm and its input coupler line at Y={STRETCHER_INPUT_Y_MM:g} mm. These input-section anchors position the folded stretcher beside the compressor. Its coupler is at X={STRETCHER_GRATING_X_MM-COUPLER_TO_STEERING_MM:g} mm, alongside the compressor coupler at X=500 mm. The shared baseplate is regenerated around the closer hardware footprints.",
     f"One physical ST_G2 grating and one 25.4 mm ST_L2 lens in a POLARIS-L1G mount are each used four times. The lens focal length is 500 mm, its center is Z={LENS_AXIS_HEIGHT_MM:g} mm, and the upper/lower beams pass at Z={LENS_AXIS_HEIGHT_MM + BEAM_OFFSET_MM:g}/{LENS_AXIS_HEIGHT_MM - BEAM_OFFSET_MM:g} mm. The grating is centered at the lens axis height; its four passes are intentionally off axis.",
-    "The upright 25.4 mm ST_Fold mirror in a POLARIS-K1VS2 mount lies 500 mm axially beyond the lens, at the original inter-grating midpoint for the default dimensions. Its normal follows the nominal telescope axis, not the sloping incident ray. The grating-to-lens gap remains 70 mm. Finite sloping ray lengths are computed rather than forced to the axial distance.",
+    f"An additional upright 25.4 mm ST_Bend mirror in POLARIS-K1VS2 turns the telescope leg by {STRETCHER_BEND_ANGLE_DEG:g} degrees, {STRETCHER_LENS_TO_BEND_MM:g} mm axially after the lens. The existing upright 25.4 mm ST_Fold end mirror is {FOCAL_LENGTH_MM-STRETCHER_LENS_TO_BEND_MM:g} mm farther along the folded axis, normal to that nominal axis rather than the sloping incident ray. The two axial lengths total {FOCAL_LENGTH_MM:g} mm and preserve the entire pre-bend ray length. ST_Bend has four intentionally off-axis encounters. The grating-to-lens gap remains 70 mm; finite sloping ray lengths are traced.",
     "The lower return traverses the same lens and grating, then a PFD05-03-P01 D-shaped mirror in a KM05DR mount selects it. The optical datum is 1 mm below the straight edge. The upper path clears the open half; a 1 mm radius clearance probe is checked against the optic and mount.",
     "The D pickoff is 75 mm before the grating. The VA100 is 75 mm after the pickoff, followed 75 mm later by the existing 25.4 mm ST_M1 retroreflector in a POLARIS-K1VS2 mount. The return retraces the entire folded path to the launching coupler.",
     f"The upper input steering mirror is 225 mm before the grating; the FBR half-wave plate is 150 mm before it. The integral-lens fiber coupler is 180 mm from that steering mirror. All starter distances and the {BEAM_OFFSET_MM:g} mm lens offset are editable in generate.py and the schematic poses.",
     "The plate top is Z=3 mm and thickness is 33 mm, preserving its underside at Z=-30 mm. Purchased mounts remain upright and use their real seats, recessed where required; no floating mounts or unspecified spacers are introduced.",
+    f"SHG lens separation is constrained to {SHG_LENS_SEPARATION_MM:g} mm with the physical crystal center at the midpoint: 30 mm from each lens for the defaults. The input lens is at X=130 mm, the crystal center at X=100 mm and the output lens at X=70 mm. Input lens to crystal center is an explicit 30 mm schematic length constraint. Each output wavelength starts at the physical crystal exit, 13.7 mm after the center, with an explicit 16.3 mm exit-to-lens constraint. The folded CAD builder additionally validates the shared 60 mm span, midpoint and exit alignment across wavelength files before export. Both SHG focal lengths remain 30 mm; lens-mount facing directions and downstream optics are retained.",
     "VA100 slit width is provisionally 1 mm. Beam waists and powers remain illustrative. Native and schematic traces use the existing ideal thin-lens, mirror and grating models; no detailed aberration, pulse dispersion, gain, SHG efficiency or phase matching is predicted.",
     "The output dichroic reflects 775 nm and transmits 1550 nm through an ideal 3 mm, n=1.5 plate. The exact coating/optic is unselected. The residual 1550 nm path retains its half-inch mirror and integral-lens coupler; fiber cables and the EDFA package are omitted.",
+    f"The rear 1550 nm receiving leg includes SHG_IR_HWP1 in an FBR mount and SHG_IR_PBS1, a 12.7 mm polarizing cube in the existing integral displacement PBS holder. Editable starter spacings are {REAR_MIRROR_TO_HWP_MM:g} mm mirror-to-waveplate, {REAR_HWP_TO_PBS_MM:g} mm waveplate-to-PBS and {REAR_PBS_TO_COUPLER_MM:g} mm PBS-to-coupler. The straight transmitted port continues toward -Y into Residual_1550; the reflected Pickoff_1550 port exits toward +X with a {REAR_PICKOFF_LENGTH_MM:g} mm open guide. The half-wave plate fast-axis starter is {REAR_HWP_ANGLE_DEG:g} degrees and the reflected PBS polarization axis is 0 degrees. Polarization/power division uses the existing ideal Jones model, not a selected 1550 nm cube coating or validated coupled-mode overlap.",
     "All delivered beam solids are constant-width center-ray guides. The plate and drilling are a provisional review draft.",
 ]
 
@@ -361,7 +473,8 @@ def documents():
     result["stretcher"] = stretcher()
     result["compressor"] = compressor()
     result["output-775"] = lower_shg_output(result["output-775"])
-    result["residual-1550"] = lower_shg_output(result["residual-1550"])
+    result["residual-1550"] = add_rear_pickoff(lower_shg_output(result["residual-1550"]))
+    validate_shg_spacing(result)
     return result
 
 

@@ -1,5 +1,5 @@
 {
-  "title": "CPA draft \u2014 residual 1550 nm transmitted output",
+  "title": "CPA folded draft \u2014 residual 1550 nm with adjustable pickoff",
   "nodes": [
     {
       "id": "SHG_1550_boundary",
@@ -81,6 +81,54 @@
       "rotation": 0,
       "physical": {},
       "mirror_role": "turning"
+    },
+    {
+      "id": "SHG_IR_HWP1",
+      "reference": "SHG_IR_HWP1",
+      "kind": "hwp",
+      "preset": "FBR",
+      "parameters": {
+        "diameter": 12.7,
+        "fast_axis_angle": 22.5
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "SHG_IR_PBS1",
+      "reference": "SHG_IR_PBS1",
+      "kind": "splitter",
+      "preset": "displacement_pbs",
+      "parameters": {
+        "side_length": 12.7,
+        "ref_polarization": 0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "Pickoff_1550",
+      "reference": "Pickoff_1550",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
     }
   ],
   "connections": [
@@ -97,7 +145,7 @@
         "pass_id": ""
       },
       "bends": [],
-      "length": null,
+      "length": 16.3,
       "turns": {},
       "allow_folding": false
     },
@@ -143,12 +191,63 @@
         "pass_id": ""
       },
       "b": {
+        "node_id": "SHG_IR_HWP1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": 30.0,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e4",
+      "a": {
+        "node_id": "SHG_IR_HWP1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "SHG_IR_PBS1",
+        "port_id": "left",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": 30.0,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e5",
+      "a": {
+        "node_id": "SHG_IR_PBS1",
+        "port_id": "right",
+        "pass_id": ""
+      },
+      "b": {
         "node_id": "Residual_1550",
         "port_id": "beam",
         "pass_id": ""
       },
       "bends": [],
-      "length": null,
+      "length": 60.0,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e6",
+      "a": {
+        "node_id": "SHG_IR_PBS1",
+        "port_id": "top",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "Pickoff_1550",
+        "port_id": "beam",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": 100.0,
       "turns": {},
       "allow_folding": false
     }
@@ -180,7 +279,7 @@
         180
       ],
       "SHG_L2": [
-        0,
+        70.0,
         -220,
         9.875,
         0
@@ -202,9 +301,29 @@
         -339.012573075468,
         9.875,
         90
+      ],
+      "SHG_IR_HWP1": [
+        -213.25521376258732,
+        -249.01257307546803,
+        9.875,
+        -90
+      ],
+      "SHG_IR_PBS1": [
+        -213.25521376258732,
+        -279.012573075468,
+        9.875,
+        -90
+      ],
+      "Pickoff_1550": [
+        -113.25521376258732,
+        -279.012573075468,
+        9.875,
+        0
       ]
     },
     "projection": "XY",
-    "splitters": {}
+    "splitters": {
+      "SHG_IR_PBS1": false
+    }
   }
 }

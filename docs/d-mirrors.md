@@ -103,15 +103,35 @@ Drawings are **21737-E0W revision A**, **TTN099623-E0W revision A**,
 
 ## Plate contract and hardware
 
-None of these holders has locating dowels. Each exposes exactly **one tapped operation**
-through the shared attachment builder, in ordinary `Baseplate` and
-`MachinedBaseplate`. Component holes remain distinct from these plate bores.
+Each holder exposes **one tapped plate operation and two external contact-pin
+bores** through the shared attachment builder, in ordinary `Baseplate` and
+`MachinedBaseplate`. The purchased holder retains its two physical mounting
+holes; the added dowels locate against its fixed base rather than entering it.
+
+The two 2 mm × 5 mm pins sit tangent to the fixed rear face, 10 mm apart
+on the half-inch mounts and 22 mm apart on the one-inch mounts. Plate bores retain
+the existing catalog nominal Ø2.01 mm fit and use 4 mm straight depth with
+a 118-degree tip, leaving 1 mm pin projection above the seat or recess floor.
+The exposed pin reaches the flat rear face above its lower chamfer and clears
+the optic and moving hardware.
+These design-selected stops locate the rear position and yaw; the mounting
+screw holds the base down. They do not fully constrain translation along the
+rear face. Bore positions, pin projection and contact points are included in
+the drilling report; the two pins per mount are included in the BOM.
+
+When recessed by `MachinedBaseplate`, all four D-mirror holders receive a recess
+with twice the usual width and length for Allen-key adjuster access. The recess
+is centered on the installed mount's bounding box; its floor, mounting screw
+position and drill depth are unchanged. This machining allowance is selected by
+`recess_scale_xy: 2` in the mounting profiles and is recorded with the recess's
+origin and dimensions in the drilling report. It does not resize the hardware
+or the separate below-seat knob reliefs.
 
 - KM05DR/KM05DL use their actual **8-32 UNC** bottom tap. The selected plate bore is
   Ø3.4544 mm (#29), 10 mm straight depth, with 8 mm nominal thread depth and a
   118-degree tip. A nominal 8-32 x 1/4-inch double-ended stud engages the holder
   and plate by 3.175 mm each. This is an installation selection; it is not a
-  vendor-specified plate connection or a dowel registration scheme.
+  vendor-specified plate connection. The external contact pins supply the rear stops.
 - KM100D/KM100DL use their existing Ø4.7625 mm clearance hole and Ø7.9375 mm counterbore.
   The plate uses the existing M4 profile: Ø3.3 x 10 mm tap drill, 8 mm nominal
   thread depth and a 118-degree tip. A selected M4 x 12 mm cap screw spans the
@@ -125,7 +145,7 @@ through the shared attachment builder, in ordinary `Baseplate` and
   attachment operation. KM100DL uses independently measured source knob solid
   21 and its own relief coordinates; KM100D uses source solid 6.
 
-Screws/stud are BOM requirements rather than extra nominal solids in the review
+Screws/studs and contact pins are BOM requirements rather than extra nominal solids in the review
 STEP. Clamp-force, preload, thread phase, manufacturing fit and physical retention
 are separate from the nominal CAD fit checks.
 
@@ -152,8 +172,10 @@ The expanded acceptance suite checks all four holder selections, original source
 hashes and solids, native heights, front-facing coated surfaces, opposite arm
 handedness, clamp seating, selectable edge distance, both plate workflows with
 nested transforms, recomputation, instance isolation, and export/reopen integrity.
-The four-pair review contains four tapped attachment bores and two knob reliefs.
-The small mounts retain their 8-32 threads; no extra dowel holes are introduced.
+The four-pair review contains four tapped attachment bores, eight contact-pin
+bores and two knob reliefs. The small mounts retain their 8-32 threads.
+Additional tests verify rear-face tangency, clearance from the optic and moving
+hardware, and contact positions with the alternate optical datum.
 Detailed local results are in `artifacts/d_mirrors.verification.json`.
 
 Verified 2026-10-28: 67 tests passed across D-mirror, catalog, baseplate, vendor-batch,

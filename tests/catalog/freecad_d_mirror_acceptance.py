@@ -73,7 +73,7 @@ class DMirrorTests(unittest.TestCase):
             self.assertEqual(contract, ComponentContract.from_dict(contract.to_dict()))
             self.assertEqual(len(contract.holes), 2)
             self.assertEqual({h.thread for h in contract.holes}, {'8-32 UNC'} if mount.startswith('KM05') else {None})
-            self.assertEqual(len(attachments.operations(definition)), 1)
+            self.assertEqual(len(attachments.operations(definition)), 3)
             self.assertEqual(definition.baseplate_profile()['dowels'], [])
             cylinders = [f.Surface for f in catalog.vendor_shape(mount).Faces if isinstance(f.Surface, Part.Cylinder)]
             for hole in reference()['parts'][mount]['physical_mounting_features']:
@@ -104,8 +104,10 @@ class DMirrorTests(unittest.TestCase):
             self.assertEqual(len(rows), 2)
             self.assertEqual({r['procurement'] for r in rows}, {'purchased'})
             hardware = rows[1]['mounting_hardware']
-            self.assertEqual(len(hardware), 1)
+            self.assertEqual(len(hardware), 2)
             self.assertIn('8-32' if mount.startswith('KM05') else 'M4', hardware[0]['kind'])
+            self.assertEqual(hardware[1]['quantity'], 2)
+            self.assertIn('2 mm x 5 mm', hardware[1]['kind'])
             b = optic.Shape.optimalBoundingBox(False)
             r = reference()['pairs'][mount]['radius_mm']
             self.assertAlmostEqual(b.XMin, -6, places=5)
@@ -226,6 +228,77 @@ class DMirrorTests(unittest.TestCase):
                 self.assertAlmostEqual(segments[0].Proxy.distance,50 if blocked else 100,places=6)
                 self.assertEqual(beam.get_output_indices(component),[])
 
+    def test_recessed_mounts_have_double_width_tool_access_and_supported_seats(self):
+        root = Layout('Recessed D mirrors')
+        components = [root.add(catalog.create('d_mirror', mount, mount=mount),
+                              (i*200, 0, 12.7), 31)
+                      for i, mount in enumerate(MOUNTS)]
+        plate, machining = machined_baseplate.add(root, thickness=33)
+        root.recompute()
+        shape = plate.get_object().Shape
+        self.assertTrue(shape.isValid())
+        self.assertEqual(len(shape.Solids), 1)
+        recesses = [p for p in machining.plan['pockets'] if 'recess_scale_xy' in p]
+        self.assertEqual(len(recesses), len(MOUNTS))
+        for component, record in zip(components, recesses):
+            with self.subTest(mount=component.get_object().Label):
+                holder = component.get_object().Children[1]
+                b = holder.Shape.optimalBoundingBox()
+                old_width = b.XLength + 2*machining.pocket_clearance
+                old_depth = b.YLength + 2*machining.pocket_clearance
+                self.assertEqual(record['recess_scale_xy'], 2)
+                self.assertAlmostEqual(record['size_mm'][0], 2*old_width)
+                self.assertAlmostEqual(record['size_mm'][1], 2*old_depth)
+                profile = attachments.profile(holder.Proxy)
+                frames = {f.name:f for f in holder.Proxy.contract().frames}
+                seat = holder.Placement.multVec(App.Vector(*frames[profile['seat_frame']].position))
+                self.assertAlmostEqual(record['origin_mm'][2], seat.z)
+                # This point was inside a former pocket wall; it is now open
+                # from the top to the unchanged seat, with stock below it.
+                probe = App.Vector(b.Center.x+.75*old_width,
+                                   b.Center.y+.75*old_depth, seat.z/2)
+                self.assertFalse(shape.isInside(probe, 1e-7, False))
+                probe.z = seat.z-.1
+                self.assertTrue(shape.isInside(probe, 1e-7, False))
+                operation = next(h for h in machining.plan['holes'] if h['mount_object']==holder.Name)
+                expected = attachments.operations(holder.Proxy, holder.Placement)[0]
+                self.assert_vector(operation['center_mm'], expected['center_mm'])
+                self.assertEqual(operation['depth_mm'], expected['depth_mm'])
+
+    def test_rear_contact_dowels_touch_fixed_base_without_blocking_moving_parts(self):
+        from PyOpticL.d_mirror import DMirror, SeatedDMirrorMount
+        for mount in MOUNTS:
+            for edge_distance in (1., 2.):
+                with self.subTest(mount=mount, edge_distance=edge_distance):
+                    holder = SeatedDMirrorMount(mount, edge_distance)
+                    shape = holder.shape()
+                    specification = holder.baseplate_profile()['contact_dowels']
+                    fixed = shape.Solids[specification['fixed_base_solid']]
+                    optic = DMirror(reference()['pairs'][mount]['optic'], edge_distance).shape()
+                    contract = holder.contract()
+                    self.assertEqual(len(contract.holes), 2)  # Purchased holder stays unmodified.
+                    operations = [op for op in attachments.operations(holder) if op.get('external_contact')]
+                    self.assertEqual(len(operations), 2)
+                    for operation in operations:
+                        center = App.Vector(*operation['center_mm'])
+                        point = App.Vector(*operation['contact_point_mm'])
+                        self.assertAlmostEqual(center.x-point.x, -operation['pin_diameter_mm']/2)
+                        self.assertTrue(operation['interface'].startswith('rear_stop_'))
+                        self.assertAlmostEqual(operation['depth_mm']+operation['projection_mm'], 5)
+                        self.assertAlmostEqual(center.y, point.y)
+                        self.assertLess(center.z, point.z)
+                        self.assertLess(point.z, center.z+operation['projection_mm'])
+                        pin = Part.makeCylinder(operation['pin_diameter_mm']/2,
+                            operation['depth_mm']+operation['projection_mm'],
+                            center-App.Vector(0,0,operation['depth_mm']))
+                        self.assertLess(pin.distToShape(fixed)[0], 1e-7)
+                        self.assertTrue(any(isinstance(face.Surface, Part.Plane)
+                            and face.normalAt(0,0).x < -.99
+                            and Part.Vertex(point).distToShape(face)[0] < 1e-7
+                            for face in fixed.Faces))
+                        self.assertLess(sum(pin.common(solid).Volume for solid in shape.Solids), 1e-6)
+                        self.assertLess(pin.common(optic).Volume, 1e-6)
+
     def test_both_plate_workflows_nested_transforms_recompute_and_moves(self):
         root = Layout('Nested plate')
         root.get_object().BasePlacement = App.Placement(App.Vector(21,-17,6), App.Rotation('XYZ',0,0,19))
@@ -239,7 +312,7 @@ class DMirrorTests(unittest.TestCase):
         ordinary = root.add(Component('Ordinary',Baseplate((650,160,30),optical_height=0,
             grid_offset=(0,0)),recompute_priority=-2),(0,0,0),0)
         root.recompute()
-        self.assertEqual(len(machining.plan['holes']),len(MOUNTS))
+        self.assertEqual(len(machining.plan['holes']),3*len(MOUNTS))
         self.assertEqual(len(machining.plan['pockets']),2)
         self.assertIsNone(machining.plan['optical_height_mm'])
         for target in (plate,ordinary):
@@ -272,7 +345,7 @@ class DMirrorTests(unittest.TestCase):
             self.assertAlmostEqual(op['diameter_mm'],3.4544 if mount.startswith('KM05') else 3.3)
             footprint = definition.drill()
             self.assertTrue(footprint.isValid())
-            self.assertEqual(len(footprint.Solids),1 if mount.startswith('KM05') else 2)
+            self.assertEqual(len(footprint.Solids),3 if mount.startswith('KM05') else 4)
             root = Layout('Thin '+mount)
             component = root.add(catalog.create('d_mirror',mount,mount=mount),(0,0,0),0)
             component.get_object().BasePlacement.Base.z = catalog.native_height(component)
@@ -362,7 +435,7 @@ class DMirrorTests(unittest.TestCase):
                 self.assertAlmostEqual(obj.Shape.Volume,volume,places=6)
             plate = Part.read(str(output.with_name(output.stem+'_baseplate.step')))
             self.assertTrue(plate.isValid());self.assertEqual(len(plate.Solids),1)
-            self.assertEqual(len(json.loads(output.with_suffix('.machining.json').read_text())['holes']),4)
+            self.assertEqual(len(json.loads(output.with_suffix('.machining.json').read_text())['holes']),12)
 
 
 if __name__ == '__main__':

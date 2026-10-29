@@ -6,6 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from examples.chirped_pulse_amplification import build as build_cpa
+from PyOpticL.schematic import load_schematic
 
 SCHEMATICS = ROOT / "Designs/schematics/cpa-folded"
 OUTPUT = ROOT / "artifacts/chirped_pulse_amplification_folded.FCStd"
@@ -18,18 +19,27 @@ def build(output=OUTPUT):
     )
     settings = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(settings)
-    return build_cpa(
+    shg_spacing = settings.validate_shg_spacing(
+        {
+            name: load_schematic(SCHEMATICS / (name + ".pyopticl-schematic.json"))
+            for name in ("compressor", "output-775", "residual-1550")
+        }
+    )
+    scene = build_cpa(
         output,
         schematic_folder=SCHEMATICS,
         plate_top_z=settings.PLATE_TOP_Z_MM,
         plate_thickness=settings.PLATE_THICKNESS_MM,
         baseplate_output=output.with_name(output.stem + "_baseplate.step"),
     )
+    scene.shg_spacing = shg_spacing
+    return scene
 
 
 if __name__ == "__main__":
     scene = build()
     print("Folded CPA saved:", OUTPUT, flush=True)
+    print("SHG spacing:", scene.shg_spacing, flush=True)
     print("Pickoff clearance:", scene.report["stretcher_pickoff_clearance"], flush=True)
     print(
         "Stretcher:",

@@ -5,7 +5,7 @@ from PyOpticL.library import optics, thorlabs
 from PyOpticL.schematic.runtime import check_pass_trace
 from PyOpticL.schematic import catalog_parts as catalog
 
-PLACEMENTS = {'SHG_L2': (0, -220, 9.875, 0), 'SHG_M1': (-100, -220, 9.875, -45)}
+PLACEMENTS = {'SHG_L2': (70.0, -220, 9.875, 0), 'SHG_M1': (-100, -220, 9.875, -45)}
 
 SOURCE = {'angle': 180,
  'polarization_angle': 0,
@@ -16,8 +16,8 @@ SOURCE = {'angle': 180,
 
 EXPECTED_PASSES = {'Output_775': {'branches': {},
                 'component': None,
-                'entry': (-99.99999999999996, -330.0, 9.875),
-                'exit': (-99.99999999999996, -330.0, 9.875),
+                'entry': (-99.99999999999994, -330.0, 9.875),
+                'exit': (-99.99999999999994, -330.0, 9.875),
                 'internal_length': 0.0,
                 'mode': 'receive',
                 'reference': 'Output_775'},
@@ -25,7 +25,7 @@ EXPECTED_PASSES = {'Output_775': {'branches': {},
                                            'direction': (-1.0,
                                                          1.2246467991473532e-16,
                                                          0.0),
-                                           'length': 86.3,
+                                           'length': 16.299999999999997,
                                            'pass': 'SHG_L2'}},
                       'component': None,
                       'entry': (86.3, -220, 9.875),
@@ -37,11 +37,11 @@ EXPECTED_PASSES = {'Output_775': {'branches': {},
                                  'direction': (-1.0,
                                                1.2246467991473532e-16,
                                                0.0),
-                                 'length': 99.99999999999999,
+                                 'length': 169.99999999999997,
                                  'pass': 'SHG_M1'}},
             'component': 'SHG_L2',
-            'entry': (0.0, -220.0, 9.875),
-            'exit': (0.0, -220.0, 9.875),
+            'entry': (70.0, -220.0, 9.875),
+            'exit': (70.0, -220.0, 9.875),
             'internal_length': 0.0,
             'mode': 'pass',
             'reference': 'SHG_L2'},
@@ -49,19 +49,19 @@ EXPECTED_PASSES = {'Output_775': {'branches': {},
                                  'direction': (2.220446049250313e-16,
                                                -1.0,
                                                0.0),
-                                 'length': 110.0,
+                                 'length': 110.00000000000003,
                                  'pass': 'Output_775'}},
             'component': 'SHG_M1',
-            'entry': (-99.99999999999999, -220.0, 9.875),
-            'exit': (-99.99999999999999, -220.0, 9.875),
+            'entry': (-99.99999999999997, -219.99999999999997, 9.875),
+            'exit': (-99.99999999999997, -219.99999999999997, 9.875),
             'internal_length': 0.0,
             'mode': 'pass',
             'reference': 'SHG_M1'}}
 
 PATH_LENGTHS = {}
-OPEN_SEGMENTS = [((-99.99999999999999, -220.0, 9.875),
+OPEN_SEGMENTS = [((-99.99999999999997, -219.99999999999997, 9.875),
   (2.220446049250313e-16, -1.0, 0.0),
-  110.0)]
+  110.00000000000003)]
 
 def build_layout():
     layout = Layout('CPA draft — 775 nm reflected output')

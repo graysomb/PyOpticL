@@ -19,7 +19,7 @@ QUALIFICATIONS = [
     'KM100D/KM100DL example optic is excluded because it is not supplied; exact PFD10-03-P01 replaces it.',
     'KM05DR/KM05DL are rear loaded: S1 faces its front opening; nylon screws retract 0.44375 mm to contact rear S2.',
     'Each KM100D/KM100DL knob requires one 0.885 mm plate clearance relief; mounting face stays at plate top.',
-    'One M4 cap screw per KM100D/KM100DL and one 8-32 x 1/4 in stud per KM05DR/KM05DL are BOM requirements. No dowels.',
+    'One M4 cap screw per KM100D/KM100DL or one 8-32 x 1/4 in stud per KM05DR/KM05DL, plus two external 2 mm x 5 mm locating pins per mount, are BOM requirements. Pins contact the fixed base rear face; holder holes are unchanged.',
     'Ideal single-sided reflection with conservative 90%-diameter semicircular clear aperture and 0.1 mm edge exclusion. No coating efficiency, edge diffraction, or clamp-force model.',
     'Nominal CAD fit and engagement are checked; manufacturing fit and physical retention require validation.',
 ]
@@ -76,8 +76,9 @@ def build(output=None, plate_thickness=30.):
             path_length_mm=sum(s.Proxy.distance for s in segments),
             contracts=[o.Proxy.contract().to_dict() for o in (optic, holder)],
             bom=catalog.bom(component), solids_valid=True, nominal_fit_passed=True))
-    if len(machining.plan['holes']) != 4 or len(machining.plan['pockets']) != 2:
-        raise ValueError('Expected four tapped bores and two knob clearance pockets')
+    if (len(machining.plan['holes']) != 12 or len(machining.plan['pockets']) != 2
+            or sum(h.get('external_contact', False) for h in machining.plan['holes']) != 8):
+        raise ValueError('Expected four tapped bores, eight contact-pin bores and two knob clearance pockets')
     static = App.newDocument('DMirrorsReview')
     physical = []
     for obj in attachments.descendants(root.get_object()):
@@ -124,4 +125,4 @@ def build(output=None, plate_thickness=30.):
 
 if __name__ == '__main__':
     document, report = build()
-    print('Built four native-height D-mirror pairs with four plate bores and two knob reliefs.')
+    print('Built four native-height D-mirror pairs with four tapped bores, eight contact-pin bores and two knob reliefs.')

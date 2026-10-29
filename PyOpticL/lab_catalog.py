@@ -700,6 +700,10 @@ def bom(component):
                         if mounting['dowels']:
                             row['mounting_hardware'].append(dict(kind=mounting['dowel']['pin'],
                                 quantity=len(mounting['dowels']), included=c.part_number == 'FBR'))
+                        if mounting.get('contact_dowels'):
+                            contact = mounting['contact_dowels']
+                            row['mounting_hardware'].append(dict(kind=contact['pin'],
+                                quantity=len(contact['pins']), included=False, note=contact['note']))
                 rows.append(row)
         elif hasattr(proxy, 'shape'):
             rows.append(dict(path=path, catalog_id='', part_number='', manufacturer='', procurement='generic', quantity=1))

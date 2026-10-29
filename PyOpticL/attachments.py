@@ -142,6 +142,27 @@ def operations(definition, placement=None):
                   step_sha256=specification.get('step_sha256'),
                   drawing_sha256=specification.get('drawing_sha256'))
         result.append(op)
+    # External contact pins register an unmodified holder. Their plate holes
+    # are separate from the purchased part's physical holes/contract frames.
+    contact = specification.get('contact_dowels')
+    if contact:
+        for pin in contact['pins']:
+            center = placement.multVec(App.Vector(*pin['center_mm']))
+            if abs((center-seat).dot(axis)) > .01:
+                raise ValueError('Contact dowel is not on selected mounting face: '+pin['name'])
+            op = dict(kind='dowel', interface=pin['name'], external_contact=True,
+                center_mm=list(center), axis=list(axis),
+                diameter_mm=contact['plate_diameter_mm'], depth_mm=contact['plate_depth_mm'],
+                pin=contact['pin'], pin_diameter_mm=contact['pin_diameter_mm'],
+                projection_mm=contact['pin_projection_mm'],
+                contact_point_mm=list(placement.multVec(App.Vector(*pin['contact_point_mm']))),
+                part=contract.part_number or contract.catalog_id, source=specification['source'],
+                step_sha256=specification.get('step_sha256'),
+                drawing_sha256=specification.get('drawing_sha256'), note=contact['note'])
+            for field in ('plate_diameter_limits_mm', 'plate_depth_tolerance_mm'):
+                if field in contact:
+                    op[field.removeprefix('plate_')] = contact[field]
+            result.append(op)
     return result
 
 
