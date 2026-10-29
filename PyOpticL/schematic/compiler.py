@@ -61,6 +61,11 @@ def validate_schematic(document):
                 grating_turn(document,node,topology)
             except ValueError as error:
                 diagnostics.append(Diagnostic(f"{node.reference}: {error}",node.id))
+        if node.kind == "dichroic":
+            if parameter_values(node)["reflect_min"] > parameter_values(node)["reflect_max"]:
+                diagnostics.append(Diagnostic(f"{node.reference}: reflection band minimum exceeds maximum", node.id))
+            if document.layout is None:
+                diagnostics.append(Diagnostic(f"{node.reference}: use a physical layout for a dichroic plate", node.id))
         if node.preset == "mounted" and parameter_values(node).get("diameter") != 12.7:
             diagnostics.append(Diagnostic(f"{node.reference}: the mounted preset requires a 12.7 mm optic; choose bare for another diameter", node.id))
         allowed = {"x", "y", "angle"} if symbol.role in ("source", "terminal") else {"x", "y"}

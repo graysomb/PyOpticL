@@ -18,6 +18,22 @@ def mirror(mount, diameter, thickness):
     return lab_catalog.definition("mirror", mount=mount, thickness=thickness)
 
 
+def dichroic(mount, diameter, thickness, reflect_min=700, reflect_max=850, refractive_index=1.5):
+    from dataclasses import replace
+    from PyOpticL.library.optics import Circular_Dichroic_Mirror
+
+    base = lab_catalog.definition("mirror", mount=mount, thickness=thickness) if mount else None
+    result = Circular_Dichroic_Mirror(
+        diameter=diameter, thickness=thickness,
+        ref_wavelengths=[(reflect_min, reflect_max)], refractive_index=refractive_index,
+        mount_definition=base.mount_definition if base else None,
+        mount_offset=base.mount_offset if base else None,
+    )
+    if base:
+        result.contract = lambda: replace(base.contract(), catalog_id="dichroic")
+    return result
+
+
 def d_mirror(optic, diameter, thickness, edge_distance=1, mount=None):
     from .registry import d_mirror_geometry
 

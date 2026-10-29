@@ -1,0 +1,569 @@
+{
+  "title": "CPA draft \u2014 stretcher",
+  "nodes": [
+    {
+      "id": "ST_M1",
+      "reference": "ST_M1",
+      "kind": "mirror",
+      "preset": "POLARIS-K1VS2",
+      "parameters": {
+        "diameter": 25.4
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_Iris",
+      "reference": "ST_Iris",
+      "kind": "slit",
+      "preset": "VA100",
+      "parameters": {
+        "slit_width": 1.0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_G1",
+      "reference": "ST_G1",
+      "kind": "grating",
+      "preset": "MK05S",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_L1",
+      "reference": "ST_L1",
+      "kind": "lens",
+      "preset": "POLARIS-L1G",
+      "parameters": {
+        "diameter": 25.4,
+        "focal_length": 500.0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_L2",
+      "reference": "ST_L2",
+      "kind": "lens",
+      "preset": "POLARIS-L1G",
+      "parameters": {
+        "diameter": 25.4,
+        "focal_length": 500.0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_G2",
+      "reference": "ST_G2",
+      "kind": "grating",
+      "preset": "MK05S",
+      "parameters": {
+        "mirrored": 1
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_M2",
+      "reference": "ST_M2",
+      "kind": "mirror",
+      "preset": "POLARIS-K05VS2",
+      "parameters": {
+        "diameter": 12.7
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "ST_HWP1",
+      "reference": "ST_HWP1",
+      "kind": "hwp",
+      "preset": "FBR",
+      "parameters": {
+        "diameter": 12.7,
+        "fast_axis_angle": 0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "To_EDFA",
+      "reference": "To_EDFA",
+      "kind": "fiber_source",
+      "preset": "POLARIS-K05T6",
+      "parameters": {
+        "wavelength": 1550,
+        "waist": 0.2,
+        "power": 0.001
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    }
+  ],
+  "connections": [
+    {
+      "id": "e0",
+      "a": {
+        "node_id": "To_EDFA",
+        "port_id": "beam",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_M2",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e1",
+      "a": {
+        "node_id": "ST_M2",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_HWP1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e2",
+      "a": {
+        "node_id": "ST_HWP1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_G2",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e3",
+      "a": {
+        "node_id": "ST_G2",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_L2",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e4",
+      "a": {
+        "node_id": "ST_L2",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_L1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e5",
+      "a": {
+        "node_id": "ST_L1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_G1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e6",
+      "a": {
+        "node_id": "ST_G1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_Iris",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e7",
+      "a": {
+        "node_id": "ST_Iris",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_M1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e8",
+      "a": {
+        "node_id": "ST_M1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "ST_Iris",
+        "port_id": "A",
+        "pass_id": "ST_Iris_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e9",
+      "a": {
+        "node_id": "ST_Iris",
+        "port_id": "B",
+        "pass_id": "ST_Iris_return"
+      },
+      "b": {
+        "node_id": "ST_G1",
+        "port_id": "A",
+        "pass_id": "ST_G1_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e10",
+      "a": {
+        "node_id": "ST_G1",
+        "port_id": "B",
+        "pass_id": "ST_G1_return"
+      },
+      "b": {
+        "node_id": "ST_L1",
+        "port_id": "A",
+        "pass_id": "ST_L1_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e11",
+      "a": {
+        "node_id": "ST_L1",
+        "port_id": "B",
+        "pass_id": "ST_L1_return"
+      },
+      "b": {
+        "node_id": "ST_L2",
+        "port_id": "A",
+        "pass_id": "ST_L2_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e12",
+      "a": {
+        "node_id": "ST_L2",
+        "port_id": "B",
+        "pass_id": "ST_L2_return"
+      },
+      "b": {
+        "node_id": "ST_G2",
+        "port_id": "A",
+        "pass_id": "ST_G2_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e13",
+      "a": {
+        "node_id": "ST_G2",
+        "port_id": "B",
+        "pass_id": "ST_G2_return"
+      },
+      "b": {
+        "node_id": "ST_HWP1",
+        "port_id": "B",
+        "pass_id": "ST_HWP1_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e14",
+      "a": {
+        "node_id": "ST_HWP1",
+        "port_id": "A",
+        "pass_id": "ST_HWP1_return"
+      },
+      "b": {
+        "node_id": "ST_M2",
+        "port_id": "A",
+        "pass_id": "ST_M2_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e15",
+      "a": {
+        "node_id": "ST_M2",
+        "port_id": "B",
+        "pass_id": "ST_M2_return"
+      },
+      "b": {
+        "node_id": "To_EDFA",
+        "port_id": "beam",
+        "pass_id": "To_EDFA_return"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 80.0,
+    "show_bounds": false,
+    "bounds_scale": 4.0,
+    "generate_baseplate": true,
+    "plate_thickness": 30.0,
+    "plate_margin": 15.0
+  },
+  "version": 6,
+  "optimization": null,
+  "optimized_layout": null,
+  "path_constraints": [],
+  "passes": [
+    {
+      "id": "ST_Iris_return",
+      "component_id": "ST_Iris",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "ST_G1_return",
+      "component_id": "ST_G1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "ST_L1_return",
+      "component_id": "ST_L1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "ST_L2_return",
+      "component_id": "ST_L2",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "ST_G2_return",
+      "component_id": "ST_G2",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "ST_HWP1_return",
+      "component_id": "ST_HWP1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "ST_M2_return",
+      "component_id": "ST_M2",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    },
+    {
+      "id": "To_EDFA_return",
+      "component_id": "To_EDFA",
+      "mode": "receive",
+      "turn": null,
+      "direction": null,
+      "centered": true
+    }
+  ],
+  "layout": {
+    "poses": {
+      "ST_M1": [
+        760,
+        550,
+        12.7,
+        270
+      ],
+      "ST_Iris": [
+        760,
+        475,
+        12.7,
+        -90
+      ],
+      "ST_G1": [
+        760,
+        400,
+        12.7,
+        -90
+      ],
+      "ST_L1": [
+        828.5633934505387,
+        414.10890068526345,
+        12.7,
+        11.62794830005953
+      ],
+      "ST_L2": [
+        1808.0404427439487,
+        615.6646247604552,
+        12.7,
+        191.62794830005953
+      ],
+      "ST_G2": [
+        1876.6038361944875,
+        629.7735254457186,
+        12.7,
+        11.62794830005953
+      ],
+      "ST_M2": [
+        1876.6038361944875,
+        479.77352544571863,
+        12.7,
+        135
+      ],
+      "ST_HWP1": [
+        1876.6038361944875,
+        554.7735254457186,
+        12.7,
+        90
+      ],
+      "To_EDFA": [
+        1696.6038361944875,
+        479.77352544571863,
+        12.7,
+        0
+      ]
+    },
+    "projection": "XY",
+    "splitters": {}
+  }
+}

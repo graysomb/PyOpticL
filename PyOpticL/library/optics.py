@@ -90,6 +90,7 @@ class Circular_Reflector:
                 refractive_index_ratio=1 / self.refractive_index,
                 max_angle=self.max_angle,
                 single_sided=not self.bidirectional,
+                encloses_medium=self.bidirectional,
             ),
         ]
 
@@ -102,6 +103,7 @@ class Circular_Reflector:
                     ref_ratio=0,
                     refractive_index_ratio=1 / self.refractive_index,
                     max_angle=self.max_angle,
+                    encloses_medium=True,
                 )
             )
 

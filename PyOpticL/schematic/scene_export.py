@@ -136,7 +136,8 @@ def compile_scene(document, diagnostics=()):
         ]
     budget = (
         sum(
-            4 if document.node(p.component_id).kind == "roof" else 1
+            4 if document.node(p.component_id).kind == "roof"
+            else 2 if document.node(p.component_id).kind == "dichroic" else 1
             for p in topology.passes.values()
             if p.mode != "emit"
         )

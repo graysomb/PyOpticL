@@ -1,0 +1,19 @@
+[
+  "The final SHG optic is an ideal dichroic: 700\u2013850 nm reflects (including 775 nm), while 1550 nm transmits through a nominal 3 mm, n=1.5 parallel plate. The optic's exact part/coating is not yet selected. The MHV-12.7L-R mount uses its existing 12.7 mm, 3 mm-thick optic seating contract; the rear beam clearance is checked against the pinned vendor CAD.",
+  "Separate 775 nm and residual 1550 nm traces share one output lens and one dichroic assembly. The residual 1550 nm display power of 425 mW is only illustrative (500 minus 75 mW, ignoring losses), not a conversion or residual-power prediction. Both wavelengths and boundary beam parameters remain editable.",
+  "Both stretcher lenses are 25.4 mm (1 inch) diameter in POLARIS-L1G mounts. The stretcher end retroreflecting mirror ST_M1 is 25.4 mm diameter in a POLARIS-K1VS2 mount. The final compressor mirror CP_M2 is 12.7 mm (1/2 inch) diameter in a POLARIS-K05VS2 mount. Their mounting pockets and drilling follow the catalog contracts.",
+  "Stretcher lenses have editable 500 mm focal lengths, 1000 mm mutual spacing and 70 mm gaps to the adjacent gratings. ST_L1 and ST_L2 have opposite local +X facing directions; ST_L2 and its mount are rotated 180 degrees. Facing arrows are visual annotations, not a specified lens surface prescription. SHG lenses retain editable, provisional 30 mm focal lengths.",
+  "SHG_L1 and SHG_L2 have opposing lens-mount directions. The output lens SHG_L2 and its POLARIS-L05G mount face local +X, opposite the input lens SHG_L1; their positions, diameters and focal lengths are retained.",
+  "Three half-wave plates use catalog FBR rotation mounts: one between the stretcher steering mirror ST_M2 and first encountered grating ST_G2, one directly after the compressor fiber collimator, and one directly before SHG_L1. Their fast-axis angles are editable and provisionally 0 degrees; operating polarization settings remain to be determined.",
+  "Stretcher launch order is coupler -> ST_M2 steering mirror -> ST_HWP1 -> ST_G2. The coupler is provisionally 180 mm from the steering mirror; the mirror is 150 mm from the grating with the waveplate halfway between. The mirror and waveplate are shared by the retroreflected return. These starter distances are editable.",
+  "The upper stretcher mirror is normal to the arriving ray and retroreflects it. The existing fiber collimator is a shared launch/return boundary; external seed/return fiber routing is not modeled.",
+  "Four LightSmyth/MK05S assemblies: two stretcher gratings and two compressor gratings. Both pairs are shared by forward and return passes; the stretcher also reuses the same VA100 and telescope lenses.",
+  "Compressor grating centers are separated by 1000 - 2*70 = 860 mm along the outgoing inter-grating beam. This distance is an editable schematic length constraint; the roof and return route follow the second grating.",
+  "The stretcher filter location uses the tunable VA100 slit with its catalog bracket and drill contract. Slit width is editable and provisionally 1 mm; spectral bandwidth remains unconfirmed.",
+  "The compressor LO pickoff and its branch are omitted. The return from CP_G1 feeds CP_M2 directly, then the SHG half-wave plate and lens.",
+  "EDFA remains external, bounded by two existing fiber collimators with integral lenses; no additional coupling lenses, fibers or EDFA package are modeled.",
+  "1550 nm and 775 nm are separate traces joined at the crystal exit. No gain, pulse dispersion, SHG efficiency or phase matching is predicted.",
+  "500 mW amplifier input and 75 mW 775 nm display values follow the reference labels; seed power and all Gaussian input waists are illustrative.",
+  "Rendered beams are constant-width center-ray guides, not validated Gaussian beam envelopes.",
+  "The 30 mm plate and all machining are a review draft; do not fabricate before confirming distances, optics and clearances."
+]

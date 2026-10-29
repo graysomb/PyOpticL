@@ -192,7 +192,7 @@ class PhysicalSymbol(SymbolItem):
                      radius * cos(i * pi / 32), spec.aperture_center[2] - radius * sin(i * pi / 32))
                     for end in (0, 1) for i in range(33)
                 ]
-            elif self.node.kind in ("mirror", "lens", "hwp", "qwp", "stop", "fiber_source", "fiber_output") or (
+            elif self.node.kind in ("mirror", "dichroic", "lens", "hwp", "qwp", "stop", "fiber_source", "fiber_output") or (
                 self.node.kind == "iris" and self.node.preset != "alignment"
             ):
                 radius = spec.size[1] / 2
@@ -218,6 +218,22 @@ class PhysicalSymbol(SymbolItem):
         else:
             self.rectangle = QtCore.QRectF(-1, -1, 2, 2)
             self.outline.addEllipse(self.rectangle)
+        self.facing_arrow = QtGui.QPainterPath()
+        if self.node.kind == "lens":
+            # Local +X denotes assembly facing, independent of beam travel.
+            # Keep this annotation separate from the physical optic outline.
+            radius = spec.size[1] / 2
+            side = (0, radius + 3, 0) if plane == "XY" else (0, 0, radius + 3)
+            transverse = (0, 1.5, 0) if plane == "XY" else (0, 0, 1.5)
+            points = [side, (10, *side[1:]),
+                      (7, side[1] + transverse[1], side[2] + transverse[2]),
+                      (10, *side[1:]),
+                      (7, side[1] - transverse[1], side[2] - transverse[2])]
+            projected = [project(yaw(p, pose[3]), plane) for p in points]
+            self.facing_arrow.moveTo(projected[0])
+            for point in projected[1:]:
+                self.facing_arrow.lineTo(point)
+            self.rectangle = self.rectangle.united(self.facing_arrow.boundingRect()).adjusted(-0.5, -0.5, 0.5, 0.5)
         active = editor.active_pass(self.node.id)
         geometry = editor.display_trace.layout if editor.display_trace else None
         for (visit, name), port in self.ports.items():
@@ -239,6 +255,7 @@ class PhysicalSymbol(SymbolItem):
         self.constraint_marks.setPos(self.label.boundingRect().right() + 5, 0)
         self.setToolTip(
             f"{self.node.reference}: {SYMBOLS[self.node.kind].title}\nPhysical XYZ: {tuple(round(v,4) for v in pose[:3])} mm"
+            + (f"\nFacing arrow: local +X, yaw {pose[3]:.3f}°" if self.node.kind == "lens" else "")
         )
         self.update()
 
@@ -252,6 +269,9 @@ class PhysicalSymbol(SymbolItem):
         if self.isSelected():
             painter.fillRect(self.rectangle, QtGui.QColor(110, 170, 220, 65))
         painter.drawPath(self.outline)
+        if not self.facing_arrow.isEmpty():
+            painter.setPen(QtGui.QPen(QtGui.QColor("#008066"), 0))
+            painter.drawPath(self.facing_arrow)
 
     def show_bounds(self, circle, scale=1):
         radius = circle.radius_mm
@@ -1000,7 +1020,7 @@ class PhysicalSchematicEditor(BaseEditor):
             position = pair(self.view.mapToScene(self.view.viewport().rect().center()))
         x, v = snap_point(position, self.document.settings["grid"], self.document.settings["snap_grid"])
         node = self.document.add_node(kind)
-        angle = 135 if kind == "mirror" else 180 if kind in ("fiber_source", "fiber_output", "stop") else 0
+        angle = 135 if kind in ("mirror", "dichroic") else 180 if kind in ("fiber_source", "fiber_output", "stop") else 0
         if kind == "fiber_source" and node.preset in ("POLARIS-K05T6", "KA05TA"):
             angle = 0
         self.document.layout["poses"][node.id] = [

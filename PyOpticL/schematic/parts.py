@@ -59,6 +59,9 @@ class PartSpec:
 def part_spec(document, node, topology, turns=None):
     """Return a hashable specification, or None for a virtual symbol."""
     parameters = tuple(parameter_values(node).items())
+    if node.kind == "dichroic":
+        return PartSpec("catalog", "dichroic", parameters,
+                        (("mount", None if node.preset == "bare" else node.preset),))
     if node.kind == "mirror" and node.preset in D_MIRROR_PRESETS:
         optic = D_MIRROR_PRESETS[node.preset]
         return PartSpec("catalog", "d_mirror", parameters,

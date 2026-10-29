@@ -119,6 +119,9 @@ class SymbolItem(QtWidgets.QGraphicsObject):
             painter.restore()
         elif kind == "lens":
             painter.drawEllipse(QtCore.QRectF(-9, -24, 18, 48))
+        elif kind == "dichroic":
+            painter.drawRect(QtCore.QRectF(-5, -24, 10, 48))
+            painter.drawText(QtCore.QRectF(-20, -10, 40, 20), Qt.AlignCenter, "DM")
         elif kind in ("hwp", "qwp"):
             painter.drawRect(QtCore.QRectF(-9, -24, 18, 48))
             painter.drawText(QtCore.QRectF(-28, -10, 56, 20), Qt.AlignCenter,

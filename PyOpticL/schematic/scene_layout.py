@@ -16,7 +16,7 @@ from PyOpticL.ray_math import (
     lens_direction,
     grating_direction,
 )
-from .optic_geometry import element_spec, aperture_excess, roof_trace
+from .optic_geometry import element_spec, aperture_excess, roof_trace, dichroic_transmission
 from .registry import (
     SYMBOLS, COUPLING_MOUNTS, AXIS_ALIGNED_KINDS, parameter_values, default_turn,
     grating_input_heading,
@@ -455,6 +455,20 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                         edge.id,
                     )
                     outputs = {"out": out}
+                elif node.kind == "dichroic":
+                    p = parameter_values(node)
+                    if p["reflect_min"] <= wavelength <= p["reflect_max"]:
+                        outputs = {"out": reflect(direction, normal)}
+                    else:
+                        exit, outgoing, air = dichroic_transmission(
+                            hit, direction, normal, p["thickness"], p["refractive_index"]
+                        )
+                        path = (tuple(hit), tuple(exit))
+                        outputs = {"out": outgoing}
+                        rear_local = yaw(sub(exit, pose[:3]), -pose[3])
+                        residual(f"rear_aperture/{visit_id}", max(0, aperture_excess(spec, rear_local)),
+                                 f"{node.reference}: transmitted ray misses rear aperture", node.id, visit_id,
+                                 equality=False)
                 elif node.kind == "lens":
                     outputs = {
                         "out": lens_direction(

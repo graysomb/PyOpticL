@@ -24,7 +24,7 @@ class OpticalElementSpec:
 def element_spec(node, topology=None):
     p = parameter_values(node)
     diameter, thickness = p.get("diameter", 12.7), p.get("thickness", 1.0)
-    if node.kind == "mirror":
+    if node.kind in ("mirror", "dichroic"):
         if node.preset in D_MIRROR_PRESETS:
             geometry = d_mirror_geometry(node.preset)
             radius, edge = geometry["radius_mm"], p["edge_distance"]
@@ -101,6 +101,17 @@ def element_spec(node, topology=None):
             single_sided=True,
         )
     return None
+
+
+def dichroic_transmission(hit, direction, normal, thickness, refractive_index):
+    """Front-illuminated parallel plate, with air on both exterior sides."""
+    from PyOpticL.ray_math import dot
+    from math import sqrt
+
+    tangential = mul(sub(direction, mul(normal, dot(direction, normal))), 1 / refractive_index)
+    inside = sub(tangential, mul(normal, sqrt(max(0, 1 - dot(tangential, tangential)))))
+    distance = thickness / max(1e-8, -dot(inside, normal))
+    return add(hit, mul(inside, distance)), direction, distance
 
 
 def aperture_excess(spec, local, direction=None):

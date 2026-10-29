@@ -1,0 +1,171 @@
+{
+  "title": "CPA draft \u2014 residual 1550 nm transmitted output",
+  "nodes": [
+    {
+      "id": "SHG_1550_boundary",
+      "reference": "SHG_1550_boundary",
+      "kind": "source",
+      "preset": "beam",
+      "parameters": {
+        "wavelength": 1550,
+        "waist": 0.2,
+        "power": 0.425
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "SHG_L2",
+      "reference": "SHG_L2",
+      "kind": "lens",
+      "preset": "POLARIS-L05G",
+      "parameters": {
+        "diameter": 12.7,
+        "focal_length": 30.0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "SHG_M1",
+      "reference": "SHG_M1",
+      "kind": "dichroic",
+      "preset": "MHV-12.7L-R",
+      "parameters": {
+        "diameter": 12.7
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "Residual_1550",
+      "reference": "Residual_1550",
+      "kind": "output",
+      "preset": "open",
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    }
+  ],
+  "connections": [
+    {
+      "id": "e0",
+      "a": {
+        "node_id": "SHG_1550_boundary",
+        "port_id": "beam",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "SHG_L2",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e1",
+      "a": {
+        "node_id": "SHG_L2",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "SHG_M1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e2",
+      "a": {
+        "node_id": "SHG_M1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "Residual_1550",
+        "port_id": "beam",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    }
+  ],
+  "settings": {
+    "grid": 20,
+    "angle": 45,
+    "snap_grid": true,
+    "snap_angle": true,
+    "spacing": 50,
+    "open_length": 80.0,
+    "show_bounds": false,
+    "bounds_scale": 4.0,
+    "generate_baseplate": true,
+    "plate_thickness": 30.0,
+    "plate_margin": 15.0
+  },
+  "version": 6,
+  "optimization": null,
+  "optimized_layout": null,
+  "path_constraints": [],
+  "passes": [],
+  "layout": {
+    "poses": {
+      "SHG_1550_boundary": [
+        86.3,
+        -220,
+        12.7,
+        180
+      ],
+      "SHG_L2": [
+        0,
+        -220,
+        12.7,
+        0
+      ],
+      "SHG_M1": [
+        -100,
+        -220,
+        12.7,
+        -45
+      ],
+      "Residual_1550": [
+        -213.25521376258732,
+        -219.01257307546803,
+        12.7,
+        180
+      ]
+    },
+    "projection": "XY",
+    "splitters": {}
+  }
+}

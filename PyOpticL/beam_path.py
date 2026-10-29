@@ -1094,7 +1094,9 @@ class BeamPath(Layout):
             new_beam_obj.StartObject = next_object
             new_beam_obj.StartInterfaceName = getattr(next_interface, 'name', '')
             new_beam_obj.StartInterfaceRole = getattr(next_interface, 'role', '')
-            new_beam_obj.InternalToComponent = not getattr(next_interface, 'output_boundary', True)
+            new_beam_obj.InternalToComponent = bool(getattr(
+                beam, 'internal_to_component', not getattr(next_interface, 'output_boundary', True)
+            ))
             obj.BeamSegments += [new_beam_obj]
             beam.compute_placement()
             self.step(beam)
@@ -1262,8 +1264,9 @@ class Interface:
         if -1e-6 < distance < 1e-6:
             return None
         # check if intercept is within beam distance (if defined)
+        # Retracing a terminated segment can shift its endpoint by roundoff.
         beam_obj = incident_beam.get_object()
-        if beam_obj.EndObject is not None and distance > incident_beam.distance:
+        if beam_obj.EndObject is not None and distance > incident_beam.distance + 1e-7:
             return None
 
         intercept = beam_position + distance * beam_direction
@@ -1380,6 +1383,8 @@ class Reflection(Interface):
         max_angle (float): Maximum angle between incident beam and interface normal in degrees
         single_sided (bool): Whether the interface only interacts with beams from one side
         refractive_index_ratio (float): ratio of refractive index before interface to refractive index after interface
+        encloses_medium (bool): Mark child segments inside a finite substrate;
+                                the interface normal points out of that substrate
     """
 
     def __init__(
@@ -1395,6 +1400,7 @@ class Reflection(Interface):
         max_angle: float = 90,
         single_sided: bool = False,
         refractive_index_ratio: float = 1,
+        encloses_medium: bool = False,
     ):
 
         super().__init__(
@@ -1428,6 +1434,7 @@ class Reflection(Interface):
             self.type = "mirror"
 
         self.refractive_index_ratio = refractive_index_ratio
+        self.encloses_medium = encloses_medium
 
     def get_output_beams(self, incident_beam: BeamSegment) -> list[BeamSegment]:
         """
@@ -1442,6 +1449,7 @@ class Reflection(Interface):
 
         global_normal = self.get_global_normal()
         beam_direction = incident_beam.get_global_direction()
+        from_inside = bool(np.dot(global_normal, beam_direction) > 0)
         intercept = self.get_intercept(incident_beam)
 
         if intercept is None:
@@ -1552,6 +1560,8 @@ class Reflection(Interface):
                     waist_position=waist_position,
                     rayleigh_range=rayleigh_range,
                 )
+                if self.encloses_medium:
+                    transmitted_beam.internal_to_component = not from_inside
                 incident_beam.add(transmitted_beam, origin=local_origin)
                 output_beams.append(transmitted_beam)
 
@@ -1575,6 +1585,8 @@ class Reflection(Interface):
                 waist_position=waist_position,
                 rayleigh_range=rayleigh_range,
             )
+            if self.encloses_medium:
+                reflect_beam.internal_to_component = from_inside
             incident_beam.add(reflect_beam, origin=local_origin)
             output_beams.append(reflect_beam)
 

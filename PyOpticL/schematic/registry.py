@@ -217,6 +217,27 @@ SYMBOLS["grating"] = Symbol(
 SYMBOLS["crystal"] = Symbol(
     "Crystal holder", "XTAL", TWO_PORTS, ("bracketed", "bare"),
 )
+SYMBOLS["dichroic"] = Symbol(
+    "Dichroic mirror", "DM", TWO_PORTS,
+    ("MHV-12.7L-R", "MHV-25.4L-R", "bare"),
+    {
+        "diameter": DIAMETER,
+        "thickness": Parameter("Substrate thickness (mm)", 3, 0, exclusive=True),
+        "reflect_min": Parameter("Reflection band minimum (nm)", 700, 0),
+        "reflect_max": Parameter("Reflection band maximum (nm)", 850, 0),
+        "refractive_index": Parameter("Substrate refractive index", 1.5, 1),
+    },
+    preset_parameters={
+        name: {
+            "diameter": Parameter("Diameter (mm)", diameter, diameter, diameter),
+            "thickness": Parameter("Substrate thickness (mm)", 3, *limits),
+        }
+        for name, diameter, limits in (
+            ("MHV-12.7L-R", 12.7, (2, 6)),
+            ("MHV-25.4L-R", 25.4, (3, 7)),
+        )
+    },
+)
 SYMBOLS["roof"] = Symbol(
     "Roof mirror (HRS1015-P01)",
     "RM",

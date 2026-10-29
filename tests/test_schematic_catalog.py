@@ -22,7 +22,7 @@ from PyOpticL.schematic.optimization import (
     path_value_gradients,
 )
 from PyOpticL.schematic.topology import resolve_topology
-from test_schematic import chain, branched
+from test_schematic import chain, branched, place_dichroic
 
 
 def preset_document(kind, preset):
@@ -41,6 +41,8 @@ def preset_document(kind, preset):
     select_preset(node, preset)
     if kind == "grating":
         doc.nodes[0].parameters["wavelength"] = 1550
+    if kind == "dichroic":
+        place_dichroic(doc)
     return doc, node
 
 

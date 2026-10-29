@@ -41,6 +41,21 @@ def chain(*kinds):
     return document
 
 
+def place_dichroic(document):
+    """Finite plate fixtures need physical poses for the refracted exit."""
+    from PyOpticL.schematic.optic_geometry import dichroic_transmission
+    from PyOpticL.ray_math import add, mul, yaw
+
+    source, optic, target = document.nodes
+    exit, direction, _ = dichroic_transmission(
+        (0, 0, 0), (-1, 0, 0), yaw((1, 0, 0), -45), 3, 1.5
+    )
+    document.layout = {"poses": {
+        source.id: [100, 0, 0, 180], optic.id: [0, 0, 0, -45],
+        target.id: [*add(exit, mul(direction, 50)), 0],
+    }}
+
+
 def branched(nested=False):
     document = chain("source", "lens", "splitter")
     splitter = document.nodes[-1]
@@ -162,6 +177,8 @@ class CompilerTests(unittest.TestCase):
                         document = chain("source", kind, "stop")
                         node = document.nodes[1]
                     node.preset = preset
+                    if kind == "dichroic":
+                        place_dichroic(document)
                     self.assert_valid(document)
 
     def test_generation_is_deterministic_and_independent_of_drawing(self):
@@ -256,10 +273,12 @@ class CompilerTests(unittest.TestCase):
                 else:
                     document = chain("source", kind, "stop") if symbol.role == "passive" else chain("source", kind)
                     document.nodes[1].preset = preset
+                if kind == "dichroic":
+                    place_dichroic(document)
                 result = self.assert_valid(document)
                 tree = ast.parse(result.source)
-                parameters = next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
-                                  and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "PARAMETERS")
+                parameters = next((ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
+                                  and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "PARAMETERS"), {})
                 for call in ast.walk(tree):
                     if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and
                             isinstance(call.func.value, ast.Name) and call.func.value.id in modules):
