@@ -37,6 +37,16 @@ def compound(component):
     return Part.makeCompound(shapes)
 
 
+def overlap_volume(first, second):
+    """Check solid pairs: common() on overlapping vendor compounds can omit hits."""
+    return sum(
+        a.common(b).Volume
+        for a in first.Solids
+        for b in second.Solids
+        if a.BoundBox.intersect(b.BoundBox)
+    )
+
+
 def center_ray_shape(segment):
     """Render a guide without expensive Gaussian cone unions for a draft."""
     obj = segment.get_object()
@@ -169,7 +179,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
     for i, (label, shape) in enumerate(bodies):
         for j, (other, body) in enumerate(bodies[:i]):
             if bounds[i].intersect(bounds[j]):
-                volume = shape.common(body).Volume
+                volume = overlap_volume(shape, body)
                 if volume > 1e-5:
                     collisions.append(dict(a=label, b=other, volume_mm3=volume))
     print("Cross-assembly collision check complete.", flush=True)
@@ -193,7 +203,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
             for (label, body), component, box in zip(bodies, components, bounds):
                 if component.Name in allowed or not guide.BoundBox.intersect(box):
                     continue
-                volume = guide.common(body).Volume
+                volume = overlap_volume(guide, body)
                 if volume > 1e-5:
                     beam_collisions.append(
                         dict(
@@ -209,7 +219,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
     rear = next(s for s in residual_beam.BeamSegments if s.StartObject == dichroic and not s.InternalToComponent)
     rear_guide = Part.makeCylinder(1, rear.Proxy.distance,
         App.Vector(*rear.Proxy.get_global_position()), App.Vector(*rear.Proxy.get_global_direction()))
-    rear_overlap = sum(rear_guide.common(o.Shape).Volume for o in attachments.descendants(dichroic)
+    rear_overlap = sum(overlap_volume(rear_guide, o.Shape) for o in attachments.descendants(dichroic)
                        if hasattr(o, "Shape") and not o.Shape.isNull())
     if rear_overlap > 1e-5:
         raise ValueError("Dichroic mount obstructs the rear 1550 nm beam")
@@ -223,10 +233,30 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
                      and reference(s.EndObject) == "ST_G2")
         guide = Part.makeCylinder(1, upper.Proxy.distance,
             App.Vector(*upper.Proxy.get_global_position()), App.Vector(*upper.Proxy.get_global_direction()))
-        overlap = guide.common(compound(pickoff)).Volume
+        overlap = overlap_volume(guide, compound(pickoff))
         pickoff_clearance = dict(probe_radius_mm=1, mount="KM05DR", overlap_mm3=overlap)
         if overlap > 1e-5:
             raise ValueError("D-shaped pickoff obstructs the upper stretcher beam")
+    compressor_clearance = None
+    if "CP_Pickoff" in shared:
+        beam = next(o for o in stages["compressor"].get_object().Children if hasattr(o, "BeamSegments"))
+        checks = []
+        for start, end, targets in (
+            ("CP_M1", "CP_G1", ("CP_Pickoff",)),
+            ("CP_G1", "CP_VRoof", ("CP_Pickoff", "CP_M1")),
+            ("CP_VRoof", "CP_G1", ("CP_Pickoff", "CP_M1")),
+        ):
+            segment = next(s for s in beam.BeamSegments
+                           if reference(s.StartObject) == start and reference(s.EndObject) == end)
+            p = segment.Proxy
+            guide = Part.makeCylinder(1, p.distance, App.Vector(*p.get_global_position()),
+                                      App.Vector(*p.get_global_direction()))
+            for target in targets:
+                overlap = overlap_volume(guide, compound(shared[target].get_object()))
+                checks.append(dict(start=start, end=end, assembly=target, overlap_mm3=overlap))
+        compressor_clearance = dict(probe_radius_mm=1, checks=checks)
+        if any(c["overlap_mm3"] > 1e-5 for c in checks):
+            raise ValueError("Compressor intermediate path obstructed: " + str(checks))
     if collisions or beam_collisions:
         raise ValueError(dict(cross_assembly_collisions=collisions,
                               beam_to_unintended_component_collisions=beam_collisions))
@@ -314,6 +344,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         lens_facings=lens_facings,
         dichroic_rear_clearance=dict(probe_radius_mm=1, mount="MHV-12.7L-R", overlap_mm3=rear_overlap),
         stretcher_pickoff_clearance=pickoff_clearance,
+        compressor_pickoff_clearance=compressor_clearance,
         machining=machining.plan,
         cross_assembly_collisions=collisions,
         beam_to_unintended_component_collisions=beam_collisions,

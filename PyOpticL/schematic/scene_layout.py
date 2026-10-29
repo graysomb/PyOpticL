@@ -408,7 +408,7 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                             if "vertical" in node.preset
                             else (0, -p["beam_separation"], 0)
                         )
-                        if topo.incident_ports.get(node.id) == "B":
+                        if topo.incident_ports.get(visit_id) == "B":
                             shift = mul(shift, -1)
                         exit = add(hit, yaw(shift, pose[3]))
                         out = mul(direction, -1)
@@ -442,7 +442,9 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                     # yaw must adjust rather than silently changing separation.
                     offset_axis = (0, 0, 1) if "vertical" in node.preset else (0, -1, 0)
                     offset_axis = yaw(offset_axis, pose[3])
-                    if topo.incident_ports.get(node.id) == "B":
+                    # The body keeps its primary-pass frame. A later visit can
+                    # enter the other port and reverse the displacement sign.
+                    if topo.incident_ports.get(visit_id) == "B":
                         offset_axis = mul(offset_axis, -1)
                     transverse = unit(sub(offset_axis, mul(direction, dot(offset_axis, direction))))
                     separation = dot(sub(exit, hit), transverse)

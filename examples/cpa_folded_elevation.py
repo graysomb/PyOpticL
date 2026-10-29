@@ -68,11 +68,12 @@ def render(report=REPORT, output=None):
         color="#163c54",
     )
     ax.text(
-        -39,
+        -35,
         center,
         f"{upper - lower:g} mm",
-        ha="right",
+        ha="center",
         va="center",
+        bbox=dict(facecolor="#f7f9fb", edgecolor="none", pad=3),
         color="#163c54",
         fontsize=12,
     )

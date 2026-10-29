@@ -1,4 +1,4 @@
-"""Folded stretcher geometry, shared optics and independent editable exports."""
+"""Folded CPA geometry, shared optics and independent editable exports."""
 import importlib.util
 from math import dist
 from pathlib import Path
@@ -40,8 +40,10 @@ class FoldedCPATests(unittest.TestCase):
                 compiled = compile_schematic(saved)
                 self.assertTrue(compiled.ok, compiled.diagnostics)
                 self.assertEqual(compiled.source, (FOLDER / (name + ".py")).read_text())
-                if name != "stretcher":
+                if name in ("output-775", "residual-1550"):
                     original = load_schematic(FOLDER.parent / "cpa" / filename)
+                    for pose in original.layout["poses"].values():
+                        pose[2] -= 2.825
                     self.assertEqual(document.to_dict(), original.to_dict())
         self.assertEqual(
             before,
@@ -85,7 +87,7 @@ class FoldedCPATests(unittest.TestCase):
         self.assertTrue(trace.ok, trace.diagnostics)
         visits = trace.layout.visits
         ids = ("ST_L2", "ST_L2_lower", "ST_L2_lower_return", "ST_L2_return")
-        for ref, height in zip(ids, (14.7, 10.7, 10.7, 14.7)):
+        for ref, height in zip(ids, (15.525, 9.875, 9.875, 15.525)):
             self.assertAlmostEqual(visits[ref].entry[2], height)
         for ref in ("ST_L2_lower", "ST_L2_return"):
             self.assertAlmostEqual(visits[ref].outputs["out"][2], 0, delta=1e-12)
@@ -140,6 +142,139 @@ class FoldedCPATests(unittest.TestCase):
     def test_accidental_centering_rejects_the_off_axis_pass(self):
         document = generator.stretcher()
         document.optical_pass("ST_L2").centered = True
+        self.assertFalse(compile_schematic(document).ok)
+
+    def test_compressor_shared_hardware_and_ordered_four_passes(self):
+        document = generator.compressor()
+        topology = resolve_topology(document)
+        self.assertTrue(topology.ok, topology.diagnostics)
+        self.assertEqual(
+            [n.id for n in document.nodes if n.kind == "grating"], ["CP_G1"]
+        )
+        self.assertEqual(
+            {n.id for n in document.nodes if n.kind == "roof"}, {"CP_HRoof", "CP_VRoof"}
+        )
+        self.assertFalse({"CP_G2", "CP_Roof", "CP_M2"} & {n.id for n in document.nodes})
+        self.assertEqual(
+            topology.order,
+            [
+                "From_EDFA",
+                "CP_HWP1",
+                "CP_M1",
+                "CP_G1",
+                "CP_HRoof",
+                "CP_G1_2",
+                "CP_VRoof",
+                "CP_G1_3",
+                "CP_HRoof_return",
+                "CP_G1_4",
+                "CP_Pickoff",
+                "SHG_HWP1",
+                "SHG_L1",
+                "SHG_Crystal",
+                "Crystal_1550_exit",
+            ],
+        )
+        self.assertEqual(topology.incident_ports["CP_HRoof"], "B")
+        self.assertEqual(topology.incident_ports["CP_HRoof_return"], "A")
+        self.assertEqual(topology.incident_ports["CP_VRoof"], "B")
+        self.assertEqual(document.node("CP_Pickoff").preset, "KM05DL")
+        self.assertEqual(document.node("CP_M1").preset, "KM05DL")
+        self.assertFalse(document.optical_pass("CP_M1").centered)
+        self.assertEqual(
+            parameter_values(document.node("CP_HRoof"))["beam_separation"],
+            9.538700742686107,
+        )
+        self.assertEqual(
+            parameter_values(document.node("CP_VRoof"))["beam_separation"], 5.65
+        )
+
+    def test_compressor_roof_offsets_four_spots_and_output_height(self):
+        document = generator.compressor()
+        trace = trace_scene(document)
+        self.assertTrue(trace.ok, trace.diagnostics)
+        visits = trace.layout.visits
+        spots = [visits[v].entry for v in ("CP_G1", "CP_G1_2", "CP_G1_3", "CP_G1_4")]
+        for point, height in zip(spots, (15.525, 15.525, 9.875, 9.875)):
+            self.assertAlmostEqual(point[2], height)
+        for a, b in ((spots[0], spots[3]), (spots[1], spots[2])):
+            self.assertLess(norm(sub(a[:2], b[:2])), 1e-8)
+        center = document.layout["poses"]["CP_G1"]
+        for axis in (0, 1):
+            self.assertAlmostEqual((spots[0][axis] + spots[1][axis]) / 2, center[axis])
+        # Geometric targets are independent of the roof-separation parameter.
+        self.assertAlmostEqual(dist(spots[0], spots[1]), 15.4)
+        for point in spots:
+            self.assertAlmostEqual(dist(point[:2], center[:2]), 7.7)
+            self.assertAlmostEqual(abs(point[2] - center[2]), 2.825)
+        stretcher = trace_scene(generator.stretcher())
+        self.assertTrue(stretcher.ok, stretcher.diagnostics)
+        for lens_pass, point in (("ST_L2", spots[0]), ("ST_L2_lower", spots[2])):
+            self.assertAlmostEqual(
+                stretcher.layout.visits[lens_pass].entry[2], point[2]
+            )
+        horizontal = yaw((0, -1, 0), document.layout["poses"]["CP_HRoof"][3])
+        for ref, expected in (
+            ("CP_HRoof", -9.538700742686107),
+            ("CP_HRoof_return", 9.538700742686107),
+        ):
+            state = visits[ref]
+            self.assertAlmostEqual(
+                dot(sub(state.exit, state.entry), horizontal), expected
+            )
+            self.assertAlmostEqual(state.internal_length, 25.4)
+        vertical = visits["CP_VRoof"]
+        self.assertAlmostEqual(vertical.exit[2] - vertical.entry[2], -5.65)
+        self.assertAlmostEqual(visits["Crystal_1550_exit"].entry[2], 9.875)
+        poses = document.layout["poses"]
+        self.assertAlmostEqual(norm(sub(poses["CP_HRoof"][:2], spots[0][:2])), 417.3)
+        self.assertEqual(poses["From_EDFA"][1], -300)
+        self.assertEqual(poses["CP_VRoof"][1], -400)
+        for ref, point in (
+            ("CP_M1", (320, -300, 15.525)),
+            ("CP_Pickoff", (320, -220, 9.875)),
+        ):
+            for actual, expected in zip(visits[ref].entry, point):
+                self.assertAlmostEqual(actual, expected)
+
+    def test_compressor_and_both_output_wavelengths_share_lower_shg_boundary(self):
+        docs = generator.documents()
+        before = docs["compressor"].layout["poses"]["Crystal_1550_exit"][:3]
+        for name, source in (
+            ("output-775", "SHG_775_boundary"),
+            ("residual-1550", "SHG_1550_boundary"),
+        ):
+            document = docs[name]
+            self.assertEqual(document.layout["poses"][source][:3], before)
+            self.assertTrue(
+                all(abs(p[2] - 9.875) < 1e-8 for p in document.layout["poses"].values())
+            )
+        for ref in ("SHG_L2", "SHG_M1"):
+            self.assertEqual(
+                docs["output-775"].layout["poses"][ref],
+                docs["residual-1550"].layout["poses"][ref],
+            )
+
+    def test_shared_roof_wrong_port_and_tilt_are_still_rejected(self):
+        document = generator.compressor()
+        for edge in document.connections:
+            for endpoint in ("a", "b"):
+                value = getattr(edge, endpoint)
+                if value.visit_id == "CP_HRoof_return":
+                    from PyOpticL.schematic import Endpoint
+
+                    setattr(
+                        edge,
+                        endpoint,
+                        Endpoint(
+                            value.node_id,
+                            "A" if value.port_id == "B" else "B",
+                            value.pass_id,
+                        ),
+                    )
+        self.assertFalse(compile_schematic(document).ok)
+        document = generator.compressor()
+        document.layout["poses"]["CP_HRoof"][3] += 1
         self.assertFalse(compile_schematic(document).ok)
 
 

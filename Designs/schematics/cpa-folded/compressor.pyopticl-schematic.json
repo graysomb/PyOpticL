@@ -1,5 +1,5 @@
 {
-  "title": "CPA draft \u2014 compressor and crystal",
+  "title": "CPA folded draft \u2014 four-pass compressor and crystal",
   "nodes": [
     {
       "id": "From_EDFA",
@@ -40,9 +40,11 @@
       "id": "CP_M1",
       "reference": "CP_M1",
       "kind": "mirror",
-      "preset": "POLARIS-K05VS2",
+      "preset": "KM05DL",
       "parameters": {
-        "diameter": 12.7
+        "diameter": 12.7,
+        "thickness": 6.0,
+        "edge_distance": 0.5
       },
       "position": [
         0,
@@ -67,28 +69,12 @@
       "mirror_role": "turning"
     },
     {
-      "id": "CP_G2",
-      "reference": "CP_G2",
-      "kind": "grating",
-      "preset": "MK05S",
-      "parameters": {
-        "mirrored": 1
-      },
-      "position": [
-        0,
-        0
-      ],
-      "rotation": 0,
-      "physical": {},
-      "mirror_role": "turning"
-    },
-    {
-      "id": "CP_Roof",
-      "reference": "CP_Roof",
+      "id": "CP_HRoof",
+      "reference": "CP_HRoof",
       "kind": "roof",
       "preset": "horizontal",
       "parameters": {
-        "beam_separation": 9.0
+        "beam_separation": 9.538700742686107
       },
       "position": [
         0,
@@ -99,12 +85,30 @@
       "mirror_role": "turning"
     },
     {
-      "id": "CP_M2",
-      "reference": "CP_M2",
-      "kind": "mirror",
-      "preset": "POLARIS-K05VS2",
+      "id": "CP_VRoof",
+      "reference": "CP_VRoof",
+      "kind": "roof",
+      "preset": "vertical",
       "parameters": {
-        "diameter": 12.7
+        "beam_separation": 5.65
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "CP_Pickoff",
+      "reference": "CP_Pickoff",
+      "kind": "mirror",
+      "preset": "KM05DL",
+      "parameters": {
+        "diameter": 12.7,
+        "thickness": 6.0,
+        "edge_distance": 1
       },
       "position": [
         0,
@@ -237,26 +241,26 @@
         "pass_id": ""
       },
       "b": {
-        "node_id": "CP_G2",
-        "port_id": "A",
+        "node_id": "CP_HRoof",
+        "port_id": "B",
         "pass_id": ""
       },
       "bends": [],
-      "length": 860.0,
+      "length": null,
       "turns": {},
       "allow_folding": false
     },
     {
       "id": "e4",
       "a": {
-        "node_id": "CP_G2",
-        "port_id": "B",
+        "node_id": "CP_HRoof",
+        "port_id": "A",
         "pass_id": ""
       },
       "b": {
-        "node_id": "CP_Roof",
-        "port_id": "A",
-        "pass_id": ""
+        "node_id": "CP_G1",
+        "port_id": "B",
+        "pass_id": "CP_G1_2"
       },
       "bends": [],
       "length": null,
@@ -266,14 +270,14 @@
     {
       "id": "e5",
       "a": {
-        "node_id": "CP_Roof",
-        "port_id": "B",
-        "pass_id": ""
+        "node_id": "CP_G1",
+        "port_id": "A",
+        "pass_id": "CP_G1_2"
       },
       "b": {
-        "node_id": "CP_G2",
+        "node_id": "CP_VRoof",
         "port_id": "B",
-        "pass_id": "CP_G2_return"
+        "pass_id": ""
       },
       "bends": [],
       "length": null,
@@ -283,14 +287,14 @@
     {
       "id": "e6",
       "a": {
-        "node_id": "CP_G2",
+        "node_id": "CP_VRoof",
         "port_id": "A",
-        "pass_id": "CP_G2_return"
+        "pass_id": ""
       },
       "b": {
         "node_id": "CP_G1",
-        "port_id": "B",
-        "pass_id": "CP_G1_return"
+        "port_id": "A",
+        "pass_id": "CP_G1_3"
       },
       "bends": [],
       "length": null,
@@ -301,13 +305,13 @@
       "id": "e7",
       "a": {
         "node_id": "CP_G1",
-        "port_id": "A",
-        "pass_id": "CP_G1_return"
+        "port_id": "B",
+        "pass_id": "CP_G1_3"
       },
       "b": {
-        "node_id": "CP_M2",
+        "node_id": "CP_HRoof",
         "port_id": "A",
-        "pass_id": ""
+        "pass_id": "CP_HRoof_return"
       },
       "bends": [],
       "length": null,
@@ -317,7 +321,41 @@
     {
       "id": "e8",
       "a": {
-        "node_id": "CP_M2",
+        "node_id": "CP_HRoof",
+        "port_id": "B",
+        "pass_id": "CP_HRoof_return"
+      },
+      "b": {
+        "node_id": "CP_G1",
+        "port_id": "B",
+        "pass_id": "CP_G1_4"
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e9",
+      "a": {
+        "node_id": "CP_G1",
+        "port_id": "A",
+        "pass_id": "CP_G1_4"
+      },
+      "b": {
+        "node_id": "CP_Pickoff",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": null,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e10",
+      "a": {
+        "node_id": "CP_Pickoff",
         "port_id": "B",
         "pass_id": ""
       },
@@ -332,7 +370,7 @@
       "allow_folding": false
     },
     {
-      "id": "e9",
+      "id": "e11",
       "a": {
         "node_id": "SHG_HWP1",
         "port_id": "B",
@@ -349,7 +387,7 @@
       "allow_folding": false
     },
     {
-      "id": "e10",
+      "id": "e12",
       "a": {
         "node_id": "SHG_L1",
         "port_id": "B",
@@ -366,7 +404,7 @@
       "allow_folding": false
     },
     {
-      "id": "e11",
+      "id": "e13",
       "a": {
         "node_id": "SHG_Crystal",
         "port_id": "B",
@@ -393,7 +431,7 @@
     "show_bounds": false,
     "bounds_scale": 4.0,
     "generate_baseplate": true,
-    "plate_thickness": 30.0,
+    "plate_thickness": 33.0,
     "plate_margin": 15.0
   },
   "version": 6,
@@ -402,15 +440,55 @@
   "path_constraints": [],
   "passes": [
     {
-      "id": "CP_G2_return",
-      "component_id": "CP_G2",
+      "id": "CP_M1",
+      "component_id": "CP_M1",
       "mode": "pass",
       "turn": null,
       "direction": null,
       "centered": false
     },
     {
-      "id": "CP_G1_return",
+      "id": "CP_G1",
+      "component_id": "CP_G1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "CP_HRoof",
+      "component_id": "CP_HRoof",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "CP_G1_2",
+      "component_id": "CP_G1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "CP_G1_3",
+      "component_id": "CP_G1",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "CP_HRoof_return",
+      "component_id": "CP_HRoof",
+      "mode": "pass",
+      "turn": null,
+      "direction": null,
+      "centered": false
+    },
+    {
+      "id": "CP_G1_4",
       "component_id": "CP_G1",
       "mode": "pass",
       "turn": null,
@@ -422,68 +500,68 @@
     "poses": {
       "From_EDFA": [
         500,
-        -150,
-        12.7,
+        -300.0,
+        15.524999999999999,
         180
       ],
       "CP_HWP1": [
         420,
-        -150,
-        12.7,
+        -300.0,
+        15.524999999999999,
         180
       ],
       "CP_M1": [
-        320,
-        -150,
-        12.7,
+        323.7476659402887,
+        -303.7476659402887,
+        15.524999999999999,
         45
       ],
       "CP_G1": [
+        315.0402480508373,
+        -5.889894787071917,
+        12.7,
+        90
+      ],
+      "CP_HRoof": [
+        -88.73577267013997,
+        -84.10920365657746,
+        12.7,
+        -168.37205169994047
+      ],
+      "CP_VRoof": [
+        310.0804961016746,
+        -400.0,
+        15.524999999999999,
+        -90
+      ],
+      "CP_Pickoff": [
         320,
-        0,
-        12.7,
-        90
-      ],
-      "CP_G2": [
-        -522.3502623923326,
-        -173.3379227046648,
-        12.7,
-        191.62794830005953
-      ],
-      "CP_Roof": [
-        -522.3502623923326,
-        -13.337922704664805,
-        12.7,
-        90
-      ],
-      "CP_M2": [
-        329.73293821611287,
-        -220,
-        12.7,
+        -220.0,
+        9.875,
         135
       ],
       "SHG_HWP1": [
         260,
         -220,
-        12.7,
+        9.875,
         180
       ],
       "SHG_L1": [
         200,
         -220,
-        12.7,
+        9.875,
         180
       ],
       "SHG_Crystal": [
         100,
         -220,
-        12.7,
+        9.875,
         180
       ],
       "Crystal_1550_exit": [
         86.3,
         -220,
-        12.7,
+        9.875,
         180
       ]
     },
