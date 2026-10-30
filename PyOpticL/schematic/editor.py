@@ -873,6 +873,8 @@ class SchematicEditor(QtWidgets.QWidget):
             labels[("mirror", preset)] = (f"{preset} · D-shaped, bare" if preset == optic
                                          else f"{preset} + {optic} · D-shaped")
         presets.setObjectName("partPreset")
+        labels[("detector", "bracketed")] = "818-BB-30 + baseplate bracket"
+        labels[("detector", "bare")] = "818-BB-30, bare"
         for preset in symbol.presets:
             presets.addItem(labels.get((node.kind,preset),preset),preset)
         presets.setCurrentIndex(presets.findData(node.preset))
@@ -1016,7 +1018,7 @@ class SchematicEditor(QtWidgets.QWidget):
             return wrap_angle(geometry.source_direction)
         # A receiving part faces against the arriving beam. The constraint
         # always describes travel direction, including virtual open outputs.
-        return wrap_angle(geometry.orientations[node.id] - (180 if node.kind in ("fiber_output", "stop") else 0))
+        return wrap_angle(geometry.orientations[node.id] - (180 if node.kind in ("fiber_output", "stop", "detector") else 0))
 
     def show_endpoint_direction_property(self, node, source):
         label = "source" if source else "output"

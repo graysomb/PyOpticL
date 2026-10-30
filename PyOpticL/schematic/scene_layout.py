@@ -266,6 +266,11 @@ def trace_scene(document, poses=None, *, check_interceptions=True, topology=None
                 spec = None
             else:
                 distance, hit, normal, local, spec = intersect(document, node, pose, origin, direction, topo)
+                if node.kind == "detector":
+                    incidence = degrees(acos(max(-1, min(1, -dot(direction, normal)))))
+                    residual(f"acceptance/{visit_id}", max(0, incidence - 20),
+                             f"{node.reference}: detector exceeds 20 degree acceptance half-angle",
+                             node.id, visit_id, edge.id, "°", equality=False)
                 if node.kind == "grating":
                     try:
                         target_heading = pose[3] + grating_input_heading(document, node, topo, visit_id)

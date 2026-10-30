@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 VENDORS = {
     "thorlabs": ("thorlabs.com", "thorlabs.us", "thorlabs.de", "thorlabs.co.jp"),
     "optosigma": ("optosigma.com", "sigma-koki.com"),
+    "newport": ("newport.com", "newport.com.cn", "api.p1.mks.com"),
 }
 MAX_BYTES = 100 * 1024 * 1024
 

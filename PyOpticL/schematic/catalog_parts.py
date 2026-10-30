@@ -14,6 +14,11 @@ def vendor(part):
     return lab_catalog.VendorPart(part)
 
 
+def detector(mounted=True, optical_height=25.4):
+    return (lab_catalog.definition('photodetector', optical_height=optical_height) if mounted
+            else lab_catalog.definition('818-BB-30'))
+
+
 def mirror(mount, diameter, thickness):
     return lab_catalog.definition("mirror", mount=mount, thickness=thickness)
 

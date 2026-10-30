@@ -228,7 +228,7 @@ def _orientation_seed(document, poses, topology, targets):
                 if hypot(normal[0], normal[1]) > 1e-6:
                     # out - in chooses the coated face: in dot normal < 0.
                     angle = heading(normal)
-        elif visit.mode == "receive" and node.kind in ("fiber_output", "stop"):
+        elif visit.mode == "receive" and node.kind in ("fiber_output", "stop", "detector"):
             direction = leg(incoming[visit_id].source.visit_id, visit_id)
             if direction is not None:
                 angle = heading(direction) + 180
@@ -261,7 +261,7 @@ def _orientation_seed(document, poses, topology, targets):
                 _place_on_ray(document, seed, poses, edge, previous.exit, direction, free, requested)
                 key = (node.id, 3)
                 if key in free and key not in requested:
-                    if node.kind in ("fiber_output", "stop"):
+                    if node.kind in ("fiber_output", "stop", "detector"):
                         seed[node.id][3] += wrap_angle(heading(direction) + 180 - seed[node.id][3])
                     elif node.kind in AXIS_ALIGNED_KINDS:
                         seed[node.id][3] += wrap_axis_angle(heading(direction) - seed[node.id][3])

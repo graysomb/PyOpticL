@@ -10,6 +10,14 @@ from PyOpticL import vendor_cad as cad
 
 STEP=b"ISO-10303-21;\nHEADER;FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));ENDSEC;DATA;ENDSEC;END-ISO-10303-21;"
 class DownloadTests(unittest.TestCase):
+    def test_newport_exact_sku_and_official_resource_hosts(self):
+        for url in ('https://www.newport.com/p/818-BB-30',
+                    'https://www.newport.com.cn/p/818-BB-30',
+                    'https://api.p1.mks.com/medias/drawing.pdf'):
+            self.assertEqual(cad.check_url('newport', url), url)
+        with self.assertRaises(ValueError):
+            cad.check_url('newport', 'https://newport.com.example.org/818-BB-30.step')
+
     def test_missing_asset_identifies_the_part_and_cache_recovery(self):
         with tempfile.TemporaryDirectory() as root:
             record=cad.register('thorlabs','KA05TA','https://www.thorlabs.com/item/KA05TA',STEP,'KA05TA.step','step',root=root)

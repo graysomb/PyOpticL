@@ -28,7 +28,13 @@ preserve the designed displacement of the exit.
 | Variable slit | VA100 with bracket and hardware | Slit width, 0–6 mm |
 | Transmission grating | LightSmyth 1336552, bare or MK05S + plate adapter | Incidence angle, integer diffraction order |
 | Roof mirror | HRS1015-P01, horizontal/vertical, bare or supported | Beam separation, 3–22 mm |
+| Photodetector | Newport 818-BB-30, bracketed or bare | Configurable bracket beam height, minimum 25.4 mm |
 | Crystal holder | Supplied six-part assembly, bare or with separate bracket and hardware | Fixed 27.4 × 4 × 1 mm crystal; 12.7 mm bracketed optical height |
+
+The [818-BB-30 detector](newport-818-bb-30.md) is a terminal receiver with a
+0.10 mm active diameter and 20 degree acceptance half-angle. Its separate bracket
+provides two M4 and two locating-pin plate operations. The default bracket height
+is 25.4 mm; choosing a height changes the support, not the optical layout's Z.
 
 The [crystal holder](crystal-holder.md) preserves the uploaded solids and adds
 a separate support bracket. Its baseplate contract has two M4 taps and two

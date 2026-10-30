@@ -464,7 +464,7 @@ def _numeric_problem(
             edge.id,
         )
         for edge in topology.edges.values()
-        if derived.node(edge.target.node_id).kind in ("output", "fiber_output", "stop")
+        if derived.node(edge.target.node_id).kind in ("output", "fiber_output", "stop", "detector")
         and "angle" in derived.node(edge.target.node_id).physical
     )
     initial = physical_layout(derived, topology)

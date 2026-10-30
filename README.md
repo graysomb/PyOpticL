@@ -203,6 +203,10 @@ The merged lab catalog is available through **Part preset**, including POLARIS/M
 mirror mounts, POLARIS lens mounts, FBR/ELL16 waveplate mounts, fiber assemblies,
 PBS, alignment iris, slit, grating and roof presets. See the
 [catalog guide](docs/schematic-catalog.md) for parameters and vendor CAD cache setup.
+The **Photodetector (Newport 818-BB-30)** palette entry offers the exact purchased
+detector bare or with a configurable-height bracket and a four-hole plate drill
+contract. See the [detector guide](docs/newport-818-bb-30.md) for mounting details
+and the physical thread-depth check required before fabricating the bracket.
 Under **Mirror → Part preset**, the D-shaped PFD05-03-P01 and PFD10-03-P01 mirrors
 are available bare or paired with KM05DR/KM05DL and KM100D/KM100DL respectively. Purchased diameter
 and 6 mm thickness are fixed. **Hit below straight edge** sets the nominal spot's

@@ -59,6 +59,8 @@ class PartSpec:
 def part_spec(document, node, topology, turns=None):
     """Return a hashable specification, or None for a virtual symbol."""
     parameters = tuple(parameter_values(node).items())
+    if node.kind == "detector":
+        return PartSpec("catalog", "detector", parameters, (("mounted", node.preset == "bracketed"),))
     if node.kind == "dichroic":
         return PartSpec("catalog", "dichroic", parameters,
                         (("mount", None if node.preset == "bare" else node.preset),))

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "newport",
+  "part_number": "818-BB-30",
+  "product_url": "https://www.newport.com/p/818-BB-30",
+  "asset_url": null,
+  "vendor_filename": "Newport-818-BB-30.stp",
+  "document_id": null,
+  "revision": null,
+  "retrieved_at": "2026-10-30T15:26:47.234716+00:00",
+  "sha256": "5aa6a3c0136e3b8d8e8353b3cbe60c93460fb1625b59fe4d8a74794a46433df7",
+  "kind": "step",
+  "cache_path": "objects/5aa6a3c0136e3b8d8e8353b3cbe60c93460fb1625b59fe4d8a74794a46433df7/source.step",
+  "units": "requires_cad_inspection",
+  "identity_evidence": "product-page document association; not inferred from shape"
+}

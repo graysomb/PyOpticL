@@ -21,7 +21,7 @@ DATA = Path(__file__).with_name('catalog_data')
 VENDOR_IDS = ('POLARIS-L05G', 'POLARIS-L1G', 'POLARIS-K1VS2',
               'MHV-12.7L-R', 'MHV-25.4L-R', 'FBR', 'VA100', 'POLARIS-K05T6',
               'KM100D', 'KM05DR', 'KM100DL', 'KM05DL')
-CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating', 'd_mirror', 'crystal_holder')
+CATALOG_IDS = ('mirror', 'coupling', 'pbs', 'rotation', 'translation', 'iris', 'slit', 'roof', 'grating', 'd_mirror', 'crystal_holder', 'photodetector')
 
 
 def asset_record(part):
@@ -545,6 +545,15 @@ def definition(catalog_id, **parameters):
     (degrees) and integer order. D mirrors select a matching mount/optic pair;
     their purchased thickness is fixed at 6 mm. Unknown options fail explicitly.
     """
+    if catalog_id in ('photodetector', '818-BB-30', '818-BB-30-bracket'):
+        from PyOpticL.newport_detector import DetectorBracket, MountedPhotodetector, Photodetector818BB30
+        allowed = set() if catalog_id == '818-BB-30' else {'optical_height'}
+        unknown = set(parameters) - allowed
+        if unknown:
+            raise TypeError('Unsupported detector parameters: ' + ', '.join(sorted(unknown)))
+        if catalog_id == '818-BB-30':
+            return Photodetector818BB30()
+        return (DetectorBracket if catalog_id == '818-BB-30-bracket' else MountedPhotodetector)(**parameters)
     if catalog_id in ('crystal_holder', 'crystal_holder_bare', 'crystal_bracket'):
         from PyOpticL.crystal_holder import CrystalBracket, CrystalHolder
         if parameters:

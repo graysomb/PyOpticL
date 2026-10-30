@@ -88,7 +88,7 @@ def physical_layout(document, topology, lengths=None, turns=None, source_pose=No
             angle += (turn - (90 if turn > 0 else -90)) / 2
         if node.kind == "grating" and incident == "B":
             angle += turn
-        if node.kind in ("fiber_source", "fiber_output", "stop"):
+        if node.kind in ("fiber_source", "fiber_output", "stop", "detector"):
             angle = heading + 180
         if node.kind == "fiber_source" and node.preset in COUPLING_MOUNTS:
             angle = heading

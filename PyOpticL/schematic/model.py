@@ -284,6 +284,7 @@ def document_from_dict(data, *, migrate_lengths=True):
                     "stop",
                     "fiber_source",
                     "fiber_output",
+                    "detector",
                 ):
                     raise ValueError("This optical component cannot absorb a receiving pass")
                 explicit_ids.add(item.id)

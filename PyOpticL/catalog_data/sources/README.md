@@ -11,11 +11,11 @@ name is retained for schema-1 compatibility. Identical source bytes are stored
 once. `.gitattributes` preserves their bytes across platforms and treats CAD
 changes as binary diffs.
 
-- `../assets/*.json`: 44 vendor STEP/drawing records covering 22 parts.
-- `../source_references.json`: 11 original CAD/document references, including
+- `../assets/*.json`: 46 vendor STEP/drawing records covering 23 parts.
+- `../source_references.json`: 12 original CAD/document references, including
   the iris, HOM, displacement PBS, corrected roof supports, grating datasheet,
   and uploaded six-part crystal holder.
-- Combined: 55 records referencing 54 files, 211,492,169 bytes (about 211 MB
+- Combined: 58 records referencing 57 files, 216,535,088 bytes (about 217 MB
   before Git compression). The largest file is about 35 MB.
 
 Source hashes, original vendor filenames, URLs, revisions, measurements, and

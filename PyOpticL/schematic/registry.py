@@ -217,6 +217,12 @@ SYMBOLS["grating"] = Symbol(
 SYMBOLS["crystal"] = Symbol(
     "Crystal holder", "XTAL", TWO_PORTS, ("bracketed", "bare"),
 )
+SYMBOLS["detector"] = Symbol(
+    "Photodetector (Newport 818-BB-30)", "PD", TERMINAL_PORT, ("bracketed", "bare"),
+    role="terminal", preset_parameters={
+        "bracketed": {"optical_height": Parameter("Bracket beam height (mm)", 25.4, 25.4)},
+    },
+)
 SYMBOLS["dichroic"] = Symbol(
     "Dichroic mirror", "DM", TWO_PORTS,
     ("MHV-12.7L-R", "MHV-25.4L-R", "bare"),

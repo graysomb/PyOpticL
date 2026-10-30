@@ -1,0 +1,155 @@
+{
+  "units": "mm",
+  "part": "818-BB-30",
+  "product_url": "https://www.newport.com/p/818-BB-30",
+  "step_sha256": "5aa6a3c0136e3b8d8e8353b3cbe60c93460fb1625b59fe4d8a74794a46433df7",
+  "drawing_sha256": "ca817e8a1d45b2dc54919abeced44176a58d940a49657827ad97b6a4da342c68",
+  "drawing": "120-10035-0001-CID; Newport 818-BB-30 Dimensional Drawing; no revision shown",
+  "source": {
+    "solids": 1,
+    "volume": 61986.169412867304,
+    "bounds": [
+      -16.8656,
+      -1e-07,
+      -29.565599999999996,
+      16.865600100000005,
+      53.975,
+      16.865600100000005
+    ]
+  },
+  "normalization": {
+    "origin": [
+      16.8656,
+      17.1958,
+      0
+    ],
+    "rotation": [
+      90,
+      0,
+      0
+    ]
+  },
+  "datum_note": "Optical origin is the entrance-face center of the photodiode bore; +X is outward, +Z upright. Internal photosensitive axial depth is not specified by the drawing and is not modeled. Native inch dimensions control; drawing rounded metric height 17.18 differs from STEP 17.1958 by 0.0158 mm.",
+  "body": {
+    "size_mm": [
+      33.7312,
+      33.7312,
+      53.975
+    ],
+    "corner_mm": [
+      -33.7312,
+      -16.8656,
+      -17.1958
+    ]
+  },
+  "optical": {
+    "active_diameter_mm": 0.1,
+    "acceptance_half_angle_deg": 20,
+    "wavelength_nm": [
+      800,
+      1750
+    ],
+    "bandwidth_hz": 2000000000.0,
+    "bnc_position_mm": [
+      -10.1346,
+      16.8656,
+      0
+    ]
+  },
+  "mounting_holes": [
+    {
+      "name": "mount_m4",
+      "position_mm": [
+        -22.3266,
+        0,
+        -17.1958
+      ],
+      "diameter_mm": 3.3,
+      "depth_mm": 2.54,
+      "thread": "M4 x 0.7",
+      "major_mm": 4.0,
+      "pitch_mm": 0.7
+    },
+    {
+      "name": "mount_8_32",
+      "position_mm": [
+        -11.4046,
+        0,
+        -17.1958
+      ],
+      "diameter_mm": 3.4544,
+      "depth_mm": 2.54,
+      "thread": "8-32 UNC",
+      "major_mm": 4.1656,
+      "pitch_mm": 0.79375
+    }
+  ],
+  "mounting_note": "Drawing identifies thread standards. STEP smooth bores have 2.54 mm straight depth; usable thread depth is not specified. M4 x 6 screw with 4 mm bracket web gives conservative nominal 2 mm insertion, requiring physical usable-thread-depth/retention validation before fabrication.",
+  "bracket": {
+    "default_optical_height_mm": 25.4,
+    "minimum_optical_height_mm": 25.4,
+    "size_xy_mm": [
+      46,
+      64
+    ],
+    "corner_xy_mm": [
+      -40,
+      -32
+    ],
+    "detector_seat_z_mm": -17.1958,
+    "web_mm": 4,
+    "plate_xy_mm": [
+      [
+        -26,
+        -25
+      ],
+      [
+        -26,
+        25
+      ]
+    ],
+    "pin_xy_mm": [
+      [
+        -7,
+        -25
+      ],
+      [
+        -7,
+        25
+      ]
+    ],
+    "clearance_mm": 4.5,
+    "counterbore_mm": 8,
+    "plate_screw_length_mm": 12,
+    "detector_screw_length_mm": 6,
+    "detector_engagement_mm": 2,
+    "registration_clearance_mm": 0.2,
+    "registration_height_mm": 2,
+    "dowel": {
+      "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
+      "mount_diameter_mm": 2.05,
+      "mount_depth_mm": 2.0,
+      "plate_diameter_mm": 2.01,
+      "plate_diameter_limits_mm": [
+        2.0066,
+        2.02184
+      ],
+      "plate_depth_mm": 4.445,
+      "plate_depth_tolerance_mm": [
+        0,
+        0.0508
+      ],
+      "pin_projection_mm": 0.555,
+      "note": "Adapted two-round-hole design. Plate dimensions follow the existing catalog pin convention; 118 degree tips follow each straight bore."
+    },
+    "foot_thickness_mm": 8,
+    "pedestal_size_xy_mm": [
+      38,
+      40
+    ],
+    "pedestal_corner_xy_mm": [
+      -37,
+      -20
+    ]
+  }
+}

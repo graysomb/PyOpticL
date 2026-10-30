@@ -1020,7 +1020,7 @@ class PhysicalSchematicEditor(BaseEditor):
             position = pair(self.view.mapToScene(self.view.viewport().rect().center()))
         x, v = snap_point(position, self.document.settings["grid"], self.document.settings["snap_grid"])
         node = self.document.add_node(kind)
-        angle = 135 if kind in ("mirror", "dichroic") else 180 if kind in ("fiber_source", "fiber_output", "stop") else 0
+        angle = 135 if kind in ("mirror", "dichroic") else 180 if kind in ("fiber_source", "fiber_output", "stop", "detector") else 0
         if kind == "fiber_source" and node.preset in ("POLARIS-K05T6", "KA05TA"):
             angle = 0
         self.document.layout["poses"][node.id] = [
@@ -1363,7 +1363,7 @@ class PhysicalSchematicEditor(BaseEditor):
         state = self.display_trace.layout.visits.get(p.id) if self.display_trace else None
         if state:
             return heading(state.incoming)
-        if p.mode == "receive" and node.kind in ("fiber_source", "fiber_output", "stop"):
+        if p.mode == "receive" and node.kind in ("fiber_source", "fiber_output", "stop", "detector"):
             return wrap_angle(self.display_poses()[node.id][3] - 180)
         return self.display_poses()[node.id][3] - source_offset(node)
 

@@ -24,6 +24,9 @@ class OpticalElementSpec:
 def element_spec(node, topology=None):
     p = parameter_values(node)
     diameter, thickness = p.get("diameter", 12.7), p.get("thickness", 1.0)
+    if node.kind == "detector":
+        return OpticalElementSpec((33.7312, 33.7312, 53.975),
+                                  (-33.7312, -16.8656, -17.1958), ("circle", .05), single_sided=True)
     if node.kind in ("mirror", "dichroic"):
         if node.preset in D_MIRROR_PRESETS:
             geometry = d_mirror_geometry(node.preset)

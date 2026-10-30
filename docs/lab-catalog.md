@@ -14,7 +14,7 @@ print(lab_catalog.bom(coupler))
 ```
 
 Supported preset IDs: `mirror`, `coupling`, `pbs`, `rotation`, `translation`,
-`iris`, `slit`, `roof`, `grating`, `d_mirror`, `crystal_holder`. Purchased mounts are also available directly through
+`iris`, `slit`, `roof`, `grating`, `d_mirror`, `crystal_holder`, `photodetector`. Purchased mounts are also available directly through
 `create(part_number, label)` for every part in the native-height table below.
 These return ordinary reusable `Component` objects with purchased-part definitions.
 Unknown parameters fail explicitly. Dimensions use mm.
@@ -56,6 +56,11 @@ Commercial thread designations are explicit and independent of the global metric
 | roof | HRS1015-P01; integral baseplate supports and removable M2 clamp | Fixed; horizontal/vertical construction orientation |
 | grating | LightSmyth 1336552; imperial MK05S; direct grating seating and 10 mm baseplate adapter | Vendor tip/tilt described; nominal incidence is a construction parameter |
 | crystal_holder | Original six-part holder/crystal STEP; separate bracket, screws, washers and locating pins | Fixed after installation |
+| photodetector | Exact Newport 818-BB-30; configurable-height bracket, M4 hardware and locating pins | Fixed after installation |
+
+See [Newport 818-BB-30 and bracket](newport-818-bb-30.md) for the detector datums,
+mounting-thread depth qualification and four-hole mating-plate drill contract.
+`create('818-BB-30', label)` exposes the bare purchased detector.
 
 See [crystal holder and bracket](crystal-holder.md) for source preservation,
 mounting dimensions, nominal fastening selections and its four-hole baseplate

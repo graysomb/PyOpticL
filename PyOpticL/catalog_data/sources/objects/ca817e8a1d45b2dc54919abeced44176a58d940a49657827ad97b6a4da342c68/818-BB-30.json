@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "vendor": "newport",
+  "part_number": "818-BB-30",
+  "product_url": "https://www.newport.com/p/818-BB-30",
+  "asset_url": null,
+  "vendor_filename": "818-BB-30-Dimensional-Drawing.pdf",
+  "document_id": null,
+  "revision": null,
+  "retrieved_at": "2026-10-30T15:26:47.239748+00:00",
+  "sha256": "ca817e8a1d45b2dc54919abeced44176a58d940a49657827ad97b6a4da342c68",
+  "kind": "pdf",
+  "cache_path": "objects/ca817e8a1d45b2dc54919abeced44176a58d940a49657827ad97b6a4da342c68/source.pdf",
+  "units": null,
+  "identity_evidence": "product-page document association; not inferred from shape"
+}
