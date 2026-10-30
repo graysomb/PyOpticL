@@ -121,9 +121,9 @@
       "id": "ST_Pickoff",
       "reference": "ST_Pickoff",
       "kind": "mirror",
-      "preset": "KM05DR",
+      "preset": "KM100D",
       "parameters": {
-        "diameter": 12.7,
+        "diameter": 25.4,
         "thickness": 6.0,
         "edge_distance": 1
       },
@@ -588,7 +588,7 @@
     "show_bounds": false,
     "bounds_scale": 4.0,
     "generate_baseplate": true,
-    "plate_thickness": 33.0,
+    "plate_thickness": 36.0,
     "plate_margin": 15.0
   },
   "version": 6,

@@ -235,7 +235,9 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         guide = Part.makeCylinder(1, upper.Proxy.distance,
             App.Vector(*upper.Proxy.get_global_position()), App.Vector(*upper.Proxy.get_global_direction()))
         overlap = overlap_volume(guide, compound(pickoff))
-        pickoff_clearance = dict(probe_radius_mm=1, mount="KM05DR", overlap_mm3=overlap)
+        holder = next(o.Proxy for o in attachments.descendants(pickoff)
+                      if attachments.profile(o.Proxy))
+        pickoff_clearance = dict(probe_radius_mm=1, mount=holder.part, overlap_mm3=overlap)
         if overlap > 1e-5:
             raise ValueError("D-shaped pickoff obstructs the upper stretcher beam")
     compressor_clearance = None

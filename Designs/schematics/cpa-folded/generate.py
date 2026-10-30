@@ -36,7 +36,9 @@ GRATING_TO_WAVEPLATE_MM = 150.0
 GRATING_TO_STEERING_MM = 225.0
 COUPLER_TO_STEERING_MM = 180.0
 PLATE_TOP_Z_MM = 3.0
-PLATE_THICKNESS_MM = 33.0
+PLATE_THICKNESS_MM = 36.0
+STRETCHER_PICKOFF_MOUNT = "KM100D"
+COMPRESSOR_PICKOFF_MOUNT = "KM100DL"
 COMPRESSOR_AXIS_HEIGHT_MM = 12.7
 COMPRESSOR_OFFSET_MM = BEAM_OFFSET_MM
 # 15.4 mm spot spacing along the grating face at the current diffraction angle.
@@ -150,7 +152,8 @@ def stretcher():
         heading(mul(folded_axis, -1)),
     )
     py = gy - GRATING_TO_PICKOFF_MM
-    put("ST_Pickoff", "mirror", "KM05DR", (gx, py), lower, 45, edge_distance=1)
+    put("ST_Pickoff", "mirror", STRETCHER_PICKOFF_MOUNT,
+        (gx, py), lower, 45, edge_distance=1)
     put(
         "ST_Iris",
         "slit",
@@ -318,7 +321,7 @@ def compressor():
     put(
         "CP_Pickoff",
         "mirror",
-        "KM05DL",
+        COMPRESSOR_PICKOFF_MOUNT,
         (gx, COMPRESSOR_PICKOFF_Y_MM, lower),
         135,
         edge_distance=1,
@@ -452,14 +455,14 @@ ASSUMPTIONS = [
     "Separate folded CPA variant with both dispersive stages folded. The baseline CPA files and artifacts are retained. Both folded stages use the same 5.65 mm upper/lower separation. The stretcher sits beside the compressor with both input couplers on Y=-300 mm. An additional 1-inch mirror bends its telescope leg while retaining its total optical length and lens focal length; The SHG crystal and downstream output hardware keep their positions; the two 30 mm SHG lenses are now constrained 60 mm apart, with the crystal center midway between them at the lower compressor output height.",
     f"The compressor uses one CP_G1 grating four times, one horizontal HRS1015-P01 roof twice, and one vertical HRS1015-P01 roof once. Its nominal axis is Z={COMPRESSOR_AXIS_HEIGHT_MM:g} mm, with input/output at Z={COMPRESSOR_AXIS_HEIGHT_MM + COMPRESSOR_OFFSET_MM:g}/{COMPRESSOR_AXIS_HEIGHT_MM - COMPRESSOR_OFFSET_MM:g} mm. The horizontal separation is {COMPRESSOR_HORIZONTAL_SEPARATION_MM:g} mm; the vertical roof shifts downward by {2*COMPRESSOR_OFFSET_MM:g} mm. All four grating passes are intentionally off axis, at the centers of the four quadrants of the 30.8 x 11.3 mm clear aperture: local face offsets (+/-7.7, +/-2.825) mm.",
     f"The horizontal roof's nominal virtual fold plane is {COMPRESSOR_FOLD_DISTANCE_MM:g} mm beyond the first grating hit. Its entrance plane is {COMPRESSOR_FOLD_DISTANCE_MM - ROOF_INTERNAL_AXIAL_DEPTH_MM:g} mm away, accounting for the measured roof's {ROOF_INTERNAL_AXIAL_DEPTH_MM:g} mm internal axial depth. Actual path lengths include the finite roof path and lateral walkoff; a nominal 860 mm span is not imposed as a chief-ray length.",
-    f"The compressor input coupler, waveplate and ordinary half-inch CP_M1 mirror in POLARIS-K05VS2 are at Y={COMPRESSOR_INPUT_Y_MM:g} mm. CP_M1 is centered at (320, {COMPRESSOR_INPUT_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM+COMPRESSOR_OFFSET_MM:g}) mm. The vertical roof entrance is at Y={COMPRESSOR_VERTICAL_ROOF_Y_MM:g} mm, between the grating and D pickoff, and its physical axis is offset {COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM:g} mm along local Y from the displaced return ray. The vertical roof is intentionally off axis; its revised integral stops are 2.54 mm above the seating floor. A PFD05-03-P01 in KM05DL remains at (320, {COMPRESSOR_PICKOFF_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM-COMPRESSOR_OFFSET_MM:g}) mm, steering the fourth grating pass into SHG. The horizontal roof is entered through B first. Both straight-through beams are checked against the vertical roof with 1 mm radius probes, along with the pickoff and steering-mirror bypass checks.",
+    f"The compressor input coupler, waveplate and ordinary half-inch CP_M1 mirror in POLARIS-K05VS2 are at Y={COMPRESSOR_INPUT_Y_MM:g} mm. CP_M1 is centered at (320, {COMPRESSOR_INPUT_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM+COMPRESSOR_OFFSET_MM:g}) mm. The vertical roof entrance is at Y={COMPRESSOR_VERTICAL_ROOF_Y_MM:g} mm, between the grating and D pickoff, and its physical axis is offset {COMPRESSOR_VERTICAL_ROOF_TANGENT_OFFSET_MM:g} mm along local Y from the displaced return ray. The vertical roof is intentionally off axis; its revised integral stops are 2.54 mm above the seating floor. A 25.4 mm PFD10-03-P01 in KM100DL remains at (320, {COMPRESSOR_PICKOFF_Y_MM:g}, {COMPRESSOR_AXIS_HEIGHT_MM-COMPRESSOR_OFFSET_MM:g}) mm, steering the fourth grating pass into SHG. The horizontal roof is entered through B first. Both straight-through beams are checked against the vertical roof with 1 mm radius probes, along with the pickoff and steering-mirror bypass checks.",
     f"The stretcher grating is positioned at X={STRETCHER_GRATING_X_MM:g} mm and its input coupler line at Y={STRETCHER_INPUT_Y_MM:g} mm. These input-section anchors position the folded stretcher beside the compressor. Its coupler is at X={STRETCHER_GRATING_X_MM-COUPLER_TO_STEERING_MM:g} mm, alongside the compressor coupler at X=500 mm. The shared baseplate is regenerated around the closer hardware footprints.",
     f"One physical ST_G2 grating and one 25.4 mm ST_L2 lens in a POLARIS-L1G mount are each used four times. The lens focal length is 500 mm, its center is Z={LENS_AXIS_HEIGHT_MM:g} mm, and the upper/lower beams pass at Z={LENS_AXIS_HEIGHT_MM + BEAM_OFFSET_MM:g}/{LENS_AXIS_HEIGHT_MM - BEAM_OFFSET_MM:g} mm. The grating is centered at the lens axis height; its four passes are intentionally off axis.",
     f"An additional upright 25.4 mm ST_Bend mirror in POLARIS-K1VS2 turns the telescope leg by {STRETCHER_BEND_ANGLE_DEG:g} degrees, {STRETCHER_LENS_TO_BEND_MM:g} mm axially after the lens. The existing upright 25.4 mm ST_Fold end mirror is {FOCAL_LENGTH_MM-STRETCHER_LENS_TO_BEND_MM:g} mm farther along the folded axis, normal to that nominal axis rather than the sloping incident ray. The two axial lengths total {FOCAL_LENGTH_MM:g} mm and preserve the entire pre-bend ray length. ST_Bend has four intentionally off-axis encounters. The grating-to-lens gap remains 70 mm; finite sloping ray lengths are traced.",
-    "The lower return traverses the same lens and grating, then a PFD05-03-P01 D-shaped mirror in a KM05DR mount selects it. The optical datum is 1 mm below the straight edge. The upper path clears the open half; a 1 mm radius clearance probe is checked against the optic and mount.",
+    "The lower return traverses the same lens and grating, then a 25.4 mm PFD10-03-P01 D-shaped mirror in a KM100D mount selects it. The optical datum is 1 mm below the straight edge. The upper path clears the open half; a 1 mm radius clearance probe is checked against the optic and mount.",
     "The D pickoff is 75 mm before the grating. The VA100 is 75 mm after the pickoff, followed 75 mm later by the existing 25.4 mm ST_M1 retroreflector in a POLARIS-K1VS2 mount. The return retraces the entire folded path to the launching coupler.",
     f"The upper input steering mirror is 225 mm before the grating; the FBR half-wave plate is 150 mm before it. The integral-lens fiber coupler is 180 mm from that steering mirror. All starter distances and the {BEAM_OFFSET_MM:g} mm lens offset are editable in generate.py and the schematic poses.",
-    "The plate top is Z=3 mm and thickness is 33 mm, preserving its underside at Z=-30 mm. Purchased mounts remain upright and use their real seats, recessed where required; no floating mounts or unspecified spacers are introduced.",
+    "The plate top remains Z=3 mm; thickness is 36 mm and the underside is Z=-33 mm. The deeper one-inch D-mirror seats require this stock so their 10 mm blind M4 mounting bores retain bottom material. Both one-inch D holders use two 2 mm x 5 mm rear-contact locating pins per mount, 22 mm apart, with 4 mm straight plate bores and 1 mm projection above each recess floor. Purchased mounts remain upright and use their real seats, recessed where required; no floating mounts or unspecified spacers are introduced.",
     f"SHG lens separation is constrained to {SHG_LENS_SEPARATION_MM:g} mm with the physical crystal center at the midpoint: 30 mm from each lens for the defaults. The input lens is at X=130 mm, the crystal center at X=100 mm and the output lens at X=70 mm. Input lens to crystal center is an explicit 30 mm schematic length constraint. Each output wavelength starts at the physical crystal exit, 13.7 mm after the center, with an explicit 16.3 mm exit-to-lens constraint. The folded CAD builder additionally validates the shared 60 mm span, midpoint and exit alignment across wavelength files before export. Both SHG focal lengths remain 30 mm; lens-mount facing directions and downstream optics are retained.",
     "VA100 slit width is provisionally 1 mm. Beam waists and powers remain illustrative. Native and schematic traces use the existing ideal thin-lens, mirror and grating models; no detailed aberration, pulse dispersion, gain, SHG efficiency or phase matching is predicted.",
     "The output dichroic reflects 775 nm and transmits 1550 nm through an ideal 3 mm, n=1.5 plate. The exact coating/optic is unselected. The residual 1550 nm path retains its half-inch mirror and integral-lens coupler; fiber cables and the EDFA package are omitted.",

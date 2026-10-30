@@ -402,7 +402,7 @@ def build_layout():
     part_6 = Component('ST_Fold', catalog.mirror(mount='POLARIS-K1VS2', diameter=25.4, thickness=3))
     x, y, z, angle = PLACEMENTS['ST_Fold']
     objects['ST_Fold'] = layout.add(part_6, position=(x, y, z), rotation=angle)
-    part_7 = Component('ST_Pickoff', catalog.d_mirror(optic='PFD05-03-P01', mount='KM05DR', diameter=12.7, thickness=6.0, edge_distance=1))
+    part_7 = Component('ST_Pickoff', catalog.d_mirror(optic='PFD10-03-P01', mount='KM100D', diameter=25.4, thickness=6.0, edge_distance=1))
     x, y, z, angle = PLACEMENTS['ST_Pickoff']
     objects['ST_Pickoff'] = layout.add(part_7, position=(x, y, z), rotation=angle)
     part_8 = Component('ST_Iris', catalog.slit(slit_width=1))

@@ -75,6 +75,17 @@ class DMirrorTests(unittest.TestCase):
             self.assertEqual({h.thread for h in contract.holes}, {'8-32 UNC'} if mount.startswith('KM05') else {None})
             self.assertEqual(len(attachments.operations(definition)), 3)
             self.assertEqual(definition.baseplate_profile()['dowels'], [])
+            if mount in ('KM100D', 'KM100DL'):
+                profile = definition.baseplate_profile()
+                pins = profile['contact_dowels']['pins']
+                self.assertEqual(len(pins), 2)
+                self.assertAlmostEqual((App.Vector(*pins[0]['center_mm']) -
+                                        App.Vector(*pins[1]['center_mm'])).Length, 22)
+                screw = next(op for op in attachments.operations(definition)
+                             if op['kind'] == 'tapped')
+                self.assertEqual((screw['thread'], screw['diameter_mm'],
+                                  screw['depth_mm'], screw['thread_depth_mm']),
+                                 ('M4 x 0.7', 3.3, 10., 8.))
             cylinders = [f.Surface for f in catalog.vendor_shape(mount).Faces if isinstance(f.Surface, Part.Cylinder)]
             for hole in reference()['parts'][mount]['physical_mounting_features']:
                 axis, center = App.Vector(*hole['axis']), App.Vector(*hole['center'])

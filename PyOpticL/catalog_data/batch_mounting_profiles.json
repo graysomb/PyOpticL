@@ -778,7 +778,11 @@
     ],
     "screw": {
       "hardware": "M4 x 0.7 x 12 mm mounting cap screw",
-      "note": "One M4 x 12 cap screw through existing #8/M4 counterbore: 4.318 mm clearance section and 7.682 mm nominal plate engagement. Vendor includes imperial/metric mounting screws; supplied lengths are unverified. No dowel registration."
+      "note": "One M4 x 12 cap screw through existing #8/M4 counterbore: 4.318 mm clearance section and 7.682 mm nominal plate engagement. Vendor includes imperial/metric mounting screws; supplied lengths are unverified. Rear registration uses the two external 2 mm contact dowels declared in contact_dowels; the purchased holder is unmodified.",
+      "thread": "M4 x 0.7",
+      "diameter_mm": 3.3,
+      "depth_mm": 10.0,
+      "thread_depth_mm": 8.0
     },
     "clearance_pockets": [
       {
@@ -1103,7 +1107,11 @@
     ],
     "screw": {
       "hardware": "M4 x 0.7 x 12 mm mounting cap screw",
-      "note": "One M4 x 12 cap screw through existing #8/M4 counterbore: 4.318 mm clearance section and 7.682 mm nominal plate engagement. Vendor includes imperial/metric mounting screws; supplied lengths are unverified. No dowel registration."
+      "note": "One M4 x 12 cap screw through existing #8/M4 counterbore: 4.318 mm clearance section and 7.682 mm nominal plate engagement. Vendor includes imperial/metric mounting screws; supplied lengths are unverified. Rear registration uses the two external 2 mm contact dowels declared in contact_dowels; the purchased holder is unmodified.",
+      "thread": "M4 x 0.7",
+      "diameter_mm": 3.3,
+      "depth_mm": 10.0,
+      "thread_depth_mm": 8.0
     },
     "clearance_pockets": [
       {

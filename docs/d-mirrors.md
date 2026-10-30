@@ -138,6 +138,11 @@ or the separate below-seat knob reliefs.
   measured 4.318 mm clearance section, giving 7.682 mm nominal plate engagement.
   Thorlabs supplies imperial/metric mounting screws; their supplied lengths
   have not been verified. The selected screw is recorded as a BOM requirement.
+  Both one-inch mounting profiles explicitly declare the M4 thread, Ø3.3 mm
+  tap drill, 10 mm drill depth and 8 mm thread depth alongside their two
+  rear-contact dowel operations. At a 9.875 mm beam datum, the mounting face is
+  Z=-21.129 mm; a plate with its top at Z=3 mm needs at least 35.621 mm thickness
+  for this blind bore and 0.5 mm bottom allowance. The folded CPA uses 36 mm.
 - Each KM100D/KM100DL removable knob protrudes 0.635 mm below the mounting face. A separate
   conservative rectangular plate relief is 0.885 mm deep, allowing 0.25 mm extra
   clearance. Both plate workflows consume the same profile box. The optical

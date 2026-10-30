@@ -46,7 +46,7 @@ Y=-100 mm, between the grating and D pickoff. Its physical axis is shifted 5 mm
 in negative local Y (negative world X) from the return ray, so the beam enters
 and exits the roof intentionally off axis. The revised 2.54 mm integral stops
 are retained. Both straight-through beams clear the roof optic and mount with
-1 mm radius probes. A half-inch PFD05-03-P01 in KM05DL at (320,-220,9.875) mm
+1 mm radius probes. A 1-inch PFD10-03-P01 in KM100DL at (320,-220,9.875) mm
 selects the lower output for SHG. The horizontal roof is entered through B first;
 its 9.538700743 mm separation preserves the quadrant-centered grating spots.
 The SHG crystal, dichroic and rear 1550 nm collection hardware retain their
@@ -82,13 +82,21 @@ It writes `artifacts/chirped_pulse_amplification_folded.FCStd`, hardware and
 baseplate STEP files, and separate review, BOM and drilling JSON reports.
 The baseline CAD and schematic files are not overwritten.
 
-The plate is 33 mm thick with its top at Z=3 mm and underside at Z=-30 mm. Raised
+Both D-shaped mirrors use 1-inch PFD10-03-P01 optics: KM100D for the stretcher
+and KM100DL for the compressor. Their optical datums and beam paths are retained.
+Each mounting profile includes its M4 screw and two rear-contact locating pins,
+22 mm apart, tangent to the fixed base rather than the moving mirror plate.
+
+The plate is 36 mm thick with its top at Z=3 mm and underside at Z=-33 mm. This
+contains the deeper 1-inch D-mirror recesses and their 10 mm blind mounting bores.
+Raised
 input mounts have supported seats, while taller mounts and the
 compressor roof supports receive local recesses. Both D-mirror mount recesses
 have twice the usual width and length for Allen-key adjuster access, retaining
 their original seat depths and screw locations. Each D mirror also has two
-plate dowel holes for 2 mm × 5 mm pins tangent to the fixed base rear face,
-projecting 1 mm above the recess floor. Drilling coordinates are relative
+plate dowel holes for 2 mm × 5 mm pins tangent to the fixed base rear face:
+nominal Ø2.01 mm, 4 mm straight depth, projecting 1 mm above the recess floor.
+Drilling coordinates are relative
 to the plate: report Z=0 corresponds to assembly Z=3 mm. All distances are provisional.
 
 All three lens-mount recesses are aligned with their lens axes. Each is extended

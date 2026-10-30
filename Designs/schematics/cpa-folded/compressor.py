@@ -246,7 +246,7 @@ def build_layout():
     part_5 = Component('CP_VRoof', catalog.roof(orientation='vertical', mounted=True, reverse=True, beam_separation=5.65))
     x, y, z, angle = PLACEMENTS['CP_VRoof']
     objects['CP_VRoof'] = layout.add(part_5, position=(x, y, z), rotation=angle)
-    part_6 = Component('CP_Pickoff', catalog.d_mirror(optic='PFD05-03-P01', mount='KM05DL', diameter=12.7, thickness=6.0, edge_distance=1))
+    part_6 = Component('CP_Pickoff', catalog.d_mirror(optic='PFD10-03-P01', mount='KM100DL', diameter=25.4, thickness=6.0, edge_distance=1))
     x, y, z, angle = PLACEMENTS['CP_Pickoff']
     objects['CP_Pickoff'] = layout.add(part_6, position=(x, y, z), rotation=angle)
     part_7 = Component('SHG_HWP1', catalog.waveplate(mount='FBR', retardance=0.5, diameter=12.7, fast_axis_angle=0, thickness=1))

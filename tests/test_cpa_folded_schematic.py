@@ -1,6 +1,7 @@
 """Folded CPA geometry, shared optics and independent editable exports."""
 import importlib.util
-from math import dist
+import json
+from math import dist, radians, tan
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -22,6 +23,27 @@ spec.loader.exec_module(generator)
 
 
 class FoldedCPATests(unittest.TestCase):
+    def test_one_inch_pickoffs_have_rear_pins_and_enough_blind_hole_stock(self):
+        profiles = json.loads((ROOT / "PyOpticL/catalog_data/batch_mounting_profiles.json").read_text())
+        for name, ref, mount in (("stretcher", "ST_Pickoff", "KM100D"),
+                                  ("compressor", "CP_Pickoff", "KM100DL")):
+            document = generator.documents()[name]
+            self.assertEqual(document.node(ref).preset, mount)
+            profile = profiles[mount]
+            contact = profile["contact_dowels"]
+            self.assertEqual(len(contact["pins"]), 2)
+            self.assertEqual(dist(*(p["center_mm"] for p in contact["pins"])), 22)
+            self.assertEqual(contact["plate_depth_mm"], 4)
+            self.assertEqual(contact["pin_projection_mm"], 1)
+            self.assertEqual(contact["pin_diameter_mm"], 2)
+            screw = profile["screw"]
+            self.assertEqual((screw["thread"], screw["diameter_mm"], screw["depth_mm"],
+                              screw["thread_depth_mm"]), ("M4 x 0.7", 3.3, 10, 8))
+            seat = document.layout["poses"][ref][2] - profile["optical_height_mm"]
+            bottom = generator.PLATE_TOP_Z_MM - generator.PLATE_THICKNESS_MM
+            drill_tip = seat - screw["depth_mm"] - screw["diameter_mm"] / 2 / tan(radians(59))
+            self.assertGreaterEqual(drill_tip - bottom, 0.5)
+
     def test_saved_routes_regenerate_without_changing_baseline_routes(self):
         before = {
             p.name: p.read_bytes()
@@ -127,7 +149,8 @@ class FoldedCPATests(unittest.TestCase):
         for ref in ("ST_Bend", "ST_Fold", "ST_M1"):
             self.assertEqual(document.node(ref).preset, "POLARIS-K1VS2")
             self.assertEqual(parameter_values(document.node(ref))["diameter"], 25.4)
-        self.assertEqual(document.node("ST_Pickoff").preset, "KM05DR")
+        self.assertEqual(document.node("ST_Pickoff").preset, "KM100D")
+        self.assertEqual(parameter_values(document.node("ST_Pickoff"))["diameter"], 25.4)
         self.assertEqual(document.node("ST_Iris").preset, "VA100")
         poses = document.layout["poses"]
         self.assertAlmostEqual(dist(poses["ST_G2"][:3], poses["ST_L2"][:3]), 70)
@@ -269,7 +292,8 @@ class FoldedCPATests(unittest.TestCase):
         self.assertEqual(topology.incident_ports["CP_HRoof"], "B")
         self.assertEqual(topology.incident_ports["CP_HRoof_return"], "A")
         self.assertEqual(topology.incident_ports["CP_VRoof"], "B")
-        self.assertEqual(document.node("CP_Pickoff").preset, "KM05DL")
+        self.assertEqual(document.node("CP_Pickoff").preset, "KM100DL")
+        self.assertEqual(parameter_values(document.node("CP_Pickoff"))["diameter"], 25.4)
         self.assertEqual(document.node("CP_M1").preset, "POLARIS-K05VS2")
         self.assertTrue(topology.passes["CP_M1"].centered)
         self.assertFalse(topology.passes["CP_VRoof"].centered)
