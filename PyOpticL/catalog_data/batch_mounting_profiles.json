@@ -799,7 +799,7 @@
         "purpose": "Source solid 6 removable adjuster knob; 0.635 mm below seat plus 0.25 mm clearance. Top extends 0.01 mm above seat for a clean cut."
       }
     ],
-    "recess_scale_xy": 2.0,
+    "recess_scale_xy": 1.0,
     "contact_dowels": {
       "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
       "pin_diameter_mm": 2.0,
@@ -844,7 +844,9 @@
         }
       ],
       "note": "Design-selected external locating stops against the fixed base rear face, not holes in the vendor holder. Pins are tangent to the measured rear plane and project 1 mm above the selected seat to clear the lower rear chamfer. A 5 mm pin seats in a 4 mm straight bore. Hole fit follows the existing catalog 2 mm pin convention; stops constrain rear translation and yaw only."
-    }
+    },
+    "recess_orientation": "mount",
+    "recess_clearance_mm": 5.0
   },
   "KM05DR": {
     "seat_frame": "mounting_face",
@@ -903,7 +905,7 @@
       "hardware": "8-32 UNC x 1/4 in mounting stud",
       "note": "One double-ended 6.35 mm stud: nominal 3.175 mm engagement in holder and plate. Holder retains its imperial 8-32 tapped hole; no M4 substitution. Single-stud mounting does not provide dowel registration."
     },
-    "recess_scale_xy": 2.0,
+    "recess_scale_xy": 1.0,
     "contact_dowels": {
       "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
       "pin_diameter_mm": 2.0,
@@ -948,7 +950,9 @@
         }
       ],
       "note": "Design-selected external locating stops against the fixed base rear face, not holes in the vendor holder. Pins are tangent to the measured rear plane and project 1 mm above the selected seat to clear the lower rear chamfer. A 5 mm pin seats in a 4 mm straight bore. Hole fit follows the existing catalog 2 mm pin convention; stops constrain rear translation and yaw only."
-    }
+    },
+    "recess_orientation": "mount",
+    "recess_clearance_mm": 5.0
   },
   "KM05DL": {
     "seat_frame": "mounting_face",
@@ -1007,7 +1011,7 @@
       "hardware": "8-32 UNC x 1/4 in mounting stud",
       "note": "One double-ended 6.35 mm stud: nominal 3.175 mm engagement in holder and plate. Holder retains its imperial 8-32 tapped hole; no M4 substitution. Single-stud mounting does not provide dowel registration."
     },
-    "recess_scale_xy": 2.0,
+    "recess_scale_xy": 1.0,
     "contact_dowels": {
       "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
       "pin_diameter_mm": 2.0,
@@ -1052,7 +1056,9 @@
         }
       ],
       "note": "Design-selected external locating stops against the fixed base rear face, not holes in the vendor holder. Pins are tangent to the measured rear plane and project 1 mm above the selected seat to clear the lower rear chamfer. A 5 mm pin seats in a 4 mm straight bore. Hole fit follows the existing catalog 2 mm pin convention; stops constrain rear translation and yaw only."
-    }
+    },
+    "recess_orientation": "mount",
+    "recess_clearance_mm": 5.0
   },
   "KM100DL": {
     "seat_frame": "mounting_face",
@@ -1128,7 +1134,7 @@
         "purpose": "Source solid 21 removable adjuster knob; 0.635 mm below seat plus 0.25 mm clearance. Top extends 0.01 mm above seat for a clean cut."
       }
     ],
-    "recess_scale_xy": 2.0,
+    "recess_scale_xy": 1.0,
     "contact_dowels": {
       "pin": "2 mm x 5 mm DIN 7-m6 / ISO 2338",
       "pin_diameter_mm": 2.0,
@@ -1173,6 +1179,8 @@
         }
       ],
       "note": "Design-selected external locating stops against the fixed base rear face, not holes in the vendor holder. Pins are tangent to the measured rear plane and project 1 mm above the selected seat to clear the lower rear chamfer. A 5 mm pin seats in a 4 mm straight bore. Hole fit follows the existing catalog 2 mm pin convention; stops constrain rear translation and yaw only."
-    }
+    },
+    "recess_orientation": "mount",
+    "recess_clearance_mm": 5.0
   }
 }

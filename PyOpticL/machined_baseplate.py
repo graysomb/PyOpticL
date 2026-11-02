@@ -44,14 +44,49 @@ class MachinedBaseplate:
         self.plan = {}
         self.integrated_names = []
 
+    def __getstate__(self):
+        return {k:v for k,v in self.__dict__.items() if k not in ('_object','_stage_shape_cache')}
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._object = None  # rebound by Component.onDocumentRestored
+
     def _relative(self, obj):
         reference = getattr(self, '_object', self.layout.get_object())
         return reference.Placement.inverse() * obj.Placement
 
     def shape(self):
+        # A moving payload has invariant manufacturing geometry. Cache this
+        # opt-in case using receiving-part geometry and full-stroke envelopes,
+        # never the current travel value. Other layouts retain the old path.
+        reference = getattr(self, '_object', self.layout.get_object())
+        stage_objects = [o for o in descendants(self.layout.get_object())
+                         if hasattr(o.Proxy, 'motion_envelopes')]
+        cache_key = None
+        if stage_objects:
+            records = [(self.thickness,self.margin,self.pocket_clearance,
+                        tuple((round(v,8) or 0.) for v in reference.Placement.toMatrix().A))]
+            for obj in descendants(self.layout.get_object()):
+                if obj == reference or getattr(obj.Proxy,'object_group',None) in ('beam_path','baseplate'):
+                    continue
+                if attachments.receiving_part(obj) is not None or attachments.is_moving(obj):
+                    continue
+                if hasattr(obj,'Shape') and not obj.Shape.isNull():
+                    records.append((obj.Name,obj.Shape.hashCode(),
+                        tuple((round(v,8) or 0.) for v in self._relative(obj).toMatrix().A),
+                        attachments.profile(obj.Proxy),attachments.integration_profile(obj.Proxy)))
+            for obj,shape in attachments.stage_envelopes(self.layout.get_object(),reference):
+                b=shape.optimalBoundingBox(False)
+                records.append((obj.Name,tuple((round(v,8) or 0.) for v in
+                    (b.XMin,b.YMin,b.ZMin,b.XMax,b.YMax,b.ZMax))))
+            cache_key=repr(records)
+            if cache_key == getattr(self,'_stage_cache_key',None) and hasattr(self,'_stage_shape_cache'):
+                return self._stage_shape_cache.copy()
         hardware, fused, integrated = [], [], []
         for obj in descendants(self.layout.get_object()):
             if obj.Proxy is self or getattr(obj.Proxy,'object_group',None) == 'baseplate':
+                continue
+            if not attachments.belongs_to(obj, getattr(self, '_object', self.layout.get_object())):
                 continue
             if not hasattr(obj.Proxy,'contract'):
                 continue
@@ -72,9 +107,13 @@ class MachinedBaseplate:
             if getattr(obj.Proxy,'object_group',None) in ('beam_path','baseplate'):
                 continue
             if hasattr(obj,'Shape') and not obj.Shape.isNull():
+                if attachments.receiving_part(obj) is not None or attachments.is_moving(obj):
+                    continue  # Full-stroke envelopes below replace moving shapes.
                 shape = obj.Shape.copy()
                 shape.Placement = self._relative(obj)
                 shapes.append(shape)
+        shapes.extend(shape for _,shape in attachments.stage_envelopes(
+            self.layout.get_object(),getattr(self,'_object',self.layout.get_object())))
         # Tight bounds avoid false recesses from inflated spline bounding boxes.
         bounds = Part.makeCompound(shapes).optimalBoundingBox()
         # Round outward to a convenient 5 mm stock grid, retaining the margin.
@@ -84,50 +123,85 @@ class MachinedBaseplate:
         depth = math.ceil((bounds.YMax+self.margin)/5)*5-y0
         plate = Part.makeBox(width,depth,self.thickness,App.Vector(x0,y0,-self.thickness))
         operations, pockets, heights, native_heights = [], [], {}, {}
+        for record,pocket in attachments.motion_clearances(
+                self.layout.get_object(),getattr(self,'_object',self.layout.get_object())):
+            if pocket.optimalBoundingBox(False).ZMin < -self.thickness+.5:
+                raise ValueError('Stage travel clearance leaves insufficient stock')
+            plate = plate.cut(pocket)
+            pockets.append(record)
         for obj in hardware:
             contract = obj.Proxy.contract()
             profile = attachments.profile(obj.Proxy)
             frames = {f.name:f for f in contract.frames}
             placement = self._relative(obj)
             seat = placement.multVec(App.Vector(*frames[profile['seat_frame']].position))
-            optical = placement.multVec(App.Vector(*frames['optical'].position))
-            heights[obj.Name] = optical.z
-            native_heights[obj.Name] = frames['optical'].position[2] - frames[profile['seat_frame']].position[2]
+            if 'optical' in frames:
+                optical = placement.multVec(App.Vector(*frames['optical'].position))
+                heights[obj.Name] = optical.z
+                native_heights[obj.Name] = frames['optical'].position[2] - frames[profile['seat_frame']].position[2]
             local_up = placement.Rotation.multVec(App.Vector(0,0,1))
             if (local_up-App.Vector(0,0,1)).Length > 1e-7:
                 raise ValueError('Mount must stand upright for top-down plate machining: '+obj.Label)
             if seat.z > .01:
                 raise ValueError('Mount would float above plate; spacers are not allowed: '+obj.Label)
             if seat.z < -1e-6:
-                orientation = profile.get('recess_orientation', 'plate')
-                if orientation not in ('plate', 'mount'):
-                    raise ValueError('Recess orientation must be plate or mount')
-                pocket_frame = placement if orientation == 'mount' else App.Placement()
-                shape = obj.Shape.copy();shape.Placement = pocket_frame.inverse()*placement
-                b = shape.optimalBoundingBox()
-                if seat.z-self.pocket_clearance <= -self.thickness+10:
-                    raise ValueError('Insufficient stock beneath recessed mount for tapped hole')
-                # Enlarge selected mount recesses for adjuster/tool access,
-                # retaining the same flat seat and attachment-hole datum.
-                scale = profile.get('recess_scale_xy', 1.)
-                if not math.isfinite(scale) or scale < 1:
-                    raise ValueError('Recess XY scale must be finite and at least one')
-                axial_extra = profile.get('recess_axial_extra_mm', 0.)
-                if not math.isfinite(axial_extra) or axial_extra < 0:
-                    raise ValueError('Recess axial extension must be finite and nonnegative')
-                size = [(b.XLength+2*self.pocket_clearance)*scale+axial_extra,
-                        (b.YLength+2*self.pocket_clearance)*scale, -seat.z]
-                floor = pocket_frame.inverse().multVec(seat).z
-                origin = App.Vector(b.Center.x-size[0]/2, b.Center.y-size[1]/2, floor)
-                pocket = Part.makeBox(size[0],size[1],size[2]+.01,origin)
-                pocket.Placement = pocket_frame*pocket.Placement
-                plate = plate.cut(pocket)
-                pockets.append(dict(mount=obj.Label, mount_object=obj.Name,
-                    assembly=obj.Parent.Label, depth_mm=-seat.z,
-                    clearance_mm=self.pocket_clearance, recess_scale_xy=scale,
-                    orientation=orientation, axial_extra_mm=axial_extra,
-                    origin_mm=list(pocket_frame.multVec(origin)), size_mm=size,
-                    rotation_deg=list(pocket_frame.Rotation.toEulerAngles('XYZ'))))
+                if profile.get('recess_by_solid'):
+                    if seat.z-self.pocket_clearance <= -self.thickness+10:
+                        raise ValueError('Insufficient stock beneath recessed mount')
+                    for record,pocket in attachments.body_recesses(obj,placement,
+                            clearance=profile.get('recess_clearance_mm',self.pocket_clearance)):
+                        plate=plate.cut(pocket)
+                        pockets.append(record)
+                else:
+                    orientation = profile.get('recess_orientation', 'plate')
+                    if orientation not in ('plate', 'mount'):
+                        raise ValueError('Recess orientation must be plate or mount')
+                    pocket_frame = placement if orientation == 'mount' else App.Placement()
+                    shape = obj.Shape.copy();shape.Placement = pocket_frame.inverse()*placement
+                    b = shape.optimalBoundingBox()
+                    if seat.z-self.pocket_clearance <= -self.thickness+10:
+                        raise ValueError('Insufficient stock beneath recessed mount for tapped hole')
+                    # Enlarge selected mount recesses for adjuster/tool access,
+                    # retaining the same flat seat and attachment-hole datum.
+                    scale = profile.get('recess_scale_xy', 1.)
+                    if not math.isfinite(scale) or scale < 1:
+                        raise ValueError('Recess XY scale must be finite and at least one')
+                    clearance = profile.get('recess_clearance_mm', self.pocket_clearance)
+                    if not math.isfinite(clearance) or clearance < 0:
+                        raise ValueError('Recess clearance must be finite and nonnegative')
+                    axial_extra = profile.get('recess_axial_extra_mm', 0.)
+                    if not math.isfinite(axial_extra) or axial_extra < 0:
+                        raise ValueError('Recess axial extension must be finite and nonnegative')
+                    size = [(b.XLength+2*clearance)*scale+axial_extra,
+                            (b.YLength+2*clearance)*scale, -seat.z]
+                    floor = pocket_frame.inverse().multVec(seat).z
+                    origin = App.Vector(b.Center.x-size[0]/2, b.Center.y-size[1]/2, floor)
+                    side_scales = profile.get('recess_side_scale_xy', {})
+                    sides = {'x_minus': (0, -1), 'x_plus': (0, 1),
+                             'y_minus': (1, -1), 'y_plus': (1, 1)}
+                    if not isinstance(side_scales, dict) or set(side_scales)-set(sides):
+                        raise ValueError('Unknown one-sided recess scale direction')
+                    # Scale the original total span, adding all excess at the
+                    # named edge in the pocket frame; retain the other walls.
+                    original_size = size[:]
+                    for side, factor in side_scales.items():
+                        if not math.isfinite(factor) or factor < 1:
+                            raise ValueError('One-sided recess scale must be finite and at least one')
+                        axis, direction = sides[side]
+                        extra = original_size[axis] * (factor-1)
+                        if direction < 0:
+                            origin[axis] -= extra
+                        size[axis] += extra
+                    pocket = Part.makeBox(size[0],size[1],size[2]+.01,origin)
+                    pocket.Placement = pocket_frame*pocket.Placement
+                    plate = plate.cut(pocket)
+                    pockets.append(dict(mount=obj.Label, mount_object=obj.Name,
+                        assembly=obj.Parent.Label, depth_mm=-seat.z,
+                        clearance_mm=clearance, recess_scale_xy=scale,
+                        recess_side_scale_xy=dict(side_scales),
+                        orientation=orientation, axial_extra_mm=axial_extra,
+                        origin_mm=list(pocket_frame.multVec(origin)), size_mm=size,
+                        rotation_deg=list(pocket_frame.Rotation.toEulerAngles('XYZ'))))
             for record, pocket in attachments.clearance_pockets(obj.Proxy, placement):
                 bottom = pocket.optimalBoundingBox().ZMin
                 if bottom < -self.thickness + .5:
@@ -198,6 +272,9 @@ class MachinedBaseplate:
                                   'stock_envelope_mm gives the minimum bounding billet dimensions.')
         if hasattr(self, '_object'):
             self._object.MachiningPlan = json.dumps(self.plan,indent=2)
+        if cache_key is not None:
+            self._stage_cache_key=cache_key
+            self._stage_shape_cache=plate.copy()
         return plate
 
 

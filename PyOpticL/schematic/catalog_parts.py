@@ -4,6 +4,8 @@ Imported lazily by PartSpec.instantiate or an exported script, never by the
 portable model, compiler, or numerical worker.
 """
 
+from functools import partial
+from dataclasses import replace
 from PyOpticL import lab_catalog
 from PyOpticL.beam_path import Stop, TransmissionGrating
 from PyOpticL.roof_mirror import RoofGeometry, MountedRoof, RoofOptic
@@ -24,7 +26,6 @@ def mirror(mount, diameter, thickness):
 
 
 def dichroic(mount, diameter, thickness, reflect_min=700, reflect_max=850, refractive_index=1.5):
-    from dataclasses import replace
     from PyOpticL.library.optics import Circular_Dichroic_Mirror
 
     base = lab_catalog.definition("mirror", mount=mount, thickness=thickness) if mount else None
@@ -35,7 +36,7 @@ def dichroic(mount, diameter, thickness, reflect_min=700, reflect_max=850, refra
         mount_offset=base.mount_offset if base else None,
     )
     if base:
-        result.contract = lambda: replace(base.contract(), catalog_id="dichroic")
+        result.contract = partial(replace, base.contract(), catalog_id="dichroic")
     return result
 
 
@@ -56,10 +57,14 @@ def waveplate(mount, diameter, thickness, fast_axis_angle, retardance):
     )
 
 
+def _receiving_interfaces():
+    return [Stop(position=(0, 0, 0), rotation=(0, 0, 0), diameter=5)]
+
+
 def coupling(mount, receiving=False):
     result = lab_catalog.definition("coupling", mount=mount)
     if receiving:
-        result.interfaces = lambda: [Stop(position=(0, 0, 0), rotation=(0, 0, 0), diameter=5)]
+        result.interfaces = _receiving_interfaces
     return result
 
 
@@ -101,8 +106,19 @@ def grating(incidence_angle=49.9, order=1, design_wavelength=1550, mounted=True,
             design_wavelength=design_wavelength, incidence_angle=incidence_angle, order=order,
             mirrored=mirrored,
         )
-    result = GratingOptic(order=order)
-    angle = grating_surface_angle(incidence_angle, mirrored)
-    result.shape = lambda: lab_catalog.transform(GratingOptic.shape(result), rotation=(0, 0, angle))
-    result.interfaces = lambda: [TransmissionGrating(rotation=(0, 0, angle), order=order)]
-    return result
+    return BareGrating(grating_surface_angle(incidence_angle, mirrored), order)
+
+
+from PyOpticL.grating import GratingOptic
+
+
+class BareGrating(GratingOptic):
+    def __init__(self, angle, order):
+        super().__init__(order=order)
+        self.surface_angle = angle
+
+    def shape(self):
+        return lab_catalog.transform(super().shape(), rotation=(0, 0, self.surface_angle))
+
+    def interfaces(self):
+        return [TransmissionGrating(rotation=(0, 0, self.surface_angle), order=self.order)]

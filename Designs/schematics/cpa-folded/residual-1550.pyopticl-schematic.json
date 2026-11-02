@@ -117,11 +117,46 @@
       "mirror_role": "turning"
     },
     {
+      "id": "SHG_IR_Pickoff_M1",
+      "reference": "SHG_IR_Pickoff_M1",
+      "kind": "mirror",
+      "preset": "POLARIS-K05VS2",
+      "parameters": {
+        "diameter": 12.7
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
+      "id": "SHG_IR_Pickoff_L1",
+      "reference": "SHG_IR_Pickoff_L1",
+      "kind": "lens",
+      "preset": "POLARIS-L05G",
+      "parameters": {
+        "diameter": 12.7,
+        "focal_length": 30.0
+      },
+      "position": [
+        0,
+        0
+      ],
+      "rotation": 0,
+      "physical": {},
+      "mirror_role": "turning"
+    },
+    {
       "id": "Pickoff_1550",
       "reference": "Pickoff_1550",
-      "kind": "output",
-      "preset": "open",
-      "parameters": {},
+      "kind": "detector",
+      "preset": "bracketed",
+      "parameters": {
+        "optical_height": 25.4
+      },
       "position": [
         0,
         0
@@ -242,12 +277,46 @@
         "pass_id": ""
       },
       "b": {
+        "node_id": "SHG_IR_Pickoff_M1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": 220.0,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e7",
+      "a": {
+        "node_id": "SHG_IR_Pickoff_M1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
+        "node_id": "SHG_IR_Pickoff_L1",
+        "port_id": "A",
+        "pass_id": ""
+      },
+      "bends": [],
+      "length": 110.0,
+      "turns": {},
+      "allow_folding": false
+    },
+    {
+      "id": "e8",
+      "a": {
+        "node_id": "SHG_IR_Pickoff_L1",
+        "port_id": "B",
+        "pass_id": ""
+      },
+      "b": {
         "node_id": "Pickoff_1550",
         "port_id": "beam",
         "pass_id": ""
       },
       "bends": [],
-      "length": 100.0,
+      "length": 30.0,
       "turns": {},
       "allow_folding": false
     }
@@ -314,11 +383,23 @@
         9.875,
         -90
       ],
-      "Pickoff_1550": [
-        -113.25521376258732,
+      "SHG_IR_Pickoff_M1": [
+        6.744786237412683,
         -279.012573075468,
         9.875,
-        0
+        135
+      ],
+      "SHG_IR_Pickoff_L1": [
+        6.744786237412683,
+        -169.01257307546803,
+        9.875,
+        -90
+      ],
+      "Pickoff_1550": [
+        6.744786237412683,
+        -139.01257307546803,
+        9.875,
+        -90
       ]
     },
     "projection": "XY",

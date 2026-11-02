@@ -5,10 +5,13 @@ from PyOpticL.library import optics, thorlabs
 from PyOpticL.schematic.runtime import check_pass_trace
 from PyOpticL.schematic import catalog_parts as catalog
 
-PLACEMENTS = {'Residual_1550': (-213.25521376258732, -339.012573075468, 9.875, 90),
+PLACEMENTS = {'Pickoff_1550': (6.744786237412683, -139.01257307546803, 9.875, -90),
+ 'Residual_1550': (-213.25521376258732, -339.012573075468, 9.875, 90),
  'SHG_IR_HWP1': (-213.25521376258732, -249.01257307546803, 9.875, -90),
  'SHG_IR_M1': (-213.25521376258732, -219.01257307546803, 9.875, -45),
  'SHG_IR_PBS1': (-213.25521376258732, -279.012573075468, 9.875, -90),
+ 'SHG_IR_Pickoff_L1': (6.744786237412683, -169.01257307546803, 9.875, -90),
+ 'SHG_IR_Pickoff_M1': (6.744786237412683, -279.012573075468, 9.875, 135),
  'SHG_L2': (70.0, -220, 9.875, 0),
  'SHG_M1': (-100, -220, 9.875, -45)}
 
@@ -20,9 +23,9 @@ SOURCE = {'angle': 180,
  'wavelength': 1550}
 
 EXPECTED_PASSES = {'Pickoff_1550': {'branches': {},
-                  'component': None,
-                  'entry': (-113.25521376258732, -279.0125730754681, 9.875),
-                  'exit': (-113.25521376258732, -279.0125730754681, 9.875),
+                  'component': 'Pickoff_1550',
+                  'entry': (6.74478623741269, -139.01257307546803, 9.875),
+                  'exit': (6.74478623741269, -139.01257307546803, 9.875),
                   'internal_length': 0.0,
                   'mode': 'receive',
                   'reference': 'Pickoff_1550'},
@@ -71,8 +74,8 @@ EXPECTED_PASSES = {'Pickoff_1550': {'branches': {},
                'reference': 'SHG_IR_M1'},
  'SHG_IR_PBS1': {'branches': {'reflected': {'connection': 'e6',
                                             'direction': (1.0, 0.0, 0.0),
-                                            'length': 99.99999999999997,
-                                            'pass': 'Pickoff_1550'},
+                                            'length': 219.99999999999994,
+                                            'pass': 'SHG_IR_Pickoff_M1'},
                               'transmitted': {'connection': 'e5',
                                               'direction': (2.220446049250313e-16,
                                                             -1.0,
@@ -85,6 +88,30 @@ EXPECTED_PASSES = {'Pickoff_1550': {'branches': {},
                  'internal_length': 0.0,
                  'mode': 'pass',
                  'reference': 'SHG_IR_PBS1'},
+ 'SHG_IR_Pickoff_L1': {'branches': {'out': {'connection': 'e8',
+                                            'direction': (3.404683942183813e-16,
+                                                          1.0,
+                                                          0.0),
+                                            'length': 30.0,
+                                            'pass': 'Pickoff_1550'}},
+                       'component': 'SHG_IR_Pickoff_L1',
+                       'entry': (6.744786237412679, -169.01257307546803, 9.875),
+                       'exit': (6.744786237412679, -169.01257307546803, 9.875),
+                       'internal_length': 0.0,
+                       'mode': 'pass',
+                       'reference': 'SHG_IR_Pickoff_L1'},
+ 'SHG_IR_Pickoff_M1': {'branches': {'out': {'connection': 'e7',
+                                            'direction': (2.220446049250313e-16,
+                                                          1.0,
+                                                          0.0),
+                                            'length': 110.00000000000006,
+                                            'pass': 'SHG_IR_Pickoff_L1'}},
+                       'component': 'SHG_IR_Pickoff_M1',
+                       'entry': (6.744786237412654, -279.0125730754681, 9.875),
+                       'exit': (6.744786237412654, -279.0125730754681, 9.875),
+                       'internal_length': 0.0,
+                       'mode': 'pass',
+                       'reference': 'SHG_IR_Pickoff_M1'},
  'SHG_L2': {'branches': {'out': {'connection': 'e1',
                                  'direction': (-1.0,
                                                1.2246467991473532e-16,
@@ -111,9 +138,7 @@ EXPECTED_PASSES = {'Pickoff_1550': {'branches': {},
             'reference': 'SHG_M1'}}
 
 PATH_LENGTHS = {}
-OPEN_SEGMENTS = [((-213.2552137625873, -279.0125730754681, 9.875),
-  (1.0, 0.0, 0.0),
-  99.99999999999997)]
+OPEN_SEGMENTS = []
 
 def build_layout():
     layout = Layout('CPA folded draft — residual 1550 nm with adjustable pickoff')
@@ -136,10 +161,19 @@ def build_layout():
     part_5 = Component('SHG_IR_PBS1', catalog.pbs(rotate_cube=False, side_length=12.7, ref_polarization=0))
     x, y, z, angle = PLACEMENTS['SHG_IR_PBS1']
     objects['SHG_IR_PBS1'] = layout.add(part_5, position=(x, y, z), rotation=angle)
+    part_6 = Component('SHG_IR_Pickoff_M1', catalog.mirror(mount='POLARIS-K05VS2', diameter=12.7, thickness=3))
+    x, y, z, angle = PLACEMENTS['SHG_IR_Pickoff_M1']
+    objects['SHG_IR_Pickoff_M1'] = layout.add(part_6, position=(x, y, z), rotation=angle)
+    part_7 = Component('SHG_IR_Pickoff_L1', optics.Spherical_Lens(diameter=12.7, focal_length=30.0, thickness=2, mount_definition=catalog.vendor(part='POLARIS-L05G'), mount_offset=(-1.0, 0, 0)))
+    x, y, z, angle = PLACEMENTS['SHG_IR_Pickoff_L1']
+    objects['SHG_IR_Pickoff_L1'] = layout.add(part_7, position=(x, y, z), rotation=angle)
+    part_8 = Component('Pickoff_1550', catalog.detector(mounted=True, optical_height=25.4))
+    x, y, z, angle = PLACEMENTS['Pickoff_1550']
+    objects['Pickoff_1550'] = layout.add(part_8, position=(x, y, z), rotation=angle)
     beam = layout.add(BeamPath('SHG_1550_boundary', wavelength=SOURCE["wavelength"],
         polarization=linear_polarization(SOURCE["polarization_angle"]),
         power=SOURCE["power"], waist=SOURCE["waist"],
-        final_distance=80.0, trace_limit=10, trace_ends=OPEN_SEGMENTS),
+        final_distance=80.0, trace_limit=12, trace_ends=OPEN_SEGMENTS),
         position=SOURCE["position"], rotation=SOURCE["angle"])
     layout.recompute()
     check_pass_trace(beam, objects, EXPECTED_PASSES, 'SHG_1550_boundary')

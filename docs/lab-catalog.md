@@ -256,7 +256,7 @@ clamp bore is recut after fusion so that the plate stock does not fill it. No
 holder-attachment holes are added. `machining.integrated_names` identifies the
 source support features for omission when exporting an assembly or BOM; the live
 features are hidden where a GUI is present. `examples/integral_pbs_plate.py` writes a separate fused PBS demonstration,
-exporting just the plate/support solid and the optic. The two-mirror example contains no PBS. ELL16 and translation baseplate attachments remain unsupported; FBR has its
+exporting just the plate/support solid and the optic. The two-mirror example contains no PBS. ELL16 and the legacy static translation preset have no direct baseplate attachment profile. The opt-in [stage/payload API](stage-payload.md) adds a mounted XR25C, explicit adapter and editable travel. FBR has its
 own selected receiving-pin profile.
 
 `artifacts/two_mirror_coupling.machining.json` lists all drilling operations,

@@ -65,15 +65,15 @@ def center_ray_shape(segment):
 
 
 def build(output=None, *, schematic_folder=SCHEMATICS, plate_top_z=0.0,
-          plate_thickness=30.0, baseplate_output=None):
+          plate_thickness=30.0, baseplate_output=None, install_hardware=None):
     # Restrict the display override to this build; the library tracer and its
     # Gaussian transport are unchanged. All delivered beam solids are guides.
     with patch.object(BeamSegment, "compute_shape", center_ray_shape):
         return _build(output, Path(schematic_folder), plate_top_z,
-                      plate_thickness, baseplate_output)
+                      plate_thickness, baseplate_output, install_hardware)
 
 
-def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_output):
+def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_output, install_hardware):
     source = App.newDocument("CPAStarterSource")
     root = Layout("CPA mechanical starter — provisional")
     stages, programs, components = {}, {}, []
@@ -126,11 +126,13 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
     stage.recompute()
     stages["residual-1550"], programs["residual-1550"] = stage, ns
     print("All four optical routes built and traced.", flush=True)
+    installed = install_hardware(root, stages, shared, components) if install_hardware else {}
     plate, machining = machined_baseplate.add(
         root, position=(0, 0, plate_top_z), thickness=plate_thickness)
     root.recompute()
     print("Provisional baseplate machined.", flush=True)
     component_references = {o.Name: o.Label for o in components}
+    component_references.update({p.get_object().Name: label for label,p in shared.items()})
 
     def reference(obj):
         while obj is not None:
@@ -142,11 +144,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
     # Verify the full installation after nesting and plate machining as well.
     route_report = {}
     for name, stage in stages.items():
-        objects = shared if name == "residual-1550" else {
-            o.Label: o.Proxy
-            for o in stage.get_object().Children
-            if getattr(o.Proxy, "object_group", None) != "beam_path"
-        }
+        objects = shared
         beam = next(
             o.Proxy for o in stage.get_object().Children if hasattr(o, "BeamSegments")
         )
@@ -265,12 +263,21 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         raise ValueError(dict(cross_assembly_collisions=collisions,
                               beam_to_unintended_component_collisions=beam_collisions))
 
+    stage_validation = {}
+    if installed:
+        from PyOpticL import stages as translation_stages
+        for label, motion in installed.items():
+            stage_validation[label] = translation_stages.validate_clearance(motion,root)
+            stage_validation[label]["base_fasteners"] = translation_stages.validate_base_fasteners(motion)
+
     static = App.newDocument("CPAStarterReview")
     group = static.addObject("App::DocumentObjectGroup", "CPA_Starter")
     group.Label = "CPA — provisional dimensions and optical prescription"
     features, hardware = [], []
     lens_facings = []
     integrated = set(machining.integrated_names)
+    for obj in attachments.descendants(root.get_object()):
+        integrated.update(getattr(obj.Proxy,"integrated_names",()))
     for obj in attachments.descendants(root.get_object()):
         kind = getattr(obj.Proxy, "object_group", None)
         if (
@@ -350,6 +357,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         stretcher_pickoff_clearance=pickoff_clearance,
         compressor_pickoff_clearance=compressor_clearance,
         machining=machining.plan,
+        stage_validation=stage_validation,
         cross_assembly_collisions=collisions,
         beam_to_unintended_component_collisions=beam_collisions,
         bom=[
@@ -367,6 +375,24 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         output or ROOT / "artifacts/chirped_pulse_amplification.FCStd"
     ).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
+    if installed:
+        # Keep the established lightweight review document, and also deliver
+        # the actual editable assembly whose Travel property drives native rays.
+        # FreeCAD can otherwise save a shape while silently losing a failed
+        # Python proxy state. Check every component before publishing live CAD.
+        for obj in attachments.descendants(root.get_object()):
+            if isinstance(obj.Proxy,Component):
+                obj.Proxy.dumps()
+        App.setActiveDocument(source.Name)
+        source.recompute()
+        source.saveAs(str(output.with_name(output.stem+"_live.FCStd")))
+        receivers={plate.get_object().Name:machining.plan}
+        from PyOpticL.stages import AdapterPlate
+        for obj in attachments.descendants(root.get_object()):
+            if isinstance(obj.Proxy,AdapterPlate):
+                receivers[obj.Name]=json.loads(obj.MachiningPlan)
+                obj.Shape.exportStep(str(output.with_name(output.stem+"_"+obj.Name+".step")))
+        output.with_name(output.stem+".receivers.json").write_text(json.dumps(dict(units="mm",receivers=receivers),indent=2)+"\n")
     static.saveAs(str(output))
     Part.makeCompound([o.Shape for o in hardware]).exportStep(
         str(output.with_suffix(".step"))
@@ -385,6 +411,7 @@ def _build(output, schematic_folder, plate_top_z, plate_thickness, baseplate_out
         plate=plate,
         machining=machining,
         report=report,
+        installed_stages=installed,
     )
 
 

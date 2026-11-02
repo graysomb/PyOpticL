@@ -72,12 +72,13 @@ contract. Coordinates follow the full assembly and nested placement transforms;
 recomputing rebuilds from stock rather than accumulating cuts. Bare detectors
 have no fabricated baseplate profile.
 
-For recessed installations, the pocket follows the bracket axes and doubles its
+For recessed installations, the pocket follows the bracket axes and adds 50% to its
 total transverse width by extending only local +Y, the BNC side. The opposite
 wall, both axial walls, floor and attachment positions remain fixed. With the
 default 0.25 mm machining clearance, the recess is 46.5 mm along local X and
-129 mm across Y, rather than 64.5 mm across Y. The drilling report records
-`recess_side_scale_xy: {"y_plus": 2.0}` and the rotated pocket origin/dimensions.
+96.75 mm across Y, rather than 64.5 mm across Y, adding 32.25 mm on the BNC side.
+The drilling report records
+`recess_side_scale_xy: {"y_plus": 1.5}` and the rotated pocket origin/dimensions.
 
 **Before fabrication:** the drawing does not state usable thread depth in the
 detector. The source CAD's smooth minor-diameter bores have 2.54 mm straight

@@ -122,8 +122,18 @@ class FoldedCPATests(unittest.TestCase):
                               ("SHG_IR_HWP1", "SHG_IR_PBS1", 30),
                               ("SHG_IR_PBS1", "Residual_1550", 60)):
             self.assertAlmostEqual(dist(poses[a][:3], poses[b][:3]), spacing)
-        self.assertAlmostEqual(dist(visits["SHG_IR_PBS1"].exit,
-                                    visits["Pickoff_1550"].entry), 100)
+        self.assertEqual(document.node("Pickoff_1550").kind, "detector")
+        self.assertEqual(document.node("Pickoff_1550").preset, "bracketed")
+        self.assertEqual(document.node("SHG_IR_Pickoff_M1").preset, "POLARIS-K05VS2")
+        self.assertEqual(parameter_values(document.node("SHG_IR_Pickoff_M1"))["diameter"], 12.7)
+        self.assertEqual(parameter_values(document.node("SHG_IR_Pickoff_L1"))["focal_length"], 30)
+        for a, b, spacing in (("SHG_IR_PBS1", "SHG_IR_Pickoff_M1", 220),
+                              ("SHG_IR_Pickoff_M1", "SHG_IR_Pickoff_L1", 110),
+                              ("SHG_IR_Pickoff_L1", "Pickoff_1550", 30)):
+            self.assertAlmostEqual(dist(visits[a].exit, visits[b].entry), spacing)
+        self.assertLess(norm(sub(visits["SHG_IR_Pickoff_M1"].outputs["out"], (0,1,0))), 1e-8)
+        self.assertAlmostEqual(dot(visits["Pickoff_1550"].incoming,
+                                    yaw((1,0,0), poses["Pickoff_1550"][3])), -1)
         with patch.object(generator, "REAR_HWP_ANGLE_DEG", 10), patch.object(
             generator, "REAR_PBS_TO_COUPLER_MM", 50
         ):
@@ -132,6 +142,14 @@ class FoldedCPATests(unittest.TestCase):
             self.assertEqual(parameter_values(edited.node("SHG_IR_HWP1"))["fast_axis_angle"], 10)
             self.assertAlmostEqual(dist(edited.layout["poses"]["SHG_IR_PBS1"][:3],
                                         edited.layout["poses"]["Residual_1550"][:3]), 50)
+        with patch.object(generator, "PICKOFF_FOCAL_LENGTH_MM", 40):
+            edited = generator.documents()["residual-1550"]
+            self.assertTrue(compile_schematic(edited).ok)
+            self.assertEqual(parameter_values(edited.node("SHG_IR_Pickoff_L1"))["focal_length"], 40)
+            self.assertAlmostEqual(dist(edited.layout["poses"]["SHG_IR_Pickoff_L1"][:3],
+                                        edited.layout["poses"]["Pickoff_1550"][:3]), 40)
+        document.layout["poses"]["Pickoff_1550"][1] += 1
+        self.assertFalse(compile_schematic(document).ok)
 
     def test_one_grating_one_lens_and_three_upright_one_inch_mirrors(self):
         document = generator.stretcher()

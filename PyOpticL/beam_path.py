@@ -786,6 +786,21 @@ class BeamPath(Layout):
         return completed[pass_index]
     
 
+    def invalidate_trace(self):
+        """Discard generated rays after external hardware moves.
+
+        Keep beam-constrained components and their placement rules; the next
+        ordinary recompute retraces all interactions from the source.
+        """
+        obj = self.get_object()
+        names = [segment.Name for segment in obj.BeamSegments]
+        obj.BeamSegments = []
+        for name in reversed(names):
+            if obj.Document.getObject(name):
+                obj.Document.removeObject(name)
+        for child in obj.BeamChildren:
+            child.Proxy.placed = False
+
     def compute_path(self):
         """
         Calculate the beam path through the layout

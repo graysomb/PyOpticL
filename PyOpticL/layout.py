@@ -137,6 +137,9 @@ class Layout:
 
         return child
 
+    def onDocumentRestored(self, obj):
+        self.document_id, self.object_id = obj.Document.Name, obj.Name
+
     def compute_placement(self):
         """Calculate global placement of object"""
 
@@ -171,6 +174,7 @@ class Layout:
     #     self.recompute()
 
 
+
 class Component(Layout):
     """
     Abstracted proxy for a FreeCAD object representing a component
@@ -193,38 +197,10 @@ class Component(Layout):
         recompute_priority: int = 0,
     ):
 
-        # Define attributes to override using the component definition
-        override_attributes = (
-            "object_color",
-            "object_icon",
-            "object_group",
-            "object_transparency",
-        )
-
-        # inherit methods from component template
-        class Component_Wrapper(Component):
-            def __getattr__(self, name):
-                if hasattr(definition, name):
-                    return getattr(definition, name)
-                raise AttributeError(name)
-
-            for attr in override_attributes:
-                if hasattr(definition, attr):
-                    setattr(self, attr, getattr(definition, attr))
-
-            if hasattr(definition, "mesh"):
-                object_type = "Mesh"
-
-            # wrap interfaces to set parent
-            if hasattr(definition, "interfaces"):
-
-                def interfaces(self):
-                    interfaces = definition.interfaces()
-                    for interface in interfaces:
-                        interface.parent = self
-                    return interfaces
-
-        self.__class__ = Component_Wrapper
+        self._definition = definition
+        for name in ('object_color','object_icon','object_group','object_transparency'):
+            if hasattr(definition,name):setattr(self,name,getattr(definition,name))
+        if hasattr(definition,'mesh'):self.object_type = 'Mesh'
 
         super().__init__(
             label=label,
@@ -256,6 +232,36 @@ class Component(Layout):
                 )
 
         self.computed_shape = False
+
+    def __getattr__(self, name):
+        definition = self.__dict__.get('_definition')
+        if definition is not None and hasattr(definition, name):
+            if name == 'interfaces':return self._component_interfaces
+            return getattr(definition, name)
+        raise AttributeError(name)
+
+    def _component_interfaces(self):
+        interfaces = self._definition.interfaces()
+        for interface in interfaces:interface.parent = self
+        return interfaces
+
+    def dumps(self):
+        # Importable proxy class plus explicit state: FreeCAD stores the proxy
+        # class separately and cannot restore locally generated wrapper types.
+        from PyOpticL import cad_persistence
+        return cad_persistence.dumps(self.__dict__)
+
+    def loads(self, state):
+        from PyOpticL import cad_persistence
+        self.__dict__.update(cad_persistence.loads(state))
+
+    def onDocumentRestored(self, obj):
+        super().onDocumentRestored(obj)
+        definition = self._definition
+        if hasattr(definition, '_object'):
+            definition._object = obj
+        if hasattr(definition, 'layout') and isinstance(definition.layout, Layout):
+            definition.layout.document_id = obj.Document.Name
 
     def get_xy_bounding_circle(self, include_children=True) -> "BoundingCircleXY":
         """Return the full physical XY envelope about this component's origin.
@@ -296,6 +302,10 @@ class Component(Layout):
                         if pocket.optimalBoundingBox().ZMin < shape.optimalBoundingBox().ZMin + .5:
                             raise ValueError('Clearance pocket leaves insufficient stock')
                         shape = shape.cut(pocket)
+                    for record, pocket in attachments.motion_clearances(obj.Parent, obj):
+                        if pocket.optimalBoundingBox(False).ZMin < shape.optimalBoundingBox(False).ZMin+.5:
+                            raise ValueError('Stage travel clearance leaves insufficient stock')
+                        shape = shape.cut(pocket)
                     for mount, operation in attachments.plate_attachments(obj.Parent, obj):
                         shape = shape.cut(attachments.bore(operation))
                 # gather peer objects
@@ -313,6 +323,8 @@ class Component(Layout):
                 for drill_obj in drill_objs:
                     if self.object_group == 'baseplate':
                         from PyOpticL import attachments
+                        if attachments.receiving_part(drill_obj) is not None:
+                            continue
                         if (attachments.profile(drill_obj.Proxy)
                                 or attachments.integration_profile(drill_obj.Proxy)):
                             continue  # Already cut from the shared profile above.
@@ -379,6 +391,11 @@ class Component(Layout):
 
 # ViewProvider handles how the object is handled in the FreeCAD GUI
 class ViewProvider:
+    def attach(self, vobj):
+        # Reopened documents can have a different name from their source.
+        self.document_id = vobj.Object.Document.Name
+        self.object_id = vobj.Object.Name
+
     def __init__(self, obj, icon=None):
         obj.Proxy = self
         self.icon = icon

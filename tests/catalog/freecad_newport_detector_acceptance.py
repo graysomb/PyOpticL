@@ -127,18 +127,20 @@ class NewportDetectorTests(unittest.TestCase):
         pocket = machining.plan['pockets'][0]
         origin = relative.inverse().multVec(App.Vector(*pocket['origin_mm']))
         self.assertEqual(pocket['orientation'], 'mount')
-        self.assertEqual(pocket['recess_side_scale_xy'], {'y_plus': 2.0})
+        self.assertEqual(pocket['recess_side_scale_xy'], {'y_plus': 1.5})
         self.assertAlmostEqual(pocket['size_mm'][0], bounds.XLength+.5)
-        self.assertAlmostEqual(pocket['size_mm'][1], 2*(bounds.YLength+.5))
+        self.assertAlmostEqual(pocket['size_mm'][1], 1.5*(bounds.YLength+.5))
         self.assertAlmostEqual(origin.x, bounds.XMin-.25)
         self.assertAlmostEqual(origin.y, bounds.YMin-.25)
         self.assertAlmostEqual(origin.z, -25.4)
         # The new BNC access area is open above the unchanged supporting floor.
-        probe = App.Vector(bounds.Center.x, bounds.YMax+.25+(bounds.YLength+.5)/2, -23.4)
+        probe = App.Vector(bounds.Center.x, bounds.YMax+.25+(bounds.YLength+.5)/4, -23.4)
         shape = plate.get_object().Shape
         self.assertFalse(shape.isInside(bracket.Placement.multVec(probe),1e-7,False))
         probe.z = -25.5
         self.assertTrue(shape.isInside(bracket.Placement.multVec(probe),1e-7,False))
+        trimmed = App.Vector(bounds.Center.x, bounds.YMax+.25+.75*(bounds.YLength+.5), -23.4)
+        self.assertTrue(shape.isInside(bracket.Placement.multVec(trimmed),1e-7,False))
         for x,y in ((bounds.Center.x,bounds.YMin-1.25),
                     (bounds.XMin-1.25,bounds.Center.y), (bounds.XMax+1.25,bounds.Center.y)):
             self.assertTrue(shape.isInside(bracket.Placement.multVec(App.Vector(x,y,-23.4)),1e-7,False))

@@ -119,13 +119,15 @@ screw holds the base down. They do not fully constrain translation along the
 rear face. Bore positions, pin projection and contact points are included in
 the drilling report; the two pins per mount are included in the BOM.
 
-When recessed by `MachinedBaseplate`, all four D-mirror holders receive a recess
-with twice the usual width and length for Allen-key adjuster access. The recess
-is centered on the installed mount's bounding box; its floor, mounting screw
-position and drill depth are unchanged. This machining allowance is selected by
-`recess_scale_xy: 2` in the mounting profiles and is recorded with the recess's
-origin and dimensions in the drilling report. It does not resize the hardware
-or the separate below-seat knob reliefs.
+When recessed by `MachinedBaseplate`, all four D-mirror holders receive a
+single rectangular pocket aligned with the mount axes and offset **5 mm on
+every side** of the complete holder envelope, including the actuator knobs.
+Profiles select `recess_orientation: "mount"`, `recess_scale_xy: 1` and
+`recess_clearance_mm: 5`. Front mounting areas have the same clearance as the
+rear and lateral sides. There is no separate rear access extension.
+The floor, mounting screw, rear-contact pin holes and drill depths
+are unchanged, as are the separate below-seat knob reliefs. The drilling report
+records the rotated pocket origin, dimensions and 5 mm clearance.
 
 - KM05DR/KM05DL use their actual **8-32 UNC** bottom tap. The selected plate bore is
   Ø3.4544 mm (#29), 10 mm straight depth, with 8 mm nominal thread depth and a

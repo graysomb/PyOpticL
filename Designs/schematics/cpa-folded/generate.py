@@ -36,7 +36,7 @@ GRATING_TO_WAVEPLATE_MM = 150.0
 GRATING_TO_STEERING_MM = 225.0
 COUPLER_TO_STEERING_MM = 180.0
 PLATE_TOP_Z_MM = 3.0
-PLATE_THICKNESS_MM = 36.0
+PLATE_THICKNESS_MM = 60.0  # Preserve beam heights; recessed XR25C seat at Z=-39 mm.
 STRETCHER_PICKOFF_MOUNT = "KM100D"
 COMPRESSOR_PICKOFF_MOUNT = "KM100DL"
 COMPRESSOR_AXIS_HEIGHT_MM = 12.7
@@ -57,8 +57,11 @@ SHG_LENS_SEPARATION_MM = 60.0
 REAR_MIRROR_TO_HWP_MM = 30.0
 REAR_HWP_TO_PBS_MM = 30.0
 REAR_PBS_TO_COUPLER_MM = 60.0
-REAR_PICKOFF_LENGTH_MM = 100.0
 REAR_HWP_ANGLE_DEG = 22.5
+PICKOFF_PBS_TO_MIRROR_MM = 220.0
+PICKOFF_MIRROR_TO_LENS_MM = 110.0
+PICKOFF_FOCAL_LENGTH_MM = 30.0
+PICKOFF_DETECTOR_BRACKET_HEIGHT_MM = 25.4
 
 
 def stretcher():
@@ -401,9 +404,17 @@ def add_rear_pickoff(document):
                         (x, hwp_y), -90, fast_axis_angle=REAR_HWP_ANGLE_DEG)
     pbs = baseline.node(document, "SHG_IR_PBS1", "splitter", "displacement_pbs",
                         (x, pbs_y), -90, ref_polarization=0)
-    pickoff = baseline.node(document, "Pickoff_1550", "output", "open",
-                            (x + REAR_PICKOFF_LENGTH_MM, pbs_y), 0)
-    for ref in (hwp.id, pbs.id, pickoff.id):
+    pickoff_x = x + PICKOFF_PBS_TO_MIRROR_MM
+    lens_y = pbs_y + PICKOFF_MIRROR_TO_LENS_MM
+    mirror = baseline.node(document, "SHG_IR_Pickoff_M1", "mirror", "POLARIS-K05VS2",
+                           (pickoff_x, pbs_y), 135, diameter=12.7)
+    lens = baseline.node(document, "SHG_IR_Pickoff_L1", "lens", "POLARIS-L05G",
+                         (pickoff_x, lens_y), -90, diameter=12.7,
+                         focal_length=PICKOFF_FOCAL_LENGTH_MM)
+    pickoff = baseline.node(document, "Pickoff_1550", "detector", "bracketed",
+                            (pickoff_x, lens_y + PICKOFF_FOCAL_LENGTH_MM), -90,
+                            optical_height=PICKOFF_DETECTOR_BRACKET_HEIGHT_MM)
+    for ref in (hwp.id, pbs.id, mirror.id, lens.id, pickoff.id):
         poses[ref][2] = z
     poses["Residual_1550"][1] = pbs_y - REAR_PBS_TO_COUPLER_MM
     document.layout["splitters"][pbs.id] = False
@@ -414,8 +425,10 @@ def add_rear_pickoff(document):
     baseline.edge(document, hwp, pbs, bport="left", length=REAR_HWP_TO_PBS_MM)
     baseline.edge(document, pbs, document.node("Residual_1550"),
                   aport="right", bport="beam", length=REAR_PBS_TO_COUPLER_MM)
-    baseline.edge(document, pbs, pickoff, aport="top", bport="beam",
-                  length=REAR_PICKOFF_LENGTH_MM)
+    baseline.edge(document, pbs, mirror, aport="top", length=PICKOFF_PBS_TO_MIRROR_MM)
+    baseline.edge(document, mirror, lens, length=PICKOFF_MIRROR_TO_LENS_MM)
+    # Place the external detector entrance datum at the nominal focal plane.
+    baseline.edge(document, lens, pickoff, bport="beam", length=PICKOFF_FOCAL_LENGTH_MM)
     return document
 
 
@@ -462,11 +475,11 @@ ASSUMPTIONS = [
     "The lower return traverses the same lens and grating, then a 25.4 mm PFD10-03-P01 D-shaped mirror in a KM100D mount selects it. The optical datum is 1 mm below the straight edge. The upper path clears the open half; a 1 mm radius clearance probe is checked against the optic and mount.",
     "The D pickoff is 75 mm before the grating. The VA100 is 75 mm after the pickoff, followed 75 mm later by the existing 25.4 mm ST_M1 retroreflector in a POLARIS-K1VS2 mount. The return retraces the entire folded path to the launching coupler.",
     f"The upper input steering mirror is 225 mm before the grating; the FBR half-wave plate is 150 mm before it. The integral-lens fiber coupler is 180 mm from that steering mirror. All starter distances and the {BEAM_OFFSET_MM:g} mm lens offset are editable in generate.py and the schematic poses.",
-    "The plate top remains Z=3 mm; thickness is 36 mm and the underside is Z=-33 mm. The deeper one-inch D-mirror seats require this stock so their 10 mm blind M4 mounting bores retain bottom material. Both one-inch D holders use two 2 mm x 5 mm rear-contact locating pins per mount, 22 mm apart, with 4 mm straight plate bores and 1 mm projection above each recess floor. Purchased mounts remain upright and use their real seats, recessed where required; no floating mounts or unspecified spacers are introduced.",
+    "The plate top remains Z=3 mm; thickness is 60 mm and the underside is Z=-57 mm. CP_HRoof sits on an XR25C stage recessed to Z=-39 mm, preserving the original optical alignment. The 100 x 70 x 16 mm moving adapter contains the original integral horizontal-roof supports and M2 clamp tap. Four selected existing platform holes receive 1/4-20 x 5/8-inch cap screws. Travel is editable over +/-12.5 mm along the roof optical axis. The deeper stock retains material under the four 12 mm stage-base taps and their drill tips. D-mirror recesses follow the mount axes with a uniform 5 mm offset on every side of the complete holder envelope, including the front mounting area and actuator knobs. Each uses one rectangular pocket without a separate rear extension. Seats and drilling positions are unchanged. Both one-inch D holders use two 2 mm x 5 mm rear-contact locating pins per mount, 22 mm apart, with 4 mm straight plate bores and 1 mm projection above each recess floor. Purchased mounts remain upright and use their real seats, recessed where required; no floating mounts or unspecified spacers are introduced.",
     f"SHG lens separation is constrained to {SHG_LENS_SEPARATION_MM:g} mm with the physical crystal center at the midpoint: 30 mm from each lens for the defaults. The input lens is at X=130 mm, the crystal center at X=100 mm and the output lens at X=70 mm. Input lens to crystal center is an explicit 30 mm schematic length constraint. Each output wavelength starts at the physical crystal exit, 13.7 mm after the center, with an explicit 16.3 mm exit-to-lens constraint. The folded CAD builder additionally validates the shared 60 mm span, midpoint and exit alignment across wavelength files before export. Both SHG focal lengths remain 30 mm; lens-mount facing directions and downstream optics are retained.",
     "VA100 slit width is provisionally 1 mm. Beam waists and powers remain illustrative. Native and schematic traces use the existing ideal thin-lens, mirror and grating models; no detailed aberration, pulse dispersion, gain, SHG efficiency or phase matching is predicted.",
     "The output dichroic reflects 775 nm and transmits 1550 nm through an ideal 3 mm, n=1.5 plate. The exact coating/optic is unselected. The residual 1550 nm path retains its half-inch mirror and integral-lens coupler; fiber cables and the EDFA package are omitted.",
-    f"The rear 1550 nm receiving leg includes SHG_IR_HWP1 in an FBR mount and SHG_IR_PBS1, a 12.7 mm polarizing cube in the existing integral displacement PBS holder. Editable starter spacings are {REAR_MIRROR_TO_HWP_MM:g} mm mirror-to-waveplate, {REAR_HWP_TO_PBS_MM:g} mm waveplate-to-PBS and {REAR_PBS_TO_COUPLER_MM:g} mm PBS-to-coupler. The straight transmitted port continues toward -Y into Residual_1550; the reflected Pickoff_1550 port exits toward +X with a {REAR_PICKOFF_LENGTH_MM:g} mm open guide. The half-wave plate fast-axis starter is {REAR_HWP_ANGLE_DEG:g} degrees and the reflected PBS polarization axis is 0 degrees. Polarization/power division uses the existing ideal Jones model, not a selected 1550 nm cube coating or validated coupled-mode overlap.",
+    f"The rear 1550 nm receiving leg includes SHG_IR_HWP1 in an FBR mount and SHG_IR_PBS1, a 12.7 mm polarizing cube in the existing integral displacement PBS holder. Editable starter spacings are {REAR_MIRROR_TO_HWP_MM:g} mm mirror-to-waveplate, {REAR_HWP_TO_PBS_MM:g} mm waveplate-to-PBS and {REAR_PBS_TO_COUPLER_MM:g} mm PBS-to-coupler. The straight transmitted port continues toward -Y into Residual_1550; the reflected port travels {PICKOFF_PBS_TO_MIRROR_MM:g} mm toward +X to a half-inch POLARIS-K05VS2 mirror, turns toward +Y for {PICKOFF_MIRROR_TO_LENS_MM:g} mm to a half-inch POLARIS-L05G lens with {PICKOFF_FOCAL_LENGTH_MM:g} mm focal length, and ends at the bracketed Newport 818-BB-30 Pickoff_1550 detector {PICKOFF_FOCAL_LENGTH_MM:g} mm after the lens. The receiver outward axis points toward -Y. Its plate recess adds 50% to the ordinary transverse width (32.25 mm extra, 96.75 mm total with default clearance) by extending only local +Y on the BNC side, preserving the opposite wall, axial walls, floor and drilling positions. Its {PICKOFF_DETECTOR_BRACKET_HEIGHT_MM:g} mm-height bracket is recessed to retain the 9.875 mm beam datum; existing coupler and SHG hardware positions are retained. The half-wave plate fast-axis starter is {REAR_HWP_ANGLE_DEG:g} degrees and the reflected PBS polarization axis is 0 degrees. Polarization/power division uses the existing ideal Jones model, not a selected 1550 nm cube coating, validated coupled-mode overlap or detector-response calculation. The detector external entrance datum is at the nominal focal plane; its internal photosensitive depth and finite-beam clipping are not modeled.",
     "All delivered beam solids are constant-width center-ray guides. The plate and drilling are a provisional review draft.",
 ]
 

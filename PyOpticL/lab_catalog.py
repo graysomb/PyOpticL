@@ -2,7 +2,7 @@
 
 No DOF is a placement input. Cached vendor files are verified before import.
 """
-from functools import lru_cache
+from functools import lru_cache, partial
 from dataclasses import replace
 import json
 import math
@@ -536,6 +536,10 @@ def connection_interfaces():
     }
 
 
+def _mirror_contract(part):
+    return replace(_contract('mirror', part, ('tip', 'tilt')), procurement='generic')
+
+
 def definition(catalog_id, **parameters):
     """Construct a definition shared by create() and schematic part specifications.
 
@@ -616,7 +620,7 @@ def definition(catalog_id, **parameters):
         offset = (0, 0, 0) if spec.get('mirror_loading') == 'rear' else (-thickness, 0, 0)
         definition = optics.Circular_Mirror(diameter=spec.get('optic_diameter_mm', 12.7),
             thickness=thickness, mount_definition=mount, mount_offset=offset)
-        definition.contract = lambda: replace(_contract('mirror', part, ('tip', 'tilt')), procurement='generic')
+        definition.contract = partial(_mirror_contract, part)
         return definition
     if catalog_id == 'slit':
         definition = VariableSlit(parameters.get('slit_width', 1.))
@@ -695,8 +699,14 @@ def bom(component):
                 row = dict(path=path, catalog_id=c.catalog_id, part_number=c.part_number,
                            manufacturer=c.manufacturer, procurement=c.procurement, quantity=1)
                 if attachments.integration_profile(proxy):
-                    row.update(integrated_into='baseplate', separate_part=False)
-                if c.part_number in VENDOR_IDS:
+                    target=attachments.receiving_part(obj)
+                    row.update(integrated_into=target.Label if target is not None else 'baseplate', separate_part=False)
+                if hasattr(obj,'AdapterSpec'):
+                    spec=json.loads(obj.AdapterSpec)
+                    row['mounting_hardware']=[dict(kind='1/4-20 UNC cap screw',
+                        quantity=len(spec['platform_holes']),length_mm=spec['screw_length_mm'],
+                        purpose='existing stage platform holes')]
+                if c.part_number in VENDOR_IDS or c.catalog_id == 'xr25c-fixed':
                     row['excluded_vendor_solids'] = list(getattr(proxy, 'exclude_solids', ()))
                     mounting = attachments.profile(proxy)
                     if mounting:
@@ -706,6 +716,15 @@ def bom(component):
                             row['mounting_hardware'].append(dict(kind=screw.get('hardware', 'M4 mounting screws'),
                                 quantity=len(mounting['screws']), note=screw.get('note',
                                 'Length/head selected for installation stack; plate uses M4 threads.')))
+                        if mounting.get('mounting_hardware'):
+                            hardware=mounting['mounting_hardware']
+                            row['mounting_hardware']=[dict(kind=mounting['screw']['thread']+' cap screw',
+                                quantity=len(mounting['screws']),length_mm=hardware['screw_length_mm'])]
+                            if hardware.get('washer_thickness_mm'):
+                                row['mounting_hardware'].append(dict(kind='Stage base washer',
+                                    quantity=len(mounting['screws']),thickness_mm=hardware['washer_thickness_mm'],
+                                    inner_diameter_mm=hardware['washer_inner_diameter_mm'],
+                                    outer_diameter_mm=hardware['washer_outer_diameter_mm']))
                         if mounting['dowels']:
                             row['mounting_hardware'].append(dict(kind=mounting['dowel']['pin'],
                                 quantity=len(mounting['dowels']), included=c.part_number == 'FBR'))

@@ -588,7 +588,7 @@
     "show_bounds": false,
     "bounds_scale": 4.0,
     "generate_baseplate": true,
-    "plate_thickness": 36.0,
+    "plate_thickness": 60.0,
     "plate_margin": 15.0
   },
   "version": 6,

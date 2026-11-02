@@ -62,13 +62,25 @@ spacing, midpoint or wavelength-boundary placement across the schematic files.
 The rear 1550 nm receiving leg now runs through `SHG_IR_HWP1` (FBR half-wave
 plate) and `SHG_IR_PBS1` (12.7 mm polarizing cube in the library's integral
 PBS holder). The transmitted beam continues toward -Y into the existing
-`Residual_1550` coupler; the reflected beam exits toward +X as the open
-`Pickoff_1550` output. No additional receiving coupler is added to that branch.
+`Residual_1550` coupler. The reflected beam travels 220 mm toward +X to
+`SHG_IR_Pickoff_M1`, a half-inch mirror in POLARIS-K05VS2. It turns toward +Y,
+travels 110 mm to `SHG_IR_Pickoff_L1`, a half-inch lens with 30 mm focal length
+in POLARIS-L05G, and reaches the bracketed Newport 818-BB-30 (`Pickoff_1550`)
+30 mm after the lens. The detector faces back toward the lens (-Y).
 Mirror-to-waveplate, waveplate-to-PBS and PBS-to-coupler spacings are
 30, 30 and 60 mm, preserving the original 120 mm receiving leg and coupler position.
-Edit the `REAR_*` constants to change these distances, the 100 mm pickoff guide,
-or the initial 22.5° waveplate fast-axis angle. This angle controls the ideal
-polarization split; the exact 1550 nm cube coating remains unselected.
+Edit the `REAR_*` constants for the receiving leg and initial 22.5° waveplate
+fast-axis angle. The `PICKOFF_*` constants set the new mirror/lens distances,
+lens focal length and detector bracket height. The external detector entrance
+datum is constrained to one focal length after the lens. Its bracket uses the
+library's two M4 attachments and two locating pins and is recessed to maintain
+the existing 9.875 mm optical height.
+The detector recess is widened only toward its BNC connector: 96.75 mm total
+transverse width (32.25 mm added on the BNC side), with the opposite wall, floor and drilling positions retained.
+The waveplate controls the ideal
+polarization split; the exact 1550 nm cube coating remains unselected. The
+center-ray model does not predict detector response, internal photosensitive
+depth or finite-beam clipping.
 
 Edit the constants in `generate.py`, then regenerate the schematic JSON and
 standalone scripts from the repository root:
@@ -87,13 +99,14 @@ and KM100DL for the compressor. Their optical datums and beam paths are retained
 Each mounting profile includes its M4 screw and two rear-contact locating pins,
 22 mm apart, tangent to the fixed base rather than the moving mirror plate.
 
-The plate is 36 mm thick with its top at Z=3 mm and underside at Z=-33 mm. This
-contains the deeper 1-inch D-mirror recesses and their 10 mm blind mounting bores.
-Raised
-input mounts have supported seats, while taller mounts and the
+The plate slab is 60 mm thick with its top at Z=3 mm and underside at Z=-57 mm.
+This supports the recessed XR25C stage base and its 12 mm blind mounting taps,
+as well as the 1-inch D-mirror recesses. Raised input mounts have supported seats, while taller mounts and the
 compressor roof supports receive local recesses. Both D-mirror mount recesses
-have twice the usual width and length for Allen-key adjuster access, retaining
-their original seat depths and screw locations. Each D mirror also has two
+follow their mount axes with a uniform 5 mm offset on every side of the complete
+holder envelope, including the front mounting area and actuator knobs. Each is
+one rectangular pocket, without a separate rear extension;
+seat depths, screw locations and rear-contact pin holes are retained. Each D mirror also has two
 plate dowel holes for 2 mm × 5 mm pins tangent to the fixed base rear face:
 nominal Ø2.01 mm, 4 mm straight depth, projecting 1 mm above the recess floor.
 Drilling coordinates are relative
@@ -113,3 +126,16 @@ Run `python examples/cpa_folded_compressor_preview.py` after building to draw th
 compressor's ordered roof-return path and four native grating spots.
 Run `python examples/cpa_folded_rear_pickoff_preview.py` for the rear 1550 nm
 waveplate/PBS/coupler routing and its separate pickoff output.
+
+### Compressor translation stage
+
+The native folded builder mounts CP_HRoof on an XR25C with a 100 x 70 x 16 mm
+adapter. The original roof supports are machined into that adapter. The stage
+translates along the roof's optical axis over -12.5 to +12.5 mm; zero retains
+the schematic alignment. The plate top remains Z=3 mm; the slab is now 60 mm
+thick to accommodate the recessed stage and its blind mounting taps.
+
+Open `artifacts/chirped_pulse_amplification_folded_live.FCStd` with this checkout
+on FreeCAD's Python path to edit `CP_HRoof XR25C stage.Travel`. The usual FCStd
+is the lightweight review. The adapter has a separate STEP, and
+`.receivers.json` separates its machining from baseplate operations.

@@ -46,7 +46,8 @@ diameter, and incompatible thicknesses produce an export diagnostic. Switching
 presets removes parameters that do not belong to the new selection, as one
 undoable edit. Standalone mechanical mounts and the XR25C translation stage
 remain in the CAD catalog; they have no optical interaction to insert in a beam
-route.
+route. The separate [stage/payload CAD API](stage-payload.md) supports explicit
+adapters and editable travel without adding schematic controls.
 
 D-shaped mirror presets use the existing purchased optics and matching seated
 mounts for CAD generation and assembly bounds. **Hit below straight edge** sets

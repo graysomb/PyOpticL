@@ -140,7 +140,7 @@ class DetectorBracket:
         return dict(seat_frame='mounting_face', screws=['plate_1', 'plate_2'], dowels=['pin_1', 'pin_2'],
             screw=dict(thread='M4 x 0.7', diameter_mm=3.3, depth_mm=10., thread_depth_mm=8.),
             dowel=r['bracket']['dowel'], optical_height_mm=self.optical_height,
-            recess_orientation='mount', recess_side_scale_xy={'y_plus': 2.0},
+            recess_orientation='mount', recess_side_scale_xy={'y_plus': 1.5},
             source='Fabricated 818-BB-30 bracket; ' + r['drawing'],
             step_sha256=r['step_sha256'], drawing_sha256=r['drawing_sha256'])
 

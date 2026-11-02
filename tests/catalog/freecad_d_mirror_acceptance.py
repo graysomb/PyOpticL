@@ -239,12 +239,12 @@ class DMirrorTests(unittest.TestCase):
                 self.assertAlmostEqual(segments[0].Proxy.distance,50 if blocked else 100,places=6)
                 self.assertEqual(beam.get_output_indices(component),[])
 
-    def test_recessed_mounts_have_double_width_tool_access_and_supported_seats(self):
+    def test_recessed_mounts_have_uniform_five_mm_clearance_and_supported_seats(self):
         root = Layout('Recessed D mirrors')
         components = [root.add(catalog.create('d_mirror', mount, mount=mount),
                               (i*200, 0, 12.7), 31)
                       for i, mount in enumerate(MOUNTS)]
-        plate, machining = machined_baseplate.add(root, thickness=33)
+        plate, machining = machined_baseplate.add(root, thickness=33, margin=100)
         root.recompute()
         shape = plate.get_object().Shape
         self.assertTrue(shape.isValid())
@@ -254,23 +254,34 @@ class DMirrorTests(unittest.TestCase):
         for component, record in zip(components, recesses):
             with self.subTest(mount=component.get_object().Label):
                 holder = component.get_object().Children[1]
-                b = holder.Shape.optimalBoundingBox()
-                old_width = b.XLength + 2*machining.pocket_clearance
-                old_depth = b.YLength + 2*machining.pocket_clearance
-                self.assertEqual(record['recess_scale_xy'], 2)
-                self.assertAlmostEqual(record['size_mm'][0], 2*old_width)
-                self.assertAlmostEqual(record['size_mm'][1], 2*old_depth)
+                local = holder.Shape.copy(); local.Placement = App.Placement()
+                b = local.optimalBoundingBox(False)
+                self.assertEqual(record['recess_scale_xy'], 1)
+                self.assertEqual(record['orientation'], 'mount')
+                self.assertEqual(record['recess_side_scale_xy'], {})
+                self.assertEqual(record['clearance_mm'], 5)
+                self.assertAlmostEqual(record['size_mm'][0], b.XLength+10)
+                self.assertAlmostEqual(record['size_mm'][1], b.YLength+10)
+                relative = plate.get_object().Placement.inverse()*holder.Placement
+                local_origin = relative.inverse().multVec(App.Vector(*record['origin_mm']))
+                self.assertAlmostEqual(local_origin.x, b.XMin-5)
+                self.assertAlmostEqual(local_origin.y, b.YMin-5)
                 profile = attachments.profile(holder.Proxy)
                 frames = {f.name:f for f in holder.Proxy.contract().frames}
-                seat = holder.Placement.multVec(App.Vector(*frames[profile['seat_frame']].position))
-                self.assertAlmostEqual(record['origin_mm'][2], seat.z)
-                # This point was inside a former pocket wall; it is now open
-                # from the top to the unchanged seat, with stock below it.
-                probe = App.Vector(b.Center.x+.75*old_width,
-                                   b.Center.y+.75*old_depth, seat.z/2)
-                self.assertFalse(shape.isInside(probe, 1e-7, False))
-                probe.z = seat.z-.1
-                self.assertTrue(shape.isInside(probe, 1e-7, False))
+                seat_local = App.Vector(*frames[profile['seat_frame']].position)
+                self.assertAlmostEqual(local_origin.z, seat_local.z)
+                # All four walls have exactly 5 mm clearance, including
+                # the front mounting area; the supporting floor is retained.
+                for extra, inside in ((2.5, False), (6, True)):
+                    for x,y in ((b.XMin-extra,b.Center.y), (b.XMax+extra,b.Center.y),
+                                (b.Center.x,b.YMin-extra), (b.Center.x,b.YMax+extra)):
+                        probe = App.Vector(x,y,seat_local.z+2)
+                        self.assertEqual(shape.isInside(holder.Placement.multVec(probe),1e-7,False),inside)
+                        if not inside:
+                            probe.z = seat_local.z-.1
+                            self.assertTrue(shape.isInside(holder.Placement.multVec(probe),1e-7,False))
+                self.assertFalse(any(p.get('kind')=='actuator_access'
+                                     for p in machining.plan['pockets']))
                 operation = next(h for h in machining.plan['holes'] if h['mount_object']==holder.Name)
                 expected = attachments.operations(holder.Proxy, holder.Placement)[0]
                 self.assert_vector(operation['center_mm'], expected['center_mm'])
